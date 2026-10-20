@@ -82,17 +82,28 @@ def cmd_golden(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_run(args: argparse.Namespace) -> int:
-    """Full agent run: Nemotron proposes, implements and repairs; the ladder verifies; beam search."""
+def _search(args: argparse.Namespace):
+    import os
+
     from .config import settings
     from .search import Search, SearchConfig
 
-    s = settings()
+    if getattr(args, "backend", None):
+        os.environ["SS_BACKEND"] = args.backend
     cfg = SearchConfig(k_root=args.k, k_child=args.k_child, beam=args.beam, max_depth=args.depth,
                        area_budget_pct=args.area_budget, max_concurrency=args.concurrency,
                        vectors=args.vectors)
-    srch = Search(Workload.load(args.workload), s, cfg, run_id=args.run_id)
-    print(f"run {srch.run_id}: events -> {srch.bus.path}", file=sys.stderr, flush=True)
+    srch = Search(Workload.load(args.workload), settings(), cfg, run_id=args.run_id)
+    console = os.environ.get("SS_CONSOLE_URL", "").rstrip("/")
+    print(f"SiliconSmith run {srch.run_id} on {srch.backend.name}", file=sys.stderr)
+    print(f"  watch: {console}/runs/{srch.run_id}" if console else f"  events: {srch.bus.path}",
+          file=sys.stderr, flush=True)
+    return srch
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Full agent run: Nemotron proposes, implements and repairs; the ladder verifies; beam search."""
+    srch = _search(args)
     best = srch.run()
     _emit({"run_id": srch.run_id, "best": best.id, "speedup": best.speedup, "area_delta_pct": best.area_delta,
            "isa": [i.mnemonic for i in best.isa], "cost_usd": round(srch.llm.spent_usd, 4),
@@ -100,8 +111,23 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_accelerate(args: argparse.Namespace) -> int:
+    """The product command: search, verify, then write the adoptable bundle (RTL, intrinsics, patch, report)."""
+    from .bundle import write_bundle
+
+    srch = _search(args)
+    best = srch.run()
+    out = write_bundle(Path(args.out).resolve() / srch.run_id, srch.wl, srch.base, best, srch.bus.path)
+    _emit({"run_id": srch.run_id, "speedup": round(srch.base.cycles / best.measured.cycles, 3),
+           "area_delta_pct": best.area_delta, "isa": [i.mnemonic for i in best.isa],
+           "cost_usd": round(srch.llm.spent_usd, 4), "bundle": str(out), "report": str(out / "REPORT.md")})
+    return 0 if best.id != "root" else 3
+
+
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="ss", description="SiliconSmith tools")
+    ap = argparse.ArgumentParser(
+        prog="siliconsmith",
+        description="SiliconSmith: invents, implements and proves custom RISC-V instructions for your hot loops.")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("hello", help="boot PicoRV32 and print hello (toolchain smoke test)")
     p = sub.add_parser("bench", help="build + run a workload on the baseline CPU")
@@ -112,19 +138,25 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workload", default="w1")
     p.add_argument("--example", default="dot4_s8")
     p.add_argument("--vectors", type=int, default=1_000_000)
-    p = sub.add_parser("run", help="run the Nemotron agent (beam search over candidate CPUs)")
-    p.add_argument("workload")
-    p.add_argument("--k", type=int, default=6, help="proposals at depth 1")
-    p.add_argument("--k-child", type=int, default=4, help="proposals per expanded node")
-    p.add_argument("--beam", type=int, default=3)
-    p.add_argument("--depth", type=int, default=2)
-    p.add_argument("--area-budget", type=float, default=5.0)
-    p.add_argument("--concurrency", type=int, default=4)
-    p.add_argument("--vectors", type=int, default=1_000_000)
-    p.add_argument("--run-id")
+    for name, help_ in (("accelerate", "invent + prove custom instructions for a workload and write the bundle"),
+                        ("run", "run the search only (no bundle)")):
+        p = sub.add_parser(name, help=help_)
+        p.add_argument("workload")
+        p.add_argument("--k", type=int, default=6, help="proposals at depth 1")
+        p.add_argument("--k-child", type=int, default=4, help="proposals per expanded node")
+        p.add_argument("--beam", type=int, default=3)
+        p.add_argument("--depth", type=int, default=2)
+        p.add_argument("--area-budget", type=float, default=5.0, help="max extra LUT-equivalent area, percent")
+        p.add_argument("--concurrency", type=int, default=4)
+        p.add_argument("--vectors", type=int, default=1_000_000)
+        p.add_argument("--backend", choices=["local", "subprocess", "contree"])
+        p.add_argument("--run-id")
+        if name == "accelerate":
+            p.add_argument("--out", default="siliconsmith-out", help="bundle directory")
     args = ap.parse_args(argv)
     try:
-        return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden, "run": cmd_run}[args.cmd](args)
+        return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden, "run": cmd_run,
+                "accelerate": cmd_accelerate}[args.cmd](args)
     except ToolError as e:
         _emit({"ok": False, "stage": e.stage, "error": e.message, "log": e.log})
         return 2
