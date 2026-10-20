@@ -95,7 +95,9 @@ no delays, no system tasks, no latches, no other modules.
 C RULES: c_ref is the BODY of `uint32_t f(uint32_t rs1, uint32_t rs2)` (no signature), fixed-width types \
 only, no undefined behaviour (no signed overflow, no out-of-range shifts). In the patched file include \
 "ss_intrinsics.h" (already included in the original) and call `ss_{name}(a, b)`. Keep the exact function \
-signatures and the bit-identical contract; handle tails and any size. Do not add other includes.\
+signatures and the bit-identical contract; handle tails and any size. Do not add other includes. \
+`ss_{name}()` and every `ss_ref_*()` are GENERATED into ss_intrinsics.h: never define, declare or \
+#define any name starting with `ss_` in the patched file.\
 """
 
 IMPLEMENT_USER = """\

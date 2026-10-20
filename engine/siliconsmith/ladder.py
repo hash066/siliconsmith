@@ -77,6 +77,20 @@ def host_check(wl: Workload, cfg: hwgen.CpuConfig, patch: dict[str, str], d: Pat
     return f"patched software == original on {int(m.group(2)):,} random calls"
 
 
+_SS_DEF = re.compile(
+    r"^\s*#\s*define\s+(ss_\w+)|^[\w\s\*]*?\b(ss_\w+)\s*\([^;{]*\)\s*\{", re.M)
+
+
+def check_patch_hygiene(patch: dict[str, str]) -> None:
+    """The patched sources may only CALL ss_* intrinsics; ss_intrinsics.h generates them."""
+    for name, text in patch.items():
+        m = _SS_DEF.search(text)
+        if m:
+            sym = m.group(1) or m.group(2)
+            raise StageFailure("lint", f"{name} defines `{sym}`, but every ss_* name is generated into "
+                               "ss_intrinsics.h; remove that definition and just call the intrinsic")
+
+
 def _vector_values(ins: hwgen.Instruction, spec_rtl: str, rs1: int, rs2: int, work: Path) -> dict[str, int | None]:
     """Evaluate RTL, spec and C reference on one vector (to explain a counterexample)."""
     vals: dict[str, int | None] = {"rtl": None, "spec": None, "c": None}
@@ -122,6 +136,8 @@ def evaluate(
         on_stage(name, "pass", detail_fn(out), None)
         return out
 
+    on_stage("lint", "running", "", None)
+    check_patch_hygiene(patch)
     lint = stage("lint", lambda: verify.lint_unit(ins, work / "lint"),
                  lambda r: f"Verilator -Wall: {len(r.warnings)} warnings, 0 errors")
     del lint

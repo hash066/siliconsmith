@@ -50,3 +50,15 @@ def test_subprocess_worker_matches_in_process_on_golden_example(tmp_path):
     r = sub.evaluate(job, lambda st, status, d, a: stages.append((st, status)), tmp_path / "t1")
     assert ("prove", "pass") in stages and ("e2e", "pass") in stages
     assert r.measured.hash == base_s.hash and r.measured.cycles < base_s.cycles
+
+
+def test_patch_hygiene_flags_ss_definitions_but_not_calls():
+    ex = examples.load("dot4_s8")
+    ladder.check_patch_hygiene(ex.patch)  # the golden patch only calls intrinsics
+    ok = {"tm_dot.h": "for (i = 0; i < n; i++) {\n    sum += ss_dot4_s8(a[i], b[i]);\n}\nif (ss_x(1, 2)) {\n}\n"}
+    ladder.check_patch_hygiene(ok)
+    for bad in ("#define ss_ref_dot2_hi(a, b) ((a) * (b))\n",
+                "static inline uint32_t ss_dot2_hi(uint32_t rs1, uint32_t rs2) {\n  return 0;\n}\n"):
+        with pytest.raises(ladder.StageFailure) as e:
+            ladder.check_patch_hygiene({"tm_dot.h": bad})
+        assert e.value.stage == "lint" and "ss_intrinsics.h" in e.value.message
