@@ -3,7 +3,8 @@
 // Plusargs:
 //   +firmware=<hex>      firmware image ($readmemh, 32-bit words)
 //   +max_cycles=<n>      timeout (default 200M)
-//   +profile=<file>      write an instruction-fetch histogram: "<pc_hex> <count>" per line
+//   +profile=<file>      write an instruction-fetch histogram: "<pc_hex> <count>" per line,
+//                        counting only fetches inside the firmware's REGION markers
 //   +vcd=<file>          dump a VCD waveform (slow; for debugging/counterexamples)
 //
 // Prints firmware UART output to stdout, then one machine-readable line:
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
 #endif
         // sample outputs after the rising edge
         if (top->uart_valid) { std::putchar((char)top->uart_data); }
-        if (profile_path && top->ifetch_valid) hist[top->ifetch_addr]++;
+        if (profile_path && top->ifetch_valid && top->region_active) hist[top->ifetch_addr]++;
         if (top->exit_valid) { exit_code = (int)top->exit_code; break; }
         if (top->trap) { trapped = true; break; }
         top->clk = 0;

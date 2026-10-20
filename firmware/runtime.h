@@ -5,6 +5,11 @@
 
 #define SS_UART (*(volatile uint32_t *)0x10000000u)
 #define SS_EXIT (*(volatile uint32_t *)0x10000004u)
+#define SS_REGION (*(volatile uint32_t *)0x10000008u)
+
+/* Bracket the measured region: the profiler only counts instructions inside it. */
+static inline void ss_region_begin(void) { SS_REGION = 1u; }
+static inline void ss_region_end(void) { SS_REGION = 0u; }
 
 static inline void ss_putc(char c) { SS_UART = (uint32_t)(uint8_t)c; }
 

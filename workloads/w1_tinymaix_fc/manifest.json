@@ -1,0 +1,17 @@
+{
+  "id": "w1_tinymaix_fc",
+  "title": "TinyMaix int8 fully-connected layer",
+  "summary": "tml_fc from TinyMaix: 64 output channels x 512 int8 inputs, one tm_dot_prod per channel, integer requantization.",
+  "source": {
+    "repo": "https://github.com/sipeed/TinyMaix",
+    "commit": "0532ece",
+    "path": "src/arch_cpu.h",
+    "symbol": "tm_dot_prod",
+    "license": "Apache-2.0"
+  },
+  "sources": ["main.c"],
+  "patchable": ["tm_dot.h"],
+  "hot_symbol": "tm_dot_prod",
+  "max_cycles": 100000000,
+  "reference_note": "TinyMaix ships a hand-written T-Head E907 version (src/arch_rv32p.h) built on the vendor instruction smaqa (4x int8 multiply-accumulate)."
+}

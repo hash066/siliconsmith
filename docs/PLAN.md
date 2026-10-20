@@ -14,6 +14,19 @@
 
 ---
 
+## 0. The product: what a user actually gets
+
+The deliverable is **code in your repo**: a pull request containing the custom-instruction RTL, the C intrinsics header, the patched kernel, and a proof + benchmark report. It reaches the user through four surfaces, all driving the same engine:
+
+| Surface | Who / when | What it does |
+|---|---|---|
+| **CLI** (`pipx install siliconsmith`) | Hardware/firmware engineer at the terminal | `siliconsmith accelerate src/kernel.c --area-budget 5%` → runs the search (local or Token Factory Sandboxes) → writes the bundle / opens the PR → prints a run URL |
+| **GitHub integration** (Action + PR comment command) | Team workflow | Comment `/siliconsmith accelerate tm_dot_prod` on a PR or issue → the search runs in sandboxes → the bot opens a PR with RTL + intrinsics + patch + proof report |
+| **Web run viewer** | Anyone with the run URL | Live branch tree, inspector, proofs, waveforms, cost; report page. This is the CI dashboard for the agent, *not* a mock-up |
+| **MCP server** (stretch) | Other coding agents (Claude Code, Codex, Cursor, Nemotron agents) | Tools: `profile`, `propose_instructions`, `verify_instruction`, `accelerate` |
+
+The demo video shows all of them: terminal command → run URL → tree grows → PR lands on GitHub → FPGA runs it.
+
 ## 1. How each scoring criterion gets earned
 
 The four criteria are equally weighted. **Technological Implementation breaks ties**, so it gets the most depth.
@@ -150,7 +163,7 @@ See `docs/contracts/events.md`. It's the single contract between the engine and 
 | **M4** | Oct 23 | Nemotron single-branch agent loop (propose → implement → ladder → repair) | Agent finds a ≥2× instruction for W1 within budget, no human input |
 | **M5** | Oct 24 | Beam search + concurrency + EventBus + RunStore + replay | A ≥30-node run completes; NDJSON replays identically |
 | **M6** | Oct 20→26 (parallel) | Web app: landing, run view, report, try page; design-system pass | Real replay renders; a11y audit clean; playwright-cli screenshots (desktop + mobile) reviewed |
-| **M7** | Oct 26–27 | W2 workload; PR output to a fork of the real repo; Try-your-C | W2 speedup shown; PR opened on the fork |
+| **M7** | Oct 26–27 | W2 workload; packaged CLI (`siliconsmith accelerate`); GitHub Action + `/siliconsmith` PR command opening a PR on a fork of TinyMaix; Try-your-C | W2 speedup shown; a PR command on the fork produces a bot PR |
 | **M8** | Oct 27–28 | Hosting + hardening: deploy, rate limits, budget caps, replay fallback, load test, security review; FPGA if the board arrived | Hosted URL survives the load test; spend cap enforced |
 | **M9** | Oct 28–29 | README, architecture diagram, related work, Nebius feedback, **video**, Devpost text | Video ≤ 3:00, uploaded public; all checklist items ticked |
 | **M10** | Oct 30, ≤12:00 IST | **Submit** | Devpost confirmation |

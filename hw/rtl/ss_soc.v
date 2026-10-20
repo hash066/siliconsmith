@@ -4,6 +4,7 @@
 //   0x0000_0000 .. MEM_BYTES-1   RAM (firmware preloaded via +firmware=<hex>)
 //   0x1000_0000                  UART TX   (write: low byte is printed by the testbench)
 //   0x1000_0004                  EXIT      (write: simulation ends with this code)
+//   0x1000_0008                  REGION    (write bit0: 1 = start profiling region, 0 = stop)
 `default_nettype none
 
 module ss_soc #(
@@ -17,6 +18,7 @@ module ss_soc #(
 	output reg  [ 7:0] uart_data,
 	output reg         exit_valid,
 	output reg  [31:0] exit_code,
+	output reg         region_active,
 
 	// instruction-fetch tap for the profiler
 	output wire        ifetch_valid,
@@ -51,6 +53,7 @@ module ss_soc #(
 		mem_ready  <= 1'b0;
 		uart_valid <= 1'b0;
 		exit_valid <= 1'b0;
+		if (!resetn) region_active <= 1'b0;
 		if (resetn && mem_valid && !mem_ready) begin
 			mem_ready <= 1'b1;
 			mem_rdata <= 32'h0000_0000;
@@ -70,6 +73,8 @@ module ss_soc #(
 					exit_valid <= 1'b1;
 					exit_code  <= mem_wdata;
 				end
+			end else if (mem_addr == 32'h1000_0008) begin
+				if (|mem_wstrb) region_active <= mem_wdata[0];
 			end
 		end
 	end
