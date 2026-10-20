@@ -12,11 +12,12 @@ from __future__ import annotations
 import hashlib
 import re
 import shutil
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import hwgen, paths
-from .build import ToolError, run
+from .build import ToolError, compiler_errors, run
 
 # Bytes that break sign handling, saturation and carries; combined per lane below.
 _EDGE_BYTES = [0x00, 0x01, 0x02, 0x7F, 0x80, 0x81, 0xFE, 0xFF, 0x55, 0xAA]
@@ -72,6 +73,7 @@ int main(int argc, char** argv) {{
     unsigned long long n_random = argc > 1 ? strtoull(argv[1], nullptr, 10) : 1000000ULL;
     static const uint32_t edges[] = {{ {edges} }};
     const int n_edges = sizeof(edges) / sizeof(edges[0]);
+    static const uint32_t pairs[][2] = {{ {pairs} }};
     unsigned long long checked = 0;
     auto check = [&](uint32_t a, uint32_t b) -> bool {{
         u->rs1 = a; u->rs2 = b; u->eval();
@@ -83,6 +85,8 @@ int main(int argc, char** argv) {{
         }}
         return true;
     }};
+    for (unsigned p = 0; p < sizeof(pairs) / sizeof(pairs[0]); p++)
+        if (!check(pairs[p][0], pairs[p][1])) return 1;
     for (int i = 0; i < n_edges; i++)
         for (int j = 0; j < n_edges; j++)
             if (!check(edges[i], edges[j])) return 1;
@@ -98,20 +102,28 @@ int main(int argc, char** argv) {{
 """
 
 
-def unit_test(ins: hwgen.Instruction, work: Path, n_random: int = 1_000_000) -> UnitResult:
+def unit_test(
+    ins: hwgen.Instruction,
+    work: Path,
+    n_random: int = 1_000_000,
+    extra_pairs: list[tuple[int, int]] | None = None,
+) -> UnitResult:
     top = f"ss_insn_{ins.name}"
     work.mkdir(parents=True, exist_ok=True)
     (work / f"{top}.v").write_text(ins.rtl, newline="\n")
     edges = ", ".join(f"0x{w:08x}u" for w in _edge_words())
+    pairs = ", ".join(f"{{0x{a:08x}u, 0x{b:08x}u}}" for a, b in (extra_pairs or [(0, 0)]))
     c_ref = "\n".join("\t" + ln for ln in ins.c_ref.strip().splitlines())
-    (work / "harness.cpp").write_text(_HARNESS.format(top=top, c_ref=c_ref, edges=edges), newline="\n")
+    (work / "harness.cpp").write_text(
+        _HARNESS.format(top=top, c_ref=c_ref, edges=edges, pairs=pairs), newline="\n")
     obj = work / "obj_unit"
     shutil.rmtree(obj, ignore_errors=True)
     r = run(["verilator", "--cc", "--exe", "--build", "-j", "0", "-O2", "-Wno-fatal", "-Wno-lint",
              "-Wno-style", "--top-module", top, "-Mdir", obj, "-o", work / "unit",
              work / f"{top}.v", work / "harness.cpp"], cwd=work, timeout=600)
     if not r.ok:
-        raise ToolError("unit", "unit harness failed to build (check the C reference)", r.output)
+        raise ToolError("unit", "unit harness failed to build (the C reference does not compile as the "
+                        "body of uint32_t f(uint32_t rs1, uint32_t rs2))", compiler_errors(r.output))
     r = run([work / "unit", str(n_random)], timeout=600)
     shutil.rmtree(obj, ignore_errors=True)
     m = re.search(r"SS_MISMATCH rs1=(\w+) rs2=(\w+) expected=(\w+) got=(\w+)", r.stdout)
@@ -152,8 +164,11 @@ def prove_equiv(ins: hwgen.Instruction, spec_rtl: str, work: Path, timeout_s: in
     if "SUCCESS!" in log and r.ok:
         return ProveResult(proven=True, method="yosys SAT miter (all inputs)", seconds=r.seconds)
     if "FAIL!" in log:
-        cex = dict(re.findall(r"\\in_(rs[12])\s+\S+\s+\S+\s+(\S+)", log))
-        raise ToolError("prove", f"formal counterexample found: {cex}", log)
+        cex = {k: int(v) for k, v in re.findall(r"\\in_(rs[12])\s+(\d+)\s+[0-9a-fx]+", log)}
+        err = ToolError("prove", "formal counterexample: " +
+                        ", ".join(f"{k}=0x{v:08x}" for k, v in sorted(cex.items())), log)
+        err.counterexample = cex  # type: ignore[attr-defined]
+        raise err
     if "timeout" in log.lower() or r.code == 124:
         raise ToolError("prove", f"proof timed out after {timeout_s}s", log)
     raise ToolError("prove", "prover error", log)
@@ -187,13 +202,20 @@ def synth_core(cfg_dir: Path, cache_root: Path | None = None) -> Area:
     out = cache_root / key
     stat = out / "stat.txt"
     if not stat.exists():
-        out.mkdir(parents=True, exist_ok=True)
+        tmp = cache_root / f"{key}.tmp{threading.get_ident()}"
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir(parents=True)
         reads = "\n".join(f"read_verilog {f}" for f in rtl)
-        (out / "synth.ys").write_text(
+        (tmp / "synth.ys").write_text(
             f"{reads}\nsynth_gowin -top ss_core\ntee -o stat.txt stat\n", newline="\n")
-        r = run(["yosys", "-q", "-l", "synth.log", "synth.ys"], cwd=out, timeout=1200)
-        if not r.ok or not stat.exists():
+        r = run(["yosys", "-q", "-l", "synth.log", "synth.ys"], cwd=tmp, timeout=1200)
+        if not r.ok or not (tmp / "stat.txt").exists():
+            shutil.rmtree(tmp, ignore_errors=True)
             raise ToolError("synth", "synthesis failed", r.output)
+        try:
+            tmp.rename(out)
+        except OSError:
+            shutil.rmtree(tmp, ignore_errors=True)
     return _parse_stat(stat.read_text())
 
 

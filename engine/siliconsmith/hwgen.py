@@ -20,6 +20,23 @@ from pathlib import Path
 
 CUSTOM0_OPCODE = 0x0B
 _NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
+_FN_WRAPPER = re.compile(
+    r"^\s*(?:static\s+)?(?:inline\s+)?(?:u?int32_t|unsigned(?:\s+int)?)\s+\w+\s*\(\s*"
+    r"(?:const\s+)?u?int32_t\s+(\w+)\s*,\s*(?:const\s+)?u?int32_t\s+(\w+)\s*\)\s*\{(.*)\}\s*$",
+    re.S,
+)
+
+
+def normalize_c_ref(src: str) -> str:
+    """Accept either a function body or a full `uint32_t f(uint32_t a, uint32_t b) {...}` definition
+    (models often write the latter) and return a body over rs1/rs2."""
+    src = src.strip().strip("`").strip()
+    m = _FN_WRAPPER.match(src)
+    if not m:
+        return src
+    a, b, body = m.group(1), m.group(2), m.group(3).strip("\n")
+    prologue = "".join(f"uint32_t {x} = {r};\n" for x, r in ((a, "rs1"), (b, "rs2")) if x != r)
+    return prologue + body
 
 
 @dataclass(frozen=True)
@@ -36,6 +53,7 @@ class Instruction:
     rationale: str = ""
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "c_ref", normalize_c_ref(self.c_ref))
         if not _NAME_RE.match(self.name):
             raise ValueError(f"invalid instruction name {self.name!r}")
         if not 0 <= self.funct7 <= 127:

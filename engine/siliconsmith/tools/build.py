@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,12 +42,26 @@ VERILATOR_FLAGS = [
 LOG_TAIL = 6000
 
 
+def compiler_errors(log: str, context: int = 3) -> str:
+    """Keep only compiler/tool diagnostic lines (with context), dropping the command-line noise."""
+    lines = log.splitlines()
+    keep: set[int] = set()
+    for i, ln in enumerate(lines):
+        is_cmd = ln.lstrip().startswith(("g++ ", "gcc ", "make", "clang"))
+        if not is_cmd and re.search(r"error|%Error|undefined reference|fatal", ln, re.I):
+            keep.update(range(max(0, i - context), min(len(lines), i + context + 1)))
+    if not keep:
+        return log[-LOG_TAIL:]
+    return "\n".join(lines[i] for i in sorted(keep))[:LOG_TAIL]
+
+
 class ToolError(Exception):
     def __init__(self, stage: str, message: str, log: str = ""):
         super().__init__(f"[{stage}] {message}")
         self.stage = stage
         self.message = message
         self.log = log[-LOG_TAIL:]
+        self.counterexample: dict[str, int] | None = None
 
 
 @dataclass
@@ -108,6 +123,7 @@ def build_firmware(
     include_dirs: list[Path] | None = None,
     defines: dict[str, str] | None = None,
     name: str = "firmware",
+    linker_script: Path | None = None,
 ) -> FirmwareBuild:
     out_dir.mkdir(parents=True, exist_ok=True)
     elf = out_dir / f"{name}.elf"
@@ -118,7 +134,7 @@ def build_firmware(
     srcs = [paths.FIRMWARE / "start.S", paths.FIRMWARE / "runtime.c", *sources]
     cmd = [
         f"{RV_PREFIX}gcc", *RV_CFLAGS, *incs, *defs,
-        "-T", paths.FIRMWARE / "link.ld", "-Wl,--gc-sections",
+        "-T", linker_script or (paths.FIRMWARE / "link.ld"), "-Wl,--gc-sections",
         *srcs, "-lgcc", "-o", elf,
     ]
     r = run(cmd, cwd=out_dir)
@@ -147,7 +163,7 @@ def build_sim(gen_dir: Path, cache_root: Path | None = None, trace: bool = False
     exe = out / "ss_sim"
     if exe.exists():
         return exe
-    tmp = cache_root / f"{key}.tmp{os.getpid()}"
+    tmp = cache_root / f"{key}.tmp{os.getpid()}_{threading.get_ident()}"
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True)
     cmd = ["verilator", *VERILATOR_FLAGS, *(["--trace"] if trace else []),
@@ -157,10 +173,10 @@ def build_sim(gen_dir: Path, cache_root: Path | None = None, trace: bool = False
         shutil.rmtree(tmp, ignore_errors=True)
         raise ToolError("lint", "verilator build failed", r.output)
     shutil.rmtree(tmp / "obj_dir", ignore_errors=True)
-    if out.exists():  # another worker won the race
-        shutil.rmtree(tmp, ignore_errors=True)
-    else:
+    try:
         tmp.rename(out)
+    except OSError:  # another worker won the race
+        shutil.rmtree(tmp, ignore_errors=True)
     return exe
 
 

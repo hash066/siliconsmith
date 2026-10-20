@@ -112,8 +112,11 @@ interface Log extends EventBase { type: "log"; level: "info" | "warn" | "error";
 
 ## Rules
 - Nodes are created before any of their stage events.
-- A node's stages run in the order `implement → lint → unit → prove → e2e → synth → bench`. A `fail` with `attempt < 2` is followed by `implement` (repair) with `attempt+1`.
-- `node.scored` arrives only after `bench` passes. Failed nodes end with `node.pruned` (reason).
+- **(v1.1)** A node's stages run in the order `implement → lint → unit → e2e → bench → prove → synth`. Cheap checks run first, and formal proof plus synthesis only run on candidates that actually speed up the workload. A `fail` with `attempt < 2` is followed by `implement` (repair) with `attempt+1`. `bench` and `synth` can also end in `fail` followed directly by `node.pruned` (no speedup / over area budget), with no repair.
+- `node.scored` arrives only after `synth` passes. Failed nodes end with `node.pruned` (reason).
+- **(v1.1)** `fmax_mhz` (in `run.baseline` and `node.scored`) is `number | null`; `null` means not measured yet, so show "—". Until Fmax is measured, `wall_speedup === speedup`.
+- **(v1.1)** `sandbox.op.to_image` may be `null` for failed ops; `from_image`/`to_image` look like `"<backend>:<node_id>"` for the local backend.
+- **(v1.1)** A `log` event with `node_id` may carry the architect's hotspot analysis (good for the inspector).
 - The web app derives everything (tree, metrics, cost totals) from events alone, so it must not need any other API to render a replay.
 
 ## Example (truncated)

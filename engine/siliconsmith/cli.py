@@ -82,6 +82,24 @@ def cmd_golden(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """Full agent run: Nemotron proposes, implements and repairs; the ladder verifies; beam search."""
+    from .config import settings
+    from .search import Search, SearchConfig
+
+    s = settings()
+    cfg = SearchConfig(k_root=args.k, k_child=args.k_child, beam=args.beam, max_depth=args.depth,
+                       area_budget_pct=args.area_budget, max_concurrency=args.concurrency,
+                       vectors=args.vectors)
+    srch = Search(Workload.load(args.workload), s, cfg, run_id=args.run_id)
+    print(f"run {srch.run_id}: events -> {srch.bus.path}", file=sys.stderr, flush=True)
+    best = srch.run()
+    _emit({"run_id": srch.run_id, "best": best.id, "speedup": best.speedup, "area_delta_pct": best.area_delta,
+           "isa": [i.mnemonic for i in best.isa], "cost_usd": round(srch.llm.spent_usd, 4),
+           "events": str(srch.bus.path)})
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="ss", description="SiliconSmith tools")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -94,9 +112,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workload", default="w1")
     p.add_argument("--example", default="dot4_s8")
     p.add_argument("--vectors", type=int, default=1_000_000)
+    p = sub.add_parser("run", help="run the Nemotron agent (beam search over candidate CPUs)")
+    p.add_argument("workload")
+    p.add_argument("--k", type=int, default=6, help="proposals at depth 1")
+    p.add_argument("--k-child", type=int, default=4, help="proposals per expanded node")
+    p.add_argument("--beam", type=int, default=3)
+    p.add_argument("--depth", type=int, default=2)
+    p.add_argument("--area-budget", type=float, default=5.0)
+    p.add_argument("--concurrency", type=int, default=4)
+    p.add_argument("--vectors", type=int, default=1_000_000)
+    p.add_argument("--run-id")
     args = ap.parse_args(argv)
     try:
-        return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden}[args.cmd](args)
+        return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden, "run": cmd_run}[args.cmd](args)
     except ToolError as e:
         _emit({"ok": False, "stage": e.stage, "error": e.message, "log": e.log})
         return 2
