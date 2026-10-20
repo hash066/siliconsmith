@@ -92,7 +92,7 @@ def _search(args: argparse.Namespace):
         os.environ["SS_BACKEND"] = args.backend
     cfg = SearchConfig(k_root=args.k, k_child=args.k_child, beam=args.beam, max_depth=args.depth,
                        area_budget_pct=args.area_budget, max_concurrency=args.concurrency,
-                       vectors=args.vectors)
+                       vectors=args.vectors, polish=not args.no_polish)
     srch = Search(Workload.load(args.workload), settings(), cfg, run_id=args.run_id)
     console = os.environ.get("SS_CONSOLE_URL", "").rstrip("/")
     print(f"SiliconSmith run {srch.run_id} on {srch.backend.name}", file=sys.stderr)
@@ -150,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--concurrency", type=int, default=4)
         p.add_argument("--vectors", type=int, default=1_000_000)
         p.add_argument("--backend", choices=["local", "subprocess", "contree"])
+        p.add_argument("--no-polish", action="store_true", help="skip the area/software polish of each round's winners")
         p.add_argument("--run-id")
         if name == "accelerate":
             p.add_argument("--out", default="siliconsmith-out", help="bundle directory")

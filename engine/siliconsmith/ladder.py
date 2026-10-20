@@ -126,7 +126,11 @@ def evaluate(
     area_budget_pct: float,
     min_gain: float = 1.01,
     vectors: int = 1_000_000,
+    require_gain: bool = True,
+    shrink_vs: verify.Area | None = None,
 ) -> Measured:
+    """Ladder for a new (or area-polished) instruction. Area polish passes require_gain=False
+    (must not be slower) and shrink_vs=<the area it has to beat>."""
     def stage(name: str, fn, detail_fn):
         on_stage(name, "running", "", None)
         try:
@@ -149,22 +153,8 @@ def evaluate(
           + (f" · {o[1]}" if o[1] else ""))
 
     cfg = hwgen.CpuConfig([*parent_isa, ins])
-    on_stage("e2e", "running", "", None)
-    try:
-        m = measure(wl, cfg, patch, work / "soc")
-    except ToolError as e:
-        raise StageFailure("e2e" if e.stage in ("e2e", "build") else e.stage, e.message, e.log) from e
-    if m.hash != base.hash:
-        raise StageFailure("e2e", f"program output differs: hash {m.hash} != baseline {base.hash}",
-                           "The patched software computes different results than the original.")
-    on_stage("e2e", "pass", "bit-identical program output", None)
-
+    m = _e2e_bench(wl, base, parent, cfg, patch, work, on_stage, min_gain if require_gain else None)
     speedup = base.cycles / m.cycles
-    on_stage("bench", "running", "", None)
-    if m.cycles >= parent.cycles / min_gain:
-        on_stage("bench", "fail", f"{m.cycles:,} cycles: no gain over parent ({parent.cycles:,})", None)
-        raise Prune("bench", f"no speedup ({speedup:.2f}x vs parent {base.cycles / parent.cycles:.2f}x)")
-    on_stage("bench", "pass", f"{m.cycles:,} cycles · {speedup:.2f}x", None)
 
     on_stage("prove", "running", "", None)
     try:
@@ -190,5 +180,62 @@ def evaluate(
     if area_delta > area_budget_pct:
         on_stage("synth", "fail", f"+{area_delta:.1f}% LUT-equivalent exceeds budget +{area_budget_pct:.0f}%", None)
         raise Prune("synth", f"over area budget (+{area_delta:.1f}%)")
+    if shrink_vs is not None and (m.area.lut_equiv, m.area.dsps) >= (shrink_vs.lut_equiv, shrink_vs.dsps):
+        on_stage("synth", "fail", f"{m.area.lut_equiv:,} LUT+ALU · {m.area.dsps} DSP: no saving over "
+                 f"{shrink_vs.lut_equiv:,} LUT+ALU · {shrink_vs.dsps} DSP", None)
+        raise Prune("synth", f"no area saving ({m.area.lut_equiv:,} vs {shrink_vs.lut_equiv:,} LUT+ALU)")
     on_stage("synth", "pass", f"{m.area.lut_equiv:,} LUT+ALU (+{area_delta:.1f}%) · {m.area.dsps} DSP", None)
+    return m
+
+
+def _e2e_bench(wl: Workload, base: Measured, parent: Measured, cfg: hwgen.CpuConfig, patch: dict[str, str],
+               work: Path, on_stage: StageCb, min_gain: float | None) -> Measured:
+    """Full-SoC run: output must be bit-identical to the baseline; then the cycle check.
+    min_gain=None means 'must not be slower than the parent' (used by area polish)."""
+    on_stage("e2e", "running", "", None)
+    try:
+        m = measure(wl, cfg, patch, work / "soc")
+    except ToolError as e:
+        raise StageFailure("e2e" if e.stage in ("e2e", "build") else e.stage, e.message, e.log) from e
+    if m.hash != base.hash:
+        raise StageFailure("e2e", f"program output differs: hash {m.hash} != baseline {base.hash}",
+                           "The patched software computes different results than the original.")
+    on_stage("e2e", "pass", "bit-identical program output", None)
+
+    speedup = base.cycles / m.cycles
+    on_stage("bench", "running", "", None)
+    slow = m.cycles > parent.cycles if min_gain is None else m.cycles >= parent.cycles / min_gain
+    if slow:
+        on_stage("bench", "fail", f"{m.cycles:,} cycles: no gain over parent ({parent.cycles:,})", None)
+        raise Prune("bench", f"no speedup ({speedup:.2f}x vs parent {base.cycles / parent.cycles:.2f}x)")
+    on_stage("bench", "pass", f"{m.cycles:,} cycles · {speedup:.2f}x", None)
+    return m
+
+
+def evaluate_software(
+    wl: Workload,
+    base: Measured,
+    parent: Measured,
+    isa: list[hwgen.Instruction],
+    patch: dict[str, str],
+    work: Path,
+    on_stage: StageCb,
+    min_gain: float = 1.01,
+) -> Measured:
+    """Software polish: same CPU, new code. The hardware (and so its proofs) is unchanged."""
+    on_stage("lint", "running", "", None)
+    check_patch_hygiene(patch)
+    on_stage("lint", "pass", "hardware unchanged · patched source only calls intrinsics", None)
+    cfg = hwgen.CpuConfig(list(isa))
+    on_stage("unit", "running", "", None)
+    try:
+        summary = host_check(wl, cfg, patch, work / "hostcheck")
+    except ToolError as e:
+        raise StageFailure("unit", e.message, e.log) from e
+    on_stage("unit", "pass", summary or "patched software builds", None)
+    m = _e2e_bench(wl, base, parent, cfg, patch, work, on_stage, min_gain)
+    on_stage("prove", "skipped", "hardware unchanged: formal proofs carry over", None)
+    area_delta = 100.0 * (m.area.lut_equiv - base.area.lut_equiv) / base.area.lut_equiv
+    m.extra = {"speedup": base.cycles / m.cycles, "area_delta_pct": area_delta}
+    on_stage("synth", "pass", f"unchanged hardware · {m.area.lut_equiv:,} LUT+ALU (+{area_delta:.1f}%)", None)
     return m

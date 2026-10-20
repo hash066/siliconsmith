@@ -37,10 +37,6 @@ def measured_from_dict(d: dict) -> ladder.Measured:
                            hotspots=d["hotspots"], disasm=d["disasm"], extra=d.get("extra", {}))
 
 
-def instruction_from_dict(d: dict) -> hwgen.Instruction:
-    return hwgen.Instruction(**d)
-
-
 def _say(tag: str, obj: dict) -> None:
     sys.stdout.write(tag + json.dumps(obj) + "\n")
     sys.stdout.flush()
@@ -58,26 +54,15 @@ def cmd_baseline(workload: str) -> int:
 
 
 def cmd_eval(job_path: str) -> int:
-    job = json.loads(Path(job_path).read_text(encoding="utf-8"))
-    wl = Workload.load(job["workload"])
+    from .backends import EvalJob, evaluate_job  # backends imports this module
+
+    job = EvalJob.from_json(Path(job_path).read_text(encoding="utf-8"))
 
     def on_stage(stage: str, status: str, detail: str, artifacts: dict | None) -> None:
         _say(STAGE_TAG, {"stage": stage, "status": status, "detail": detail, "artifacts": artifacts})
 
     try:
-        m = ladder.evaluate(
-            wl,
-            measured_from_dict(job["base"]),
-            measured_from_dict(job["parent"]),
-            [instruction_from_dict(i) for i in job["parent_isa"]],
-            instruction_from_dict(job["ins"]),
-            job["spec_rtl"],
-            job["patch"],
-            paths.RUNS / "nodes" / job["node_id"] / f"a{job.get('attempt', 0)}",
-            on_stage=on_stage,
-            area_budget_pct=job["area_budget_pct"],
-            vectors=job["vectors"],
-        )
+        m = evaluate_job(job, on_stage, paths.RUNS / "nodes" / job.node_id / f"a{job.attempt}")
     except ladder.Prune as p:
         _say(OUTCOME_TAG, {"ok": False, "kind": "prune", "stage": p.stage, "message": p.reason})
         return 0

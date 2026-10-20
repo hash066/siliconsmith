@@ -29,7 +29,7 @@ type NodeId = string;          // "root", "n1", "n1.3", "n1.3.2" (dot = depth)
 type Stage = "implement" | "lint" | "unit" | "prove" | "e2e" | "synth" | "bench";
 type StageStatus = "queued" | "running" | "pass" | "fail" | "skipped";
 type Model = "nemotron-nano" | "nemotron-super" | "nemotron-ultra";
-type Role = "brief" | "triage" | "architect" | "implement" | "repair" | "diagnose" | "report";
+type Role = "brief" | "triage" | "architect" | "implement" | "repair" | "diagnose" | "report" | "polish";
 
 interface RunStarted extends EventBase {
   type: "run.started";
@@ -46,6 +46,7 @@ interface RunBaseline extends EventBase {
 }
 
 interface Proposal {
+  kind?: "instruction" | "area" | "software"; // (v1.2) absent = "instruction"
   mnemonic: string;            // e.g. "dot4.s8"
   title: string;               // "Packed int8 dot product"
   semantics_c: string;         // C reference function (the spec)
@@ -126,3 +127,4 @@ interface Log extends EventBase { type: "log"; level: "info" | "warn" | "error";
 {"v":1,"seq":2,"t":9100,"run_id":"r_demo","type":"node.created","node_id":"n1","parent_id":"root","depth":1,"proposal":{"mnemonic":"dot4.s8","title":"Packed int8 dot product","semantics_c":"int32_t dot4(uint32_t a, uint32_t b){...}","operands":{"rs1":"4×int8","rs2":"4×int8","rd":"int32"},"rationale":"71% of cycles are 4 loads + 4 mul + 4 add per output pair; one instruction fuses them."},"instruction_set":["dot4.s8"]}
 {"v":1,"seq":3,"t":9150,"run_id":"r_demo","type":"llm.call","node_id":"n1","model":"nemotron-ultra","role":"architect","tokens_in":6120,"tokens_out":910,"cost_usd":0.0088,"latency_ms":5200}
 ```
+- **(v1.2) Polish nodes.** After each round, the agent improves its own winners in a short chain: `area` (same function, less hardware, re-proven against the same spec; it must not get slower and must shrink) and then `software` (same hardware, faster code; output must stay bit-identical). They are ordinary children in the tree with `proposal.kind` set; their `mnemonic` is the instruction being polished. A `software` node's `prove` stage arrives as `skipped` ("hardware unchanged: formal proofs carry over"). LLM calls for them use `role: "polish"`. A polished node can be the run's best node.

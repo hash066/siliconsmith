@@ -1,0 +1,3 @@
+[console_scripts]
+siliconsmith = siliconsmith.cli:main
+ss = siliconsmith.cli:main

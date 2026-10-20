@@ -66,6 +66,28 @@ class SpecRtl(BaseModel):
         return unescape_code(v)
 
 
+class SoftwarePolish(BaseModel):
+    patched_files: dict[str, str] = Field(description="full new contents of each patchable file you change")
+    title: str = Field(description="5-8 words naming the optimization, e.g. '4x unroll with word pointers'")
+    notes: str = ""
+
+    @field_validator("patched_files")
+    @classmethod
+    def _files(cls, v: dict[str, str]) -> dict[str, str]:
+        return {k: unescape_code(c) for k, c in v.items()}
+
+
+class AreaPolish(BaseModel):
+    rtl: str = Field(description="complete Verilog module ss_insn_<name>, same function, less hardware")
+    title: str = Field(description="5-8 words naming the optimization, e.g. 'minimal-width adder tree'")
+    notes: str = ""
+
+    @field_validator("rtl")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        return unescape_code(v)
+
+
 class Triage(BaseModel):
     stage: str
     summary: str = Field(description="one sentence a human can read in the UI")

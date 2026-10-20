@@ -27,6 +27,14 @@ StageCb = Callable[[str, str, str, "dict | None"], None]
 
 @dataclass
 class EvalJob:
+    """One candidate to verify.
+
+    mode="instruction": CPU = parent_isa + ins (a new instruction), must speed up.
+    mode="area":        CPU = parent_isa + ins (a smaller re-implementation), must not slow down,
+                        must shrink vs `parent`, and is re-proven against the same spec.
+    mode="software":    CPU = parent_isa (unchanged hardware), new patch, must speed up; ins is None.
+    """
+
     node_id: str
     attempt: int
     workload: str
@@ -34,20 +42,49 @@ class EvalJob:
     base: ladder.Measured
     parent: ladder.Measured
     parent_isa: list[hwgen.Instruction]
-    ins: hwgen.Instruction
+    ins: hwgen.Instruction | None
     spec_rtl: str
     patch: dict[str, str]
     area_budget_pct: float
     vectors: int
+    mode: str = "instruction"
 
     def to_json(self) -> str:
         return json.dumps({
             "node_id": self.node_id, "attempt": self.attempt, "workload": self.workload,
+            "parent_image": self.parent_image, "mode": self.mode,
             "base": measured_to_dict(self.base), "parent": measured_to_dict(self.parent),
-            "parent_isa": [asdict(i) for i in self.parent_isa], "ins": asdict(self.ins),
+            "parent_isa": [asdict(i) for i in self.parent_isa],
+            "ins": asdict(self.ins) if self.ins else None,
             "spec_rtl": self.spec_rtl, "patch": self.patch,
             "area_budget_pct": self.area_budget_pct, "vectors": self.vectors,
         })
+
+    @classmethod
+    def from_json(cls, text: str) -> "EvalJob":
+        d = json.loads(text)
+        return cls(
+            node_id=d["node_id"], attempt=d.get("attempt", 0), workload=d["workload"],
+            parent_image=d.get("parent_image", ""), mode=d.get("mode", "instruction"),
+            base=measured_from_dict(d["base"]), parent=measured_from_dict(d["parent"]),
+            parent_isa=[hwgen.Instruction(**i) for i in d["parent_isa"]],
+            ins=hwgen.Instruction(**d["ins"]) if d.get("ins") else None,
+            spec_rtl=d.get("spec_rtl", ""), patch=d["patch"],
+            area_budget_pct=d["area_budget_pct"], vectors=d["vectors"],
+        )
+
+
+def evaluate_job(job: EvalJob, on_stage: StageCb, work: Path) -> ladder.Measured:
+    """The single place a job is turned into ladder calls (used in-process and by the sandbox worker)."""
+    wl = Workload.load(job.workload)
+    if job.mode == "software":
+        return ladder.evaluate_software(wl, job.base, job.parent, job.parent_isa, job.patch, work, on_stage)
+    if job.ins is None:
+        raise ValueError(f"mode {job.mode!r} needs an instruction")
+    return ladder.evaluate(
+        wl, job.base, job.parent, job.parent_isa, job.ins, job.spec_rtl, job.patch, work,
+        on_stage=on_stage, area_budget_pct=job.area_budget_pct, vectors=job.vectors,
+        require_gain=job.mode != "area", shrink_vs=job.parent.area if job.mode == "area" else None)
 
 
 @dataclass
@@ -103,10 +140,7 @@ class LocalBackend:
         return ladder.measure(wl, hwgen.CpuConfig(), {}, work), "local:root"
 
     def evaluate(self, job: EvalJob, on_stage: StageCb, work: Path) -> EvalResult:
-        wl = Workload.load(job.workload)
-        m = ladder.evaluate(wl, job.base, job.parent, job.parent_isa, job.ins, job.spec_rtl, job.patch,
-                            work, on_stage=on_stage, area_budget_pct=job.area_budget_pct, vectors=job.vectors)
-        return EvalResult(m, f"local:{job.node_id}")
+        return EvalResult(evaluate_job(job, on_stage, work), f"local:{job.node_id}")
 
 
 class SubprocessBackend:

@@ -176,7 +176,54 @@ Reply with ONLY a JSON object:
 "notes": "1 sentence: what was wrong"}}
 """
 
-TRIAGE_SYSTEM = "You summarize hardware/software build failures for an engineer dashboard. Be precise and brief."
+POLISH_AREA_USER = """\
+This custom instruction is CORRECT and formally verified. Make its hardware SMALLER without changing \
+what it computes for any input (it will be formally re-proven against the same specification).
+
+Synthesis of the whole core with this unit: {luts} LUT+ALU, {dsps} DSP blocks, {ffs} flip-flops.
+
+C reference (the exact function, must not change):
+```c
+{c_ref}
+```
+Current RTL:
+```verilog
+{rtl}
+```
+Typical wins: minimal bit widths at every adder (a sum of four 16-bit products needs 18 bits, not 32), \
+a balanced adder tree, sign-extend only at the output, share logic between lanes, avoid redundant \
+casts. Keep the exact module name and ports. {rtl_rules}
+
+Reply with ONLY a JSON object: {{"rtl": "full Verilog module", "title": "5-8 words", "notes": "1 sentence"}}
+"""
+
+POLISH_SW_USER = """\
+The CPU now has these custom instructions (call them through their intrinsics): {isa}. \
+The hardware is final. Make the SOFTWARE that uses them faster on this in-order RISC-V core \
+(PicoRV32, ~3-4 cycles per instruction, so every instruction in the loop counts).
+
+Remaining hot spots (share of the measured region):
+{hotspots}
+
+Hot disassembly (per-PC fetch counts):
+```
+{disassembly}
+```
+Current {patchable_name}:
+```c
+{patchable_src}
+```
+Typical wins: unroll so each iteration issues 4+ intrinsic calls, walk word pointers instead of \
+recomputing byte offsets, keep independent partial sums, hoist invariant work, cheap tail handling. \
+Output must stay bit-identical for every size, including sizes that are not multiples of 4 or 16, and \
+pointers keep the alignment the original assumes. Keep exact function signatures; include only \
+what the original includes; never define ss_* names.
+
+Reply with ONLY a JSON object: {{"patched_files": {{"{patchable_name}": "full new file"}}, \
+"title": "5-8 words", "notes": "1 sentence"}}
+"""
+
+TRIAGE_SYSTEM ="You summarize hardware/software build failures for an engineer dashboard. Be precise and brief."
 
 TRIAGE_USER = """\
 Stage `{stage}` failed for custom instruction {mnemonic}. Log tail:

@@ -86,10 +86,17 @@ def render_report(wl: Workload, base: ladder.Measured, best, events: list[dict])
         for node in chain:
             mn = node.isa[-1].mnemonic
             p = _passes(events, node.id)
-            lines += [f"### `{mn}` (node {node.id})", ""]
+            what = {"area": "area polish", "software": "software polish"}.get(getattr(node, "kind", ""), "new instruction")
+            lines += [f"### `{mn}`: {what} (node {node.id})", ""]
+            if "implement" in p and what != "new instruction":
+                lines.append(f"- {p['implement']}")
             for stage, label in RUNG:
                 if stage in p:
                     lines.append(f"- ✅ **{label}**: {p[stage]}")
+            skipped = [e for e in events if e["type"] == "node.stage" and e.get("node_id") == node.id
+                       and e.get("status") == "skipped"]
+            for e in skipped[-1:]:
+                lines.append(f"- ↪ **{e['stage']}**: {e.get('detail', '')}")
             lines.append("")
     lines += ["## How to adopt it", "",
               "1. Add `rtl/*.v` to your design and connect `ss_pcpi` to the core's PCPI port "

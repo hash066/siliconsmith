@@ -62,3 +62,54 @@ def test_patch_hygiene_flags_ss_definitions_but_not_calls():
         with pytest.raises(ladder.StageFailure) as e:
             ladder.check_patch_hygiene({"tm_dot.h": bad})
         assert e.value.stage == "lint" and "ss_intrinsics.h" in e.value.message
+
+
+BIG_DOT4 = """module ss_insn_dot4_s8 (input wire [31:0] rs1, input wire [31:0] rs2, output wire [31:0] rd);
+    wire signed [31:0] p0 = $signed(rs1[ 7: 0]) * $signed(rs2[ 7: 0]);
+    wire signed [31:0] p1 = $signed(rs1[15: 8]) * $signed(rs2[15: 8]);
+    wire signed [31:0] p2 = $signed(rs1[23:16]) * $signed(rs2[23:16]);
+    wire signed [31:0] p3 = $signed(rs1[31:24]) * $signed(rs2[31:24]);
+    assign rd = p0 + p1 + p2 + p3;
+endmodule
+"""
+
+
+def _slow_patch(golden: str) -> str:
+    """The golden kernel with its 4x unroll removed (1 intrinsic per iteration)."""
+    start = golden.index("    for (; i + 4 <= n4; i += 4) {")
+    end = golden.index("    for (; i < n4; i++)")
+    return golden[:start] + golden[end:]
+
+
+@pytest.mark.skipif(not os.environ.get("SS_SLOW"), reason="needs the hardware toolchain; set SS_SLOW=1")
+def test_polish_modes_area_shrinks_and_software_speeds_up(tmp_path):
+    import dataclasses
+
+    wl = Workload.load("w1")
+    ex = examples.load("dot4_s8")
+    be = backends.LocalBackend()
+    base, img = be.baseline(wl, tmp_path / "root")
+    name = next(iter(ex.patch))
+    slow = {name: _slow_patch(ex.patch[name])}
+    big = dataclasses.replace(ex.instruction, rtl=BIG_DOT4)
+
+    def job(node_id, parent, isa, ins, patch, mode):
+        return backends.EvalJob(node_id=node_id, attempt=0, workload=wl.id, parent_image=img, base=base,
+                                parent=parent, parent_isa=isa, ins=ins, spec_rtl=ex.spec_rtl, patch=patch,
+                                area_budget_pct=50.0, vectors=20_000, mode=mode)
+
+    n1 = be.evaluate(job("n1", base, [], big, slow, "instruction"), lambda *a: None, tmp_path / "n1").measured
+    stages = []
+    area = be.evaluate(job("n1.1", n1, [], ex.instruction, slow, "area"),
+                       lambda st, s, d, a: stages.append((st, s)), tmp_path / "n1.1").measured
+    assert ("prove", "pass") in stages and area.cycles == n1.cycles and area.hash == base.hash
+    assert (area.area.lut_equiv, area.area.dsps) < (n1.area.lut_equiv, n1.area.dsps)
+
+    stages.clear()
+    sw = be.evaluate(job("n1.1.1", area, [ex.instruction], None, ex.patch, "software"),
+                     lambda st, s, d, a: stages.append((st, s)), tmp_path / "sw").measured
+    assert ("prove", "skipped") in stages and sw.hash == base.hash and sw.cycles < area.cycles
+    assert sw.area == area.area
+
+    with pytest.raises(ladder.Prune):  # polishing the area again with the same RTL saves nothing
+        be.evaluate(job("x", area, [], ex.instruction, slow, "area"), lambda *a: None, tmp_path / "x")

@@ -18,7 +18,8 @@ from pathlib import Path
 
 from . import backends, hwgen, ladder, paths
 from .agent import prompts as P
-from .agent.schemas import Implementation, Proposal, ProposalSet, SpecRtl, Triage
+from .agent.schemas import (AreaPolish, Implementation, Proposal, ProposalSet, SoftwarePolish, SpecRtl,
+                            Triage)
 from .config import Settings
 from .events import EventBus
 from .llm import BudgetExceeded, LLMError, Nemotron
@@ -37,6 +38,7 @@ class SearchConfig:
     max_concurrency: int = 4
     max_repairs: int = 2
     vectors: int = 1_000_000
+    polish: bool = True  # after each round, the agent optimizes its winners' area, then their software
 
 
 @dataclass(eq=False)
@@ -52,6 +54,8 @@ class Node:
     speedup: float = 1.0
     area_delta: float = 0.0
     image: str = ""  # checkpoint this node's CPU lives in (sandbox image id on contree)
+    kind: str = "instruction"  # instruction | area | software (the last two are polish passes)
+    spec: str = ""  # validated golden spec RTL of the node's newest instruction
     children: list["Node"] = field(default_factory=list)
 
 
@@ -185,12 +189,16 @@ class Search:
 
     # ------------------------------------------------------------------ node lifecycle
     def develop(self, node: Node, prop: Proposal, funct7: int) -> None:
+        self._with_op(node, lambda: self._develop(node, prop, funct7))
+
+    def _with_op(self, node: Node, fn) -> None:
+        """One sandbox operation: starts from the parent's checkpoint, ends as the node's checkpoint."""
         op = f"op-{next(self._ops)}"
         from_img = node.parent.image
         self.bus.emit("sandbox.op", node_id=node.id, op_id=op, from_image=from_img, status="started")
         t0 = time.monotonic()
         try:
-            self._develop(node, prop, funct7)
+            fn()
         finally:
             self.bus.emit("sandbox.op", node_id=node.id, op_id=op, from_image=from_img,
                           to_image=node.image if node.status == "scored" else None,
@@ -230,6 +238,7 @@ class Search:
                         job, lambda st, status, detail, arts: self._stage(node, st, status, attempt, detail, arts),
                         work)
                     node.isa, node.patch, node.measured, node.image = [*node.parent.isa, ins], patch, res.measured, res.image
+                    node.spec = spec
                     return self._score(node)
                 except ladder.Prune as p:
                     return self._prune(node, p.reason)
@@ -288,6 +297,105 @@ class Search:
         node.status = "pruned"
         self.bus.emit("node.pruned", node_id=node.id, reason=reason[:300])
 
+    # ------------------------------------------------------------------ polish (the agent improves its own winners)
+    POLISH_TITLES = {"area": "Area polish: same function, less hardware",
+                     "software": "Software polish: same hardware, faster code"}
+
+    def _spawn_polish(self, parent: Node, kind: str) -> Node:
+        child = Node(id=self._child_id(parent), parent=parent, depth=parent.depth + 1, isa=list(parent.isa),
+                     patch=dict(parent.patch), kind=kind, spec=parent.spec)
+        parent.children.append(child)
+        self.nodes.append(child)
+        ins = parent.isa[-1]
+        self.bus.emit("node.created", node_id=child.id, parent_id=parent.id, depth=child.depth, proposal={
+            "kind": kind, "mnemonic": ins.mnemonic, "title": self.POLISH_TITLES[kind], "semantics_c": ins.c_ref,
+            "operands": {"rs1": "u32", "rs2": "u32", "rd": "u32"},
+            "rationale": ("Re-implement the verified unit with less hardware; it is re-proven against the same spec."
+                          if kind == "area" else
+                          "Rewrite the code around the existing instructions; output must stay bit-identical.")},
+            instruction_set=[i.mnemonic for i in parent.isa])
+        self.bus.emit("node.expanded", node_id=parent.id, children=[c.id for c in parent.children])
+        return child
+
+    def _polish_messages(self, parent: Node, kind: str) -> tuple[list[dict], type]:
+        ins = parent.isa[-1]
+        if kind == "area":
+            a = parent.measured.area
+            user = P.POLISH_AREA_USER.format(luts=a.lut_equiv, dsps=a.dsps, ffs=a.ffs, c_ref=ins.c_ref,
+                                             rtl=ins.rtl, rtl_rules=P.RTL_RULES.format(name=ins.name))
+            schema: type = AreaPolish
+        else:
+            m = parent.measured
+            hot = "\n".join(f"- {h['function']} ({h['file']}:{h['line_start']}-{h['line_end']}): {h['pct']}%"
+                            for h in m.hotspots)
+            isa = "; ".join(f"{i.mnemonic} = ss_{i.name}(rs1, rs2): {i.title}" for i in parent.isa)
+            user = P.POLISH_SW_USER.format(isa=isa, hotspots=hot, disassembly=m.disasm[:9000],
+                                           patchable_name=self.patch_name, patchable_src=self._src(parent))
+            schema = SoftwarePolish
+        return [{"role": "system", "content": P.IMPLEMENTER_SYSTEM}, {"role": "user", "content": user}], schema
+
+    def _develop_polish(self, child: Node, attempts: int = 2) -> None:
+        parent, kind = child.parent, child.kind
+        msgs, schema = self._polish_messages(parent, kind)
+        old = parent.isa[-1]
+        for attempt in range(attempts):
+            self._stage(child, "implement", "running", attempt)
+            try:
+                out, rep = self.llm.json("super", "polish", msgs, schema, think=True, node_id=child.id,
+                                         max_tokens=12000)
+                if kind == "area":
+                    ins = hwgen.Instruction(name=old.name, mnemonic=old.mnemonic, funct7=old.funct7, rtl=out.rtl,
+                                            c_ref=old.c_ref, title=old.title, rationale=old.rationale)
+                    isa_base, patch = parent.isa[:-1], parent.patch
+                    diff = "".join(difflib.unified_diff(old.rtl.splitlines(True), ins.rtl.splitlines(True),
+                                                        f"a/ss_insn_{old.name}.v", f"b/ss_insn_{old.name}.v"))
+                    arts = {"rtl": ins.rtl, "c_ref": ins.c_ref, "patch_diff": diff}
+                else:
+                    ins, isa_base = None, parent.isa
+                    patch = {**parent.patch, **{k: v for k, v in out.patched_files.items() if k in self.wl.patchable}}
+                    before = self._src(parent).splitlines(True)
+                    after = patch.get(self.patch_name, "").splitlines(True)
+                    arts = {"rtl": old.rtl, "c_ref": old.c_ref, "patch_diff": "".join(difflib.unified_diff(
+                        before, after, f"a/{self.patch_name}", f"b/{self.patch_name}"))}
+            except (LLMError, BudgetExceeded, ValueError) as e:
+                self._stage(child, "implement", "fail", attempt, str(e)[:300])
+                return self._prune(child, f"polish failed: {e}")
+            self._stage(child, "implement", "pass", attempt, out.title[:120], arts)
+            job = backends.EvalJob(
+                node_id=child.id, attempt=attempt, workload=self.wl.id, parent_image=parent.image, base=self.base,
+                parent=parent.measured, parent_isa=isa_base, ins=ins, spec_rtl=parent.spec, patch=patch,
+                area_budget_pct=self.cfg.area_budget_pct, vectors=self.cfg.vectors, mode=kind)
+            try:
+                res = self.backend.evaluate(
+                    job, lambda st, status, detail, a: self._stage(child, st, status, attempt, detail, a),
+                    self.work / child.id / f"a{attempt}")
+            except ladder.Prune as p:
+                return self._prune(child, p.reason)
+            except ladder.StageFailure as f:
+                a = dict(f.artifacts)
+                a["error_log"] = (f.message + "\n" + f.log)[-4000:]
+                self._stage(child, f.stage, "fail", attempt, f.message[:300], a)
+                msgs = msgs + [{"role": "assistant", "content": rep.content[-8000:]},
+                               {"role": "user", "content": f"That failed at stage `{f.stage}`:\n"
+                                f"{(f.message + chr(10) + f.log)[-3000:]}\nFix it and reply with the same JSON."}]
+                continue
+            child.isa = [*isa_base, ins] if ins else list(isa_base)
+            child.patch, child.measured, child.image = patch, res.measured, res.image
+            return self._score(child)
+        return self._prune(child, f"polish failed after {attempts} attempts")
+
+    def _polish_chain(self, node: Node) -> Node:
+        """Area polish, then software polish on the best result so far. Returns the lineage's best node."""
+        cur = node
+        for kind in ("area", "software"):
+            if self.llm.spent_usd >= self.s.run_budget_usd:
+                break
+            child = self._spawn_polish(cur, kind)
+            self._with_op(child, lambda: self._develop_polish(child))
+            if child.status == "scored" and (child.speedup, -child.area_delta) >= (cur.speedup, -cur.area_delta):
+                cur = child
+        return cur
+
     # ------------------------------------------------------------------ the search
     def run(self) -> Node:
         c = self.cfg
@@ -309,21 +417,21 @@ class Search:
                           cells=b.area.cells, fmax_mhz=None, output_hash=b.hash, hotspots=b.hotspots)
             self.bus.emit("node.created", node_id="root", parent_id=None, depth=0, proposal=None, instruction_set=[])
             frontier = [root]
-            for depth in range(1, c.max_depth + 1):
-                k = c.k_root if depth == 1 else c.k_child
+            for rnd in range(1, c.max_depth + 1):
+                k = c.k_root if rnd == 1 else c.k_child
                 with ThreadPoolExecutor(max_workers=max(1, len(frontier))) as ex:
                     props = list(ex.map(lambda p: self._safe_propose(p, k), frontier))
                 jobs = []
                 for parent, plist in zip(frontier, props):
                     for prop in plist:
-                        child = Node(id=self._child_id(parent), parent=parent, depth=depth,
+                        child = Node(id=self._child_id(parent), parent=parent, depth=parent.depth + 1,
                                      isa=list(parent.isa), patch=dict(parent.patch), proposal=prop)
                         parent.children.append(child)
                         self.nodes.append(child)
                         self.tried.append(f"{prop.mnemonic} ({prop.title})")
                         funct7 = hwgen.CpuConfig(list(parent.isa)).next_funct7()
-                        self.bus.emit("node.created", node_id=child.id, parent_id=parent.id, depth=depth,
-                                      proposal={"mnemonic": prop.mnemonic, "title": prop.title,
+                        self.bus.emit("node.created", node_id=child.id, parent_id=parent.id, depth=child.depth,
+                                      proposal={"kind": "instruction", "mnemonic": prop.mnemonic, "title": prop.title,
                                                 "semantics_c": prop.semantics_c,
                                                 "operands": {"rs1": "u32", "rs2": "u32", "rd": "u32"},
                                                 "rationale": prop.rationale, "est_speedup": prop.est_speedup,
@@ -333,10 +441,16 @@ class Search:
                     self.bus.emit("node.expanded", node_id=parent.id, children=[ch.id for ch in parent.children])
                 with ThreadPoolExecutor(max_workers=c.max_concurrency) as ex:
                     list(ex.map(lambda j: self.develop(*j), jobs))
-                scored = [n for n in self.nodes if n.depth == depth and n.status == "scored"]
-                if not scored or self.llm.spent_usd >= self.s.run_budget_usd:
+                scored = [j[0] for j in jobs if j[0].status == "scored"]
+                if not scored:
                     break
                 frontier = sorted(scored, key=lambda n: (-n.speedup, n.area_delta))[: c.beam]
+                if c.polish and self.llm.spent_usd < self.s.run_budget_usd:
+                    with ThreadPoolExecutor(max_workers=len(frontier)) as ex:
+                        frontier = list(ex.map(self._polish_chain, frontier))
+                if self.llm.spent_usd >= self.s.run_budget_usd:
+                    self.bus.log(f"run budget ${self.s.run_budget_usd:.2f} reached; stopping", level="warn")
+                    break
             done = [n for n in self.nodes if n.status == "scored" and n.depth > 0]
             best = max(done, key=lambda n: (n.speedup, -n.area_delta), default=root)
             pareto = [n.id for n in done if not any(
