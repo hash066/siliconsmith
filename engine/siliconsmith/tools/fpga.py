@@ -47,7 +47,7 @@ def place_and_route(cfg_dir: Path, firmware_hex: Path | None = None, bitstream: 
             shutil.copy(hexsrc, tmp / "firmware.hex")
         else:
             (tmp / "firmware.hex").write_text("00000013\n")  # nop; Fmax does not depend on RAM contents
-        reads = "\n".join(f"read_verilog {f}" for f in rtl)
+        reads = "\n".join(f"read_verilog -sv {f}" for f in rtl)
         (tmp / "synth.ys").write_text(f"{reads}\nsynth_gowin -top ss_fpga_top -json top.json\n", newline="\n")
         r = run(["yosys", "-q", "-l", "synth.log", "synth.ys"], cwd=tmp, timeout=1800)
         if not r.ok:

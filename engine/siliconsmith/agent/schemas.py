@@ -33,15 +33,37 @@ class ProposalSet(BaseModel):
     proposals: list[Proposal]
 
 
+def unescape_code(s: str) -> str:
+    """Models sometimes double-escape code inside JSON (literal \\n); a // comment then swallows it all."""
+    if "\\n" in s and s.count("\n") < 3:
+        s = s.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "\t").replace('\\"', '"')
+    return s
+
+
 class Implementation(BaseModel):
     rtl: str = Field(description="complete Verilog module ss_insn_<name>(input [31:0] rs1, rs2, output [31:0] rd)")
     c_ref: str = Field(description="C body of uint32_t f(uint32_t rs1, uint32_t rs2); may refine semantics_c")
     patched_files: dict[str, str] = Field(description="full new contents of each patchable file you change")
     notes: str = ""
 
+    @field_validator("rtl", "c_ref")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        return unescape_code(v)
+
+    @field_validator("patched_files")
+    @classmethod
+    def _files(cls, v: dict[str, str]) -> dict[str, str]:
+        return {k: unescape_code(c) for k, c in v.items()}
+
 
 class SpecRtl(BaseModel):
     spec_rtl: str = Field(description="complete Verilog module ss_spec_<name>, naive and obviously correct")
+
+    @field_validator("spec_rtl")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        return unescape_code(v)
 
 
 class Triage(BaseModel):

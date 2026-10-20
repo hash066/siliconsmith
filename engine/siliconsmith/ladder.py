@@ -7,6 +7,8 @@ the workload up. Failures raise StageFailure (repairable) or Prune (not worth re
 
 from __future__ import annotations
 
+import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -14,7 +16,7 @@ from typing import Callable
 from . import hwgen
 from .tools import profile as prof
 from .tools import verify
-from .tools.build import ToolError
+from .tools.build import ToolError, compiler_errors, run
 from .tools.workload import Workload, bench, prepare
 
 StageCb = Callable[[str, str, str, dict | None], None]  # stage, status, detail, artifacts
@@ -49,6 +51,30 @@ def measure(wl: Workload, cfg: hwgen.CpuConfig, patch: dict[str, str], work: Pat
     p = prof.analyze(b.fw.elf, hist)
     return Measured(cycles=res.cycles or 0, hash=res.hash or "", area=verify.synth_core(b.cfg_dir),
                     hotspots=p["hotspots"], disasm=prof.disassemble_hot(b.fw.elf, hist))
+
+
+def host_check(wl: Workload, cfg: hwgen.CpuConfig, patch: dict[str, str], d: Path) -> str:
+    """Differential test of the patched software vs the original on the host (instructions fall back
+    to their C reference). Returns a short summary, raises ToolError with the first failing case."""
+    hc = wl.manifest.get("host_check")
+    if not hc:
+        return ""
+    shutil.rmtree(d, ignore_errors=True)
+    (d / "orig").mkdir(parents=True)
+    hwgen.write_config(cfg, d / "gen")
+    for f in wl.patchable:
+        (d / "orig" / f).write_text(wl.original(f), newline="\n")
+        (d / f).write_text(patch.get(f, wl.original(f)), newline="\n")
+    shutil.copy(wl.dir / hc, d / hc)
+    r = run(["gcc", "-O1", "-std=gnu11", "-w", f"-I{d / 'gen'}", d / hc, "-o", d / "hc"], cwd=d, timeout=120)
+    if not r.ok:
+        raise ToolError("unit", "patched software does not compile on the host", compiler_errors(r.output))
+    r = run([d / "hc", "5000"], timeout=120)
+    m = re.search(r"SS_HOSTCHECK (ok calls=(\d+)|FAIL .*)", r.stdout)
+    if not m or not m.group(1).startswith("ok"):
+        raise ToolError("unit", "patched software differs from the original: "
+                        + (m.group(1) if m else r.output[-500:]), r.output)
+    return f"patched software == original on {int(m.group(2)):,} random calls"
 
 
 def _vector_values(ins: hwgen.Instruction, spec_rtl: str, rs1: int, rs2: int, work: Path) -> dict[str, int | None]:
@@ -99,8 +125,12 @@ def evaluate(
     lint = stage("lint", lambda: verify.lint_unit(ins, work / "lint"),
                  lambda r: f"Verilator -Wall: {len(r.warnings)} warnings, 0 errors")
     del lint
-    stage("unit", lambda: verify.unit_test(ins, work / "unit", n_random=vectors),
-          lambda r: f"{r.vectors:,} vectors · 0 mismatches vs C reference")
+    def _unit():
+        r = verify.unit_test(ins, work / "unit", n_random=vectors)
+        return r, host_check(wl, hwgen.CpuConfig([*parent_isa, ins]), patch, work / "hostcheck")
+
+    stage("unit", _unit, lambda o: f"{o[0].vectors:,} vectors · 0 mismatches vs C reference"
+          + (f" · {o[1]}" if o[1] else ""))
 
     cfg = hwgen.CpuConfig([*parent_isa, ins])
     on_stage("e2e", "running", "", None)
@@ -133,6 +163,8 @@ def evaluate(
                 sig("rs1", cex["rs1"]), sig("rs2", cex["rs2"]), sig("rd (RTL)", v["rtl"]),
                 sig("rd (spec)", v["spec"]), sig("rd (C reference)", v["c"])]}
             arts["culprit"] = "spec" if v["rtl"] == v["c"] else "rtl"
+        elif getattr(e, "culprit", None) == "spec":
+            arts["culprit"] = "spec"
         raise StageFailure("prove", e.message, e.log, arts) from e
     on_stage("prove", "pass", f"formally equivalent to spec for all 2^64 inputs ({pr.seconds:.0f}s)", None)
 

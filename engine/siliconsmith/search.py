@@ -22,6 +22,8 @@ from .agent.schemas import Implementation, Proposal, ProposalSet, SpecRtl, Triag
 from .config import Settings
 from .events import EventBus
 from .llm import BudgetExceeded, LLMError, Nemotron
+from .tools import verify
+from .tools.build import ToolError
 from .tools.workload import Workload
 
 
@@ -128,12 +130,33 @@ class Search:
             Implementation, think=True, node_id=node.id, max_tokens=16000)
         return impl
 
-    def write_spec(self, node: Node, name: str, c_ref: str) -> str:
-        spec, _ = self.llm.json("super", "implement", [
-            {"role": "system", "content": P.SPEC_SYSTEM},
-            {"role": "user", "content": P.SPEC_USER.format(name=name, c_ref=c_ref.strip())}],
-            SpecRtl, think=True, node_id=node.id, max_tokens=8000)
-        return spec.spec_rtl
+    def write_spec(self, node: Node, name: str, c_ref: str, attempts: int = 3) -> str:
+        """Independently write the golden spec RTL from the C reference only, then VALIDATE it
+        (lint + agreement with C on random/edge vectors) before it is trusted for the proof."""
+        msgs = [{"role": "system", "content": P.SPEC_SYSTEM},
+                {"role": "user", "content": P.SPEC_USER.format(name=name, c_ref=hwgen.normalize_c_ref(c_ref))}]
+        err = ""
+        for i in range(attempts):
+            spec, rep = self.llm.json("super", "implement", msgs, SpecRtl, think=True, node_id=node.id,
+                                      max_tokens=8000)
+            probe = hwgen.Instruction(
+                name=name, mnemonic=name, funct7=0, c_ref=c_ref,
+                rtl=spec.spec_rtl.replace(f"module ss_spec_{name}", f"module ss_insn_{name}"))
+            work = self.work / node.id / f"spec{i}"
+            try:
+                verify.lint_unit(probe, work / "lint")
+                r = verify.unit_test(probe, work / "unit", n_random=200_000)
+                self.bus.log(f"{node.id}: golden spec written independently from C and validated on "
+                             f"{r.vectors:,} vectors", node_id=node.id)
+                return spec.spec_rtl
+            except (ToolError, ValueError) as e:
+                err = getattr(e, "message", str(e)) + "\n" + getattr(e, "log", "")[-2500:]
+                msgs = msgs + [{"role": "assistant", "content": rep.content[-6000:]},
+                               {"role": "user", "content": "That spec module failed validation:\n" + err +
+                                "\nFix it. Plain Verilog-2005: declare all variables at module level, "
+                                "use integer loop variables, no declarations inside begin/end blocks. "
+                                'Reply with ONLY {"spec_rtl": "..."}'}]
+        raise LLMError(f"could not produce a valid spec after {attempts} attempts: {err[:300]}")
 
     def repair(self, node: Node, prop: Proposal, impl: Implementation, f: ladder.StageFailure,
                diagnosis: str) -> Implementation:
@@ -174,6 +197,7 @@ class Search:
 
     def _develop(self, node: Node, prop: Proposal, funct7: int) -> None:
         attempt = 0
+        spec_redos = 0
         try:
             self._stage(node, "implement", "running", attempt)
             impl = self.implement(node, prop)
@@ -207,18 +231,26 @@ class Search:
                     f = e
                 finally:
                     shutil.rmtree(work / "soc" / "src", ignore_errors=True)
-            t = self.triage(node, prop.mnemonic, f)
+            spec_fault = f.stage == "prove" and f.artifacts.get("culprit") == "spec"
+            t = None if spec_fault else self.triage(node, prop.mnemonic, f)
             arts = dict(f.artifacts)
             arts["error_log"] = (f.message + "\n" + f.log)[-4000:]
-            self._stage(node, f.stage, "fail", attempt, (t.summary if t else f.message)[:300], arts)
+            detail = ("golden spec disagreed; the RTL matches the C reference, so the spec is rewritten"
+                      if spec_fault else (t.summary if t else f.message))
+            self._stage(node, f.stage, "fail", attempt, detail[:300], arts)
+            if spec_fault and spec_redos < 2:
+                spec_redos += 1
+                try:
+                    spec = self.write_spec(node, prop.name, impl.c_ref)
+                except (LLMError, BudgetExceeded) as e:
+                    return self._prune(node, f"spec rewrite failed: {e}")
+                continue
             if attempt >= self.cfg.max_repairs:
                 return self._prune(node, f"{f.stage} failed after {attempt} repairs: {f.message[:160]}")
             attempt += 1
             self._stage(node, "implement", "running", attempt)
             try:
-                if f.stage == "prove" and f.artifacts.get("culprit") == "spec":
-                    self.bus.log(f"{node.id}: counterexample shows the spec was wrong, not the RTL; "
-                                 "rewriting the spec independently", node_id=node.id)
+                if spec_fault:
                     spec = self.write_spec(node, prop.name, impl.c_ref)
                 else:
                     diag = f"DIAGNOSIS: {t.likely_cause}. HINT: {t.fix_hint}\n" if t else ""

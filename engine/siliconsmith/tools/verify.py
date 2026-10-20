@@ -153,7 +153,7 @@ def prove_equiv(ins: hwgen.Instruction, spec_rtl: str, work: Path, timeout_s: in
     (work / "gate.v").write_text(ins.rtl, newline="\n")
     (work / "gold.v").write_text(spec_rtl, newline="\n")
     script = (
-        "read_verilog gate.v\nread_verilog gold.v\nproc\nopt_clean\n"
+        "read_verilog -sv gate.v\nread_verilog -sv gold.v\nproc\nopt_clean\n"
         f"miter -equiv -flatten -make_assert {gold} {gate} miter\n"
         "hierarchy -top miter\nflatten\nopt -fast\n"
         f"sat -verify -prove-asserts -show-ports -timeout {timeout_s} miter\n"
@@ -171,7 +171,10 @@ def prove_equiv(ins: hwgen.Instruction, spec_rtl: str, work: Path, timeout_s: in
         raise err
     if "timeout" in log.lower() or r.code == 124:
         raise ToolError("prove", f"proof timed out after {timeout_s}s", log)
-    raise ToolError("prove", "prover error", log)
+    err = ToolError("prove", "prover could not read the designs", compiler_errors(log))
+    if "gold.v" in log and "gate.v" not in log.split("ERROR")[-1]:
+        err.culprit = "spec"  # type: ignore[attr-defined]
+    raise err
 
 
 # ------------------------------------------------------------------ synthesis
@@ -205,7 +208,7 @@ def synth_core(cfg_dir: Path, cache_root: Path | None = None) -> Area:
         tmp = cache_root / f"{key}.tmp{threading.get_ident()}"
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir(parents=True)
-        reads = "\n".join(f"read_verilog {f}" for f in rtl)
+        reads = "\n".join(f"read_verilog -sv {f}" for f in rtl)
         (tmp / "synth.ys").write_text(
             f"{reads}\nsynth_gowin -top ss_core\ntee -o stat.txt stat\n", newline="\n")
         r = run(["yosys", "-q", "-l", "synth.log", "synth.ys"], cwd=tmp, timeout=1200)

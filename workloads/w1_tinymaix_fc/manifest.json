@@ -12,6 +12,7 @@
   "sources": ["main.c"],
   "patchable": ["tm_dot.h"],
   "hot_symbol": "tm_dot_prod",
+  "host_check": "host_check.c",
   "max_cycles": 100000000,
   "reference_note": "TinyMaix ships a hand-written T-Head E907 version (src/arch_rv32p.h) built on the vendor instruction smaqa (4x int8 multiply-accumulate)."
 }
