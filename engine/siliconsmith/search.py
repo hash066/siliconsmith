@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import hwgen, ladder, paths
+from . import backends, hwgen, ladder, paths
 from .agent import prompts as P
 from .agent.schemas import Implementation, Proposal, ProposalSet, SpecRtl, Triage
 from .config import Settings
@@ -51,6 +51,7 @@ class Node:
     status: str = "pending"  # pending | scored | pruned
     speedup: float = 1.0
     area_delta: float = 0.0
+    image: str = ""  # checkpoint this node's CPU lives in (sandbox image id on contree)
     children: list["Node"] = field(default_factory=list)
 
 
@@ -61,6 +62,7 @@ class Search:
         self.work = paths.RUNS / self.run_id
         self.bus = EventBus(self.run_id, paths.RUN_LOGS / f"{self.run_id}.ndjson")
         self.llm = Nemotron(settings, self.bus)
+        self.backend = backends.make_backend(settings.backend)
         self.nodes: list[Node] = []
         self._ids: dict[str, itertools.count] = {}
         self._lock = threading.Lock()
@@ -184,14 +186,14 @@ class Search:
     # ------------------------------------------------------------------ node lifecycle
     def develop(self, node: Node, prop: Proposal, funct7: int) -> None:
         op = f"op-{next(self._ops)}"
-        from_img = f"{self.s.backend}:{node.parent.id}"
+        from_img = node.parent.image
         self.bus.emit("sandbox.op", node_id=node.id, op_id=op, from_image=from_img, status="started")
         t0 = time.monotonic()
         try:
             self._develop(node, prop, funct7)
         finally:
             self.bus.emit("sandbox.op", node_id=node.id, op_id=op, from_image=from_img,
-                          to_image=f"{self.s.backend}:{node.id}" if node.status == "scored" else None,
+                          to_image=node.image if node.status == "scored" else None,
                           status="succeeded" if node.status == "scored" else "failed",
                           duration_s=round(time.monotonic() - t0, 1))
 
@@ -219,11 +221,15 @@ class Search:
                             self._impl_artifacts(node, ins, patch))
                 work = self.work / node.id / f"a{attempt}"
                 try:
-                    m = ladder.evaluate(
-                        self.wl, self.base, node.parent.measured, node.parent.isa, ins, spec, patch, work,
-                        on_stage=lambda st, status, detail, arts: self._stage(node, st, status, attempt, detail, arts),
-                        area_budget_pct=self.cfg.area_budget_pct, vectors=self.cfg.vectors)
-                    node.isa, node.patch, node.measured = [*node.parent.isa, ins], patch, m
+                    job = backends.EvalJob(
+                        node_id=node.id, attempt=attempt, workload=self.wl.id, parent_image=node.parent.image,
+                        base=self.base, parent=node.parent.measured, parent_isa=node.parent.isa, ins=ins,
+                        spec_rtl=spec, patch=patch, area_budget_pct=self.cfg.area_budget_pct,
+                        vectors=self.cfg.vectors)
+                    res = self.backend.evaluate(
+                        job, lambda st, status, detail, arts: self._stage(node, st, status, attempt, detail, arts),
+                        work)
+                    node.isa, node.patch, node.measured, node.image = [*node.parent.isa, ins], patch, res.measured, res.image
                     return self._score(node)
                 except ladder.Prune as p:
                     return self._prune(node, p.reason)
@@ -291,11 +297,12 @@ class Search:
             "source_path": self.wl.manifest.get("source", {}).get("path")},
             config={"area_budget_pct": c.area_budget_pct, "beam": c.beam, "k_root": c.k_root,
                     "k_child": c.k_child, "max_depth": c.max_depth, "max_concurrency": c.max_concurrency},
-            backend=self.s.backend)
+            backend=self.backend.name)
         t0 = time.monotonic()
         try:
-            self.base = ladder.measure(self.wl, hwgen.CpuConfig(), {}, self.work / "root")
-            root = Node(id="root", parent=None, depth=0, isa=[], patch={}, measured=self.base, status="scored")
+            self.base, root_image = self.backend.baseline(self.wl, self.work / "root")
+            root = Node(id="root", parent=None, depth=0, isa=[], patch={}, measured=self.base, status="scored",
+                        image=root_image)
             self.nodes.append(root)
             b = self.base
             self.bus.emit("run.baseline", cycles=b.cycles, luts=b.area.luts + b.area.alus, ffs=b.area.ffs,
