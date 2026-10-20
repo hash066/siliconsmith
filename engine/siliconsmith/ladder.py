@@ -63,7 +63,10 @@ def host_check(wl: Workload, cfg: hwgen.CpuConfig, patch: dict[str, str], d: Pat
     (d / "orig").mkdir(parents=True)
     hwgen.write_config(cfg, d / "gen")
     for f in wl.patchable:
-        (d / "orig" / f).write_text(wl.original(f), newline="\n")
+        # GCC treats byte-identical headers as one file under #pragma once, which would silently
+        # drop the patched copy when it equals the original; the orig copy doesn't need the guard.
+        orig = wl.original(f).replace("#pragma once", "/* #pragma once (removed for host check) */")
+        (d / "orig" / f).write_text(orig, newline="\n")
         (d / f).write_text(patch.get(f, wl.original(f)), newline="\n")
     shutil.copy(wl.dir / hc, d / hc)
     r = run(["gcc", "-O1", "-std=gnu11", "-w", f"-I{d / 'gen'}", d / hc, "-o", d / "hc"], cwd=d, timeout=120)

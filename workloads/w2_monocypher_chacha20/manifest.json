@@ -1,0 +1,18 @@
+{
+  "id": "w2_monocypher_chacha20",
+  "title": "Monocypher ChaCha20 stream cipher",
+  "summary": "crypto_chacha20 whole-block loop from Monocypher: 16 blocks (1 KiB), each one chacha20_rounds (20 rounds of add/xor/rotate quarter-rounds), add input state, xor plaintext.",
+  "source": {
+    "repo": "https://github.com/LoupVaillant/Monocypher",
+    "commit": "d1895c3",
+    "path": "src/monocypher.c",
+    "symbol": "chacha20_rounds",
+    "license": "BSD-2-Clause OR CC0-1.0"
+  },
+  "sources": ["main.c"],
+  "patchable": ["chacha_core.h"],
+  "hot_symbol": "chacha20_rounds",
+  "host_check": "host_check.c",
+  "max_cycles": 100000000,
+  "reference_note": "Base RV32IM has no rotate; the bit-manipulation extension Zbb adds rol/ror, and Zbkb adds crypto-oriented bit ops."
+}
