@@ -1,0 +1,2 @@
+{"name": "dot4_s8", "mnemonic": "dot4.s8", "title": "Packed int8 dot product",
+ "rationale": "95% of cycles are byte loads + mul + add per MAC; one instruction does 4 signed int8 MACs from two packed words, so the loop needs 2 word loads per 4 MACs."}

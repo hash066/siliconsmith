@@ -45,6 +45,43 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_golden(args: argparse.Namespace) -> int:
+    """Run the hand-built example through the whole ladder (L1-L5) and report the speedup."""
+    from . import examples
+    from .tools import verify
+
+    wl = Workload.load(args.workload)
+    ex = examples.load(args.example)
+    ins = ex.instruction
+    work = paths.RUNS / "golden" / ins.name
+    out: dict = {"workload": wl.id, "instruction": ins.mnemonic, "ladder": {}}
+
+    base = prepare(wl, hwgen.CpuConfig(), work / "baseline")
+    base_res = bench(wl, base)
+    base_area = verify.synth_core(base.cfg_dir)
+    out["baseline"] = {"cycles": base_res.cycles, "hash": base_res.hash, "area": vars(base_area)}
+
+    lint = verify.lint_unit(ins, work / "lint")
+    out["ladder"]["L1_lint"] = {"ok": lint.ok, "warnings": lint.warnings}
+    unit = verify.unit_test(ins, work / "unit", n_random=args.vectors)
+    out["ladder"]["L2_unit"] = {"vectors": unit.vectors, "seconds": round(unit.seconds, 2)}
+    pr = verify.prove_equiv(ins, ex.spec_rtl, work / "prove")
+    out["ladder"]["L3_prove"] = {"proven": pr.proven, "method": pr.method, "seconds": round(pr.seconds, 2)}
+
+    cfg = hwgen.CpuConfig([ins])
+    b = prepare(wl, cfg, work / "candidate", patch=ex.patch)
+    res = bench(wl, b)
+    if res.hash != base_res.hash:
+        raise ToolError("e2e", f"output hash {res.hash} != baseline {base_res.hash}")
+    out["ladder"]["L4_e2e"] = {"cycles": res.cycles, "hash": res.hash, "bit_identical": True}
+    area = verify.synth_core(b.cfg_dir)
+    out["ladder"]["L5_synth"] = {"area": vars(area)}
+    out["speedup"] = round(base_res.cycles / res.cycles, 3)
+    out["area_delta_pct"] = round(100.0 * (area.lut_equiv - base_area.lut_equiv) / base_area.lut_equiv, 2)
+    _emit(out)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="ss", description="SiliconSmith tools")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -53,9 +90,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("workload")
     p.add_argument("--profile", action="store_true", help="collect and symbolize a PC histogram")
     p.add_argument("--disasm", action="store_true", help="include hot disassembly (needs --profile)")
+    p = sub.add_parser("golden", help="run a hand-built example through the full ladder")
+    p.add_argument("--workload", default="w1")
+    p.add_argument("--example", default="dot4_s8")
+    p.add_argument("--vectors", type=int, default=1_000_000)
     args = ap.parse_args(argv)
     try:
-        return {"hello": cmd_hello, "bench": cmd_bench}[args.cmd](args)
+        return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden}[args.cmd](args)
     except ToolError as e:
         _emit({"ok": False, "stage": e.stage, "error": e.message, "log": e.log})
         return 2

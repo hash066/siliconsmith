@@ -1,0 +1,11 @@
+_vendor
+runs
+web
+fpga/build
+docs
+.git
+.claude
+**/node_modules
+**/__pycache__
+**/obj_dir
+.env*
