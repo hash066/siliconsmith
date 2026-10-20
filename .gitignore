@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+# vendored clones (fetched by scripts/vendor.sh); picorv32 core is copied into hw/
+_vendor/
+# build + runs
+runs/
+**/build/
+**/obj_dir/
+*.vcd
+*.fst
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.next/
+.vercel/
+*.log
+# formal scratch dirs
+hw/formal/**/work*/
