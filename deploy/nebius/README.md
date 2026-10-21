@@ -1,5 +1,9 @@
 # Hosting the engine API on Nebius AI Cloud
 
+> **Status: not deployed, and these scripts have not been run on a real VM.** We tried to create the VM on Nebius AI Cloud but the
+> project refused compute writes (`PermissionDenied`), so the public demo is replay-only. The kit is kept for anyone who wants to host
+> the API; treat it as a starting point and expect small fixes on the first run.
+
 The web app on Vercel is replay-only. To let `/try` start live runs, the engine API runs on a small CPU VM:
 
 * the API and the agent loop (calls Nemotron on Token Factory);
