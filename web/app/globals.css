@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   SiliconSmith — precision lab instrument.
+   Graphite ground, off-white ink, one phosphor-lime signal, semantic amber/red.
+   Dark is the default; [data-theme="light"] is the datasheet print.
+   ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0c0b;
+  --panel: #101210;
+  --raised: #171a17;
+  --sunken: #080908;
+  --line: #222622;
+  --line-2: #323732;
+  --grid: #141714;
+  --grid-major: #1b1f1b;
+  --ink: #eceee6;
+  --ink-2: #b4b9ad;
+  --ink-3: #8b9187;
+  --signal: #c6f135;
+  --signal-ink: #c6f135;
+  --signal-dim: rgb(198 241 53 / 0.13);
+  --signal-line: rgb(198 241 53 / 0.45);
+  --on-signal: #0b0c0b;
+  --amber: #f0b43c;
+  --amber-dim: rgb(240 180 60 / 0.13);
+  --red: #ff6a59;
+  --red-dim: rgb(255 106 89 / 0.13);
+  --focus: #c6f135;
+  --shadow-float: 0 12px 32px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f2f3ee;
+  --panel: #ffffff;
+  --raised: #f7f8f3;
+  --sunken: #ebede6;
+  --line: #dcdfd5;
+  --line-2: #c3c8bc;
+  --grid: #eef0ea;
+  --grid-major: #e3e6dd;
+  --ink: #12140f;
+  --ink-2: #444a40;
+  --ink-3: #5d6358;
+  --signal: #9fd21f;
+  --signal-ink: #4c7600;
+  --signal-dim: rgb(130 180 0 / 0.14);
+  --signal-line: rgb(76 118 0 / 0.5);
+  --on-signal: #12140f;
+  --amber: #9a5c00;
+  --amber-dim: rgb(214 140 0 / 0.14);
+  --red: #c0321f;
+  --red-dim: rgb(214 60 40 / 0.11);
+  --focus: #4c7600;
+  --shadow-float: 0 12px 32px rgb(20 24 16 / 0.14), 0 2px 6px rgb(20 24 16 / 0.08);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-signal-dim: var(--signal-dim);
+  --color-on-signal: var(--on-signal);
+  --color-amber: var(--amber);
+  --color-amber-dim: var(--amber-dim);
+  --color-red: var(--red);
+  --color-red-dim: var(--red-dim);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 0;
+  letter-spacing: -0.01em;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Oscilloscope graticule: faint minor grid with a major line every 5th division. */
+.graticule {
+  background-color: var(--sunken);
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+}
+
+/* Code highlighted by shiki with dual themes (defaultColor: false). */
+.code-block pre {
+  margin: 0;
+  background: transparent !important;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  tab-size: 4;
+}
+.code-block code {
+  counter-reset: line;
+  display: block;
+}
+.code-block code .line {
+  display: inline-block;
+  width: 100%;
+  padding-right: 16px;
+}
+.code-block code .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2.75em;
+  margin-right: 1em;
+  text-align: right;
+  color: var(--ink-3);
+  opacity: 0.6;
+  user-select: none;
+}
+.code-block .shiki span {
+  color: var(--shiki-dark);
+}
+:root[data-theme="light"] .code-block .shiki span {
+  color: var(--shiki-light);
+}
+.code-block .diff-add {
+  background: var(--signal-dim);
+}
+.code-block .diff-del {
+  background: var(--red-dim);
+}
+
+/* Motion: running pads breathe, the live dot blinks. Off under reduced motion. */
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.anim-breathe {
+  animation: breathe 1.4s ease-in-out infinite;
+}
+.anim-sweep {
+  animation: sweep 1.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .anim-breathe, .anim-sweep {
+    animation: none !important;
+  }
+}
+
+/* Thin, quiet scrollbars inside panels. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
