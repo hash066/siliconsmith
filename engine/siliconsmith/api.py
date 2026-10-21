@@ -185,7 +185,10 @@ def list_runs() -> list[dict]:
 
 @app.post("/api/runs", status_code=201)
 def start_run(req: RunRequest, request: Request) -> dict:
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0].strip()
+    # X-Forwarded-For is client-controlled unless a trusted proxy sets it, so it is only read when asked for.
+    peer = request.client.host if request.client else "?"
+    ip = (request.headers.get("x-forwarded-for", peer).split(",")[-1].strip()
+          if os.environ.get("SS_TRUST_PROXY") == "1" else peer)
     h = server.start(req, ip)
     return {"run_id": h.search.run_id, "events": f"/api/runs/{h.search.run_id}/events"}
 

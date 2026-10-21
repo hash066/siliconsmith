@@ -23,6 +23,24 @@ or measured; the numbers come from our own run logs (`web/public/replays/`).
   parent's image and its result is the next checkpoint. That is why we chose Sandboxes for the architecture,
   and it is a genuinely good fit for agents that search over states.
 
+### What we hit once Sandboxes was enabled (first real search: `r_w1_contree3`)
+
+* **Importing a base image.** `images.oci("docker.io/library/ubuntu:24.04", tag="ubuntu:24.04")` failed with a 500 on the
+  tag lookup, while `images.import_from(...)` with a plain tag worked. Using `ubuntu:24.04` directly with `images.use`
+  gives a 404 until it has been imported, which the docs do not say up front.
+* **Transient 500s while waiting.** `get_operation_status` answered HTTP 500 repeatedly while a long run was healthy. The SDK's
+  `wait()` raises instead of retrying, so a naive agent loop dies mid-run. We now retry 5xx. Retrying inside the SDK would
+  be better.
+* **`truncate_output_at`** must be under 10 MiB. We passed 16 MiB and got a 400 on instance creation; the SDK did not
+  validate it client-side.
+* **Environment.** A non-disposable run builds an image from a shell command, but nothing like a Dockerfile `ENV`
+  carries over, so every later run has to re-export `PATH`. Our first search failed because of this (verilator not
+  found in all 6 candidates). A way to set image-level environment would remove that trap.
+* **Build speed and sizing.** Building our toolchain image (Ubuntu + OSS CAD Suite) inside Sandboxes took 171 s with no
+  local Docker, which was great. Each instance reported 4 vCPU and 3.9 GB RAM.
+* **Result.** One search: 21 sandbox runs, up to 8 concurrent, every child started from its parent's checkpoint image
+  (we assert this from the event log), 19 minutes, $0.44 of Nemotron spend.
+
 ## Nemotron through Token Factory: model behaviour we measured
 
 * **Thinking mode and the token cap.** With `chat_template_kwargs: {enable_thinking: true}` the reasoning tokens
