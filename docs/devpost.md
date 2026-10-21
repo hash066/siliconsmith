@@ -53,7 +53,7 @@ Monocypher (BSD-2-Clause / CC0).
 
 ## Try it
 
-* Run console and replays: the demo URL (replays work without any backend or credits).
+* Run console and replays: https://siliconsmith.vercel.app (replays of real runs; they work without any backend or credits).
 * CLI: `siliconsmith accelerate w1` (see the README).
 * A real pull request the tool opened: https://github.com/hash066/TinyMaix/pull/1
 

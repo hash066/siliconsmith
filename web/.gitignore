@@ -6,3 +6,6 @@ next-env.d.ts
 .taste-skill/
 tsconfig.tsbuildinfo
 .playwright-cli/
+
+.vercel
+.env*

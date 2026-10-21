@@ -15,6 +15,7 @@ siliconsmith accelerate w1 --area-budget 5
 ```
 
 > Built for the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering track).
+> Demo (replays of real runs, no backend needed): https://siliconsmith.vercel.app
 > License: Apache-2.0.
 
 ---
