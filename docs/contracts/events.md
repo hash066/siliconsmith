@@ -128,3 +128,15 @@ interface Log extends EventBase { type: "log"; level: "info" | "warn" | "error";
 {"v":1,"seq":3,"t":9150,"run_id":"r_demo","type":"llm.call","node_id":"n1","model":"nemotron-ultra","role":"architect","tokens_in":6120,"tokens_out":910,"cost_usd":0.0088,"latency_ms":5200}
 ```
 - **(v1.2) Polish nodes.** After each round, the agent improves its own winners in a short chain: `area` (same function, less hardware, re-proven against the same spec; it must not get slower and must shrink) and then `software` (same hardware, faster code; output must stay bit-identical). They are ordinary children in the tree with `proposal.kind` set; their `mnemonic` is the instruction being polished. A `software` node's `prove` stage arrives as `skipped` ("hardware unchanged: formal proofs carry over"). LLM calls for them use `role: "polish"`. A polished node can be the run's best node.
+- **(v1.3) Timing.** `run.baseline.fmax_mhz` is the median Fmax of nextpnr place-and-route (Tang Nano 9K, GW1NR-9) over 3 seeds, measured at run start. At run end, just before `run.completed`, the engine emits one `node.timing` per final node (the best node and the Pareto nodes). `node.scored` is never re-emitted; until `node.timing` arrives a node's `wall_speedup` equals `speedup`, and after it the UI shows `node.timing.wall_speedup`.
+
+```ts
+interface NodeTiming extends EventBase {
+  type: "node.timing";
+  node_id: NodeId;
+  fmax_mhz: number;          // median over `seeds` place-and-route runs
+  wall_speedup: number;      // speedup * fmax_mhz / run.baseline.fmax_mhz
+  seeds: number;             // how many seeds succeeded (nextpnr seed noise is about +-8%)
+  samples_mhz?: number[];    // per-seed Fmax
+}
+```

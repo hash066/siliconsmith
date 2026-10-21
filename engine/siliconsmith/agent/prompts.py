@@ -215,6 +215,11 @@ Current {patchable_name}:
 ```
 Typical wins: unroll so each iteration issues 4+ intrinsic calls, walk word pointers instead of \
 recomputing byte offsets, keep independent partial sums, hoist invariant work, cheap tail handling. \
+Look at the disassembly: every instruction that is not a load or a custom instruction is overhead. \
+Concretely: use `const uint32_t *pa, *pb` that are incremented ONCE per iteration (`pa += 4`) and \
+loaded with constant offsets `pa[0]..pa[3]` (the compiler then emits `lw rd, 4*k(ptr)` with no address \
+arithmetic), compute the loop end pointer once (`end = pa + n_words`) and compare pointers instead of \
+counting an index, and avoid `i >> 2`, `i + 16 <= cnt` style per-iteration arithmetic. Unroll 4x or 8x. \
 Output must stay bit-identical for every size, including sizes that are not multiples of 4 or 16, and \
 pointers keep the alignment the original assumes. Keep exact function signatures; include only \
 what the original includes; never define ss_* names.

@@ -10,6 +10,7 @@ from __future__ import annotations
 import difflib
 import itertools
 import shutil
+import statistics
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -23,7 +24,7 @@ from .agent.schemas import (AreaPolish, Implementation, Proposal, ProposalSet, S
 from .config import Settings
 from .events import EventBus
 from .llm import BudgetExceeded, LLMError, Nemotron
-from .tools import verify
+from .tools import fpga, verify
 from .tools.build import ToolError
 from .tools.workload import Workload
 
@@ -73,6 +74,7 @@ class Search:
         self._ops = itertools.count(1)
         self.tried: list[str] = []
         self.patch_name = wl.patchable[0]
+        self.base_fmax: float | None = None
 
     # ------------------------------------------------------------------ helpers
     def _child_id(self, parent: Node) -> str:
@@ -387,13 +389,17 @@ class Search:
     def _polish_chain(self, node: Node) -> Node:
         """Area polish, then software polish on the best result so far. Returns the lineage's best node."""
         cur = node
-        for kind in ("area", "software"):
+        # software polish repeats (max 3 passes) while it keeps finding gains, each pass starting from the best
+        for kind in ("area", "software", "software", "software"):
             if self.llm.spent_usd >= self.s.run_budget_usd:
                 break
+            before = cur
             child = self._spawn_polish(cur, kind)
             self._with_op(child, lambda: self._develop_polish(child))
             if child.status == "scored" and (child.speedup, -child.area_delta) >= (cur.speedup, -cur.area_delta):
                 cur = child
+            if kind == "software" and not (child.status == "scored" and child.speedup > before.speedup * 1.01):
+                break
         return cur
 
     # ------------------------------------------------------------------ the search
@@ -408,13 +414,19 @@ class Search:
             backend=self.backend.name)
         t0 = time.monotonic()
         try:
-            self.base, root_image = self.backend.baseline(self.wl, self.work / "root")
+            root_node = Node(id="root", parent=None, depth=0, isa=[], patch={})
+            with ThreadPoolExecutor(max_workers=1) as fx:
+                fmax_future = fx.submit(self._fmax_samples, root_node)
+                self.base, root_image = self.backend.baseline(self.wl, self.work / "root")
+                samples = fmax_future.result()
+            self.base_fmax = statistics.median(samples) if samples else None
             root = Node(id="root", parent=None, depth=0, isa=[], patch={}, measured=self.base, status="scored",
                         image=root_image)
             self.nodes.append(root)
             b = self.base
             self.bus.emit("run.baseline", cycles=b.cycles, luts=b.area.luts + b.area.alus, ffs=b.area.ffs,
-                          cells=b.area.cells, fmax_mhz=None, output_hash=b.hash, hotspots=b.hotspots)
+                          cells=b.area.cells, fmax_mhz=round(self.base_fmax, 2) if self.base_fmax else None,
+                          output_hash=b.hash, hotspots=b.hotspots)
             self.bus.emit("node.created", node_id="root", parent_id=None, depth=0, proposal=None, instruction_set=[])
             frontier = [root]
             for rnd in range(1, c.max_depth + 1):
@@ -456,6 +468,8 @@ class Search:
             pareto = [n.id for n in done if not any(
                 o.speedup >= n.speedup and o.area_delta <= n.area_delta and
                 (o.speedup > n.speedup or o.area_delta < n.area_delta) for o in done)]
+            by_id = {n.id: n for n in done}
+            self._emit_timing([best, *[by_id[i] for i in pareto if i != best.id]] if done else [])
             self.bus.emit("run.completed", best_node_id=best.id, pareto=pareto, totals={
                 "nodes": len(self.nodes) - 1, "sandboxes": next(self._ops) - 1,
                 "cost_usd": round(self.llm.spent_usd, 4), "tokens": self.llm.tokens,
@@ -466,6 +480,37 @@ class Search:
             raise
         finally:
             self.bus.close()
+
+    # ------------------------------------------------------------------ Fmax (Tang Nano 9K place-and-route)
+    FMAX_SEEDS = (1, 2, 3)  # nextpnr seed noise is about +-8%, so we always report the median of 3
+
+    def _fmax_samples(self, node: Node) -> list[float]:
+        """Fmax of this node's full FPGA SoC for each seed (seeds run in parallel; failures are skipped)."""
+        gen = self.work / "fpga" / node.id
+        hwgen.write_config(hwgen.CpuConfig(list(node.isa)), gen)
+
+        def one(seed: int) -> float | None:
+            try:
+                return fpga.place_and_route(gen, seed=seed).fmax_mhz
+            except ToolError as e:
+                self.bus.log(f"Fmax place-and-route failed for {node.id} seed {seed}: {e}"[:300],
+                             level="warn", node_id=node.id)
+                return None
+        with ThreadPoolExecutor(max_workers=len(self.FMAX_SEEDS)) as ex:
+            return [f for f in ex.map(one, self.FMAX_SEEDS) if f is not None]
+
+    def _emit_timing(self, nodes: list[Node]) -> None:
+        """Contract v1.3: node.timing for the final nodes only (never re-emits node.scored)."""
+        if not self.base_fmax:
+            return
+        for n in nodes:
+            s = self._fmax_samples(n)
+            if not s:
+                continue
+            f = statistics.median(s)
+            self.bus.emit("node.timing", node_id=n.id, fmax_mhz=round(f, 2),
+                          wall_speedup=round(n.speedup * f / self.base_fmax, 4), seeds=len(s),
+                          samples_mhz=[round(x, 2) for x in s])
 
     def _safe_propose(self, parent: Node, k: int) -> list[Proposal]:
         try:

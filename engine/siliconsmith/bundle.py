@@ -53,6 +53,17 @@ def _cost(events: list[dict]) -> dict[str, dict]:
     return dict(agg)
 
 
+def _timing_lines(events: list[dict], best_id: str) -> list[str]:
+    base = next((e for e in events if e["type"] == "run.baseline"), {})
+    t = next((e for e in events if e["type"] == "node.timing" and e["node_id"] == best_id), None)
+    if not t or not base.get("fmax_mhz"):
+        return []
+    return [f"**Wall-clock: {t['wall_speedup']:.2f}x** = cycle speedup x Fmax ratio on a Tang Nano 9K "
+            f"(GW1NR-9) place-and-route: {base['fmax_mhz']:.1f} MHz baseline → {t['fmax_mhz']:.1f} MHz, "
+            f"median of {t['seeds']} nextpnr seeds (seed noise is about ±8%; per-seed Fmax "
+            f"{', '.join(f'{x:.1f}' for x in t.get('samples_mhz', []))} MHz).", ""]
+
+
 def render_report(wl: Workload, base: ladder.Measured, best, events: list[dict]) -> str:
     chain = []
     n = best
@@ -74,6 +85,7 @@ def render_report(wl: Workload, base: ladder.Measured, best, events: list[dict])
             "Speedup is in clock cycles on the same core; clock-frequency impact is reported separately "
             "when an FPGA place-and-route result is available.",
             "",
+            *_timing_lines(events, best.id),
             "## New instructions",
             "",
             "| Mnemonic | What it does | Encoding | Why |",
