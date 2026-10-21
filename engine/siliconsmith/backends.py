@@ -185,7 +185,7 @@ class ContreeBackend:
     def _run(self, image_ref: str, shell: str, files: dict | None = None):
         img = self.sdk.images.use(image_ref)
         handle = img.run(shell=shell, files=files, timeout=self.timeout_s, disposable=False,
-                         truncate_output_at=16 * 1024 * 1024)
+                         truncate_output_at=8 * 1024 * 1024)
         for attempt in range(40):  # the status endpoint answers a transient 500 now and then; the run continues
             try:
                 return handle.wait()
