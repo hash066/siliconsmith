@@ -164,7 +164,8 @@ def prove_equiv(ins: hwgen.Instruction, spec_rtl: str, work: Path, timeout_s: in
     if "SUCCESS!" in log and r.ok:
         return ProveResult(proven=True, method="yosys SAT miter (all inputs)", seconds=r.seconds)
     if "FAIL!" in log:
-        cex = {k: int(v) for k, v in re.findall(r"\\in_(rs[12])\s+(\d+)\s+[0-9a-fx]+", log)}
+        # Yosys prints the signed decimal first (may be negative), then the hex of the same 32 bits.
+        cex = {k: int(h, 16) for k, h in re.findall(r"\\in_(rs[12])\s+-?\d+\s+([0-9a-fA-F]+)\s", log)}
         err = ToolError("prove", "formal counterexample: " +
                         ", ".join(f"{k}=0x{v:08x}" for k, v in sorted(cex.items())), log)
         err.counterexample = cex  # type: ignore[attr-defined]
