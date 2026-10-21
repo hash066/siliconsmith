@@ -3,7 +3,7 @@ import { ThemeToggle, Wordmark } from "./Brand";
 
 const NAV = [
   { href: "/how", label: "How it works" },
-  { href: "/runs/r_mock_demo/report", label: "Report" },
+  { href: "/runs/r_w1_final/report", label: "Report" },
   { href: "/try", label: "Try your code" },
 ];
 
@@ -21,7 +21,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/runs/r_mock_demo" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
+          <Link href="/runs/r_w1_final" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
             Watch a run
           </Link>
         </div>
@@ -43,10 +43,10 @@ export function SiteFooter() {
             </p>
           </div>
           <nav aria-label="Footer" className="flex flex-col gap-2">
-            <Link href="/runs/r_mock_demo" className="text-ink-2 hover:text-ink">
+            <Link href="/runs/r_w1_final" className="text-ink-2 hover:text-ink">
               Demo run
             </Link>
-            <Link href="/runs/r_m4_first" className="text-ink-2 hover:text-ink">
+            <Link href="/runs/r_w2_final3" className="text-ink-2 hover:text-ink">
               First real engine run
             </Link>
             <Link href="/how" className="text-ink-2 hover:text-ink">

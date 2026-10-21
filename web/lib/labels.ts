@@ -36,7 +36,10 @@ export function rungLabel(r: RungView, n: NodeState): string {
     case "L2":
       return `Matches C reference (${vectorCount(n.stages.unit?.detail)} vectors)`;
     case "L3":
-      return "Formally proven equivalent to spec";
+      // Software polish leaves the hardware untouched, so the parent's proof carries over (the engine emits prove as skipped).
+      return n.stages.prove?.status === "skipped" && r.status === "pass"
+        ? "Formally proven equivalent to spec (inherited: hardware unchanged)"
+        : "Formally proven equivalent to spec";
     case "L4":
       return "Bit-identical output";
     case "L5": {

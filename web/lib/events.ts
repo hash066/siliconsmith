@@ -1,4 +1,4 @@
-// Event contract v1.1 — mirrors docs/contracts/events.md (v1.1 rules: stage order, nullable fmax_mhz / to_image).
+// Event contract v1.3 — mirrors docs/contracts/events.md (v1.1 stage order + nullable fmax; v1.2 polish nodes; v1.3 node.timing).
 // The web app derives everything it renders from a stream of these events.
 
 export const CONTRACT_VERSION = 1 as const;
@@ -13,6 +13,7 @@ export type EventType =
   | "node.scored"
   | "node.pruned"
   | "node.expanded"
+  | "node.timing"
   | "llm.call"
   | "sandbox.op"
   | "log";
@@ -21,7 +22,7 @@ export type NodeId = string;
 export type Stage = "implement" | "lint" | "unit" | "prove" | "e2e" | "synth" | "bench";
 export type StageStatus = "queued" | "running" | "pass" | "fail" | "skipped";
 export type Model = "nemotron-nano" | "nemotron-super" | "nemotron-ultra";
-export type Role = "brief" | "triage" | "architect" | "implement" | "repair" | "diagnose" | "report";
+export type Role = "brief" | "triage" | "architect" | "implement" | "repair" | "diagnose" | "report" | "polish";
 export type Rung = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 export type RungResult = "pass" | "fail" | "skipped";
 
@@ -29,7 +30,7 @@ export type RungResult = "pass" | "fail" | "skipped";
 export const STAGES: readonly Stage[] = ["implement", "lint", "unit", "e2e", "bench", "prove", "synth"];
 export const RUNGS: readonly Rung[] = ["L1", "L2", "L3", "L4", "L5", "L6"];
 export const MODELS: readonly Model[] = ["nemotron-ultra", "nemotron-super", "nemotron-nano"];
-export const ROLES: readonly Role[] = ["architect", "implement", "repair", "diagnose", "triage", "brief", "report"];
+export const ROLES: readonly Role[] = ["architect", "implement", "repair", "diagnose", "triage", "brief", "report", "polish"];
 
 export interface EventBase {
   v: 1;
@@ -76,7 +77,11 @@ export interface RunBaseline extends EventBase {
   hotspots: Hotspot[];
 }
 
+export type ProposalKind = "instruction" | "area" | "software";
+
 export interface Proposal {
+  /** v1.2: absent = "instruction". `area` / `software` are polish passes on the parent's instruction. */
+  kind?: ProposalKind;
   mnemonic: string;
   title: string;
   semantics_c: string;
@@ -153,6 +158,16 @@ export interface NodeExpanded extends EventBase {
   children: NodeId[];
 }
 
+/** v1.3: Fmax of the final nodes, median of nextpnr seeds. Merged into the node's score by the reducer. */
+export interface NodeTiming extends EventBase {
+  type: "node.timing";
+  node_id: NodeId;
+  fmax_mhz: number;
+  wall_speedup: number;
+  seeds: number;
+  samples_mhz?: number[];
+}
+
 export interface LlmCall extends EventBase {
   type: "llm.call";
   node_id: NodeId | null;
@@ -205,6 +220,7 @@ export type RunEvent =
   | NodeScored
   | NodePruned
   | NodeExpanded
+  | NodeTiming
   | LlmCall
   | SandboxOp
   | LogEvent;

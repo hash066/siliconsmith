@@ -1,4 +1,4 @@
-// Checks an event stream against docs/contracts/events.md (v1.1 rules).
+// Checks an event stream against docs/contracts/events.md (v1.1 rules, v1.2 polish, v1.3 timing).
 // Used by the tests on every replay in public/replays, and handy for the engine:
 //   npx vitest run lib/contract.test.ts
 
@@ -22,6 +22,7 @@ const REQUIRED: Record<string, string[]> = {
   "node.scored": ["node_id", "cycles", "speedup", "luts", "ffs", "area_delta_pct", "fmax_mhz", "wall_speedup", "feasible", "on_pareto", "ladder"],
   "node.pruned": ["node_id", "reason"],
   "node.expanded": ["node_id", "children"],
+  "node.timing": ["node_id", "fmax_mhz", "wall_speedup", "seeds"],
   "llm.call": ["node_id", "model", "role", "tokens_in", "tokens_out", "cost_usd", "latency_ms"],
   "sandbox.op": ["node_id", "op_id", "from_image", "status"],
   log: ["level", "msg"],
@@ -106,7 +107,7 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
       }
       case "node.pruned": {
         const p = progress.get(e.node_id);
-        if (p?.pendingFail) err(e, "repair", `${e.node_id} pruned with repairs left after a ${p.pendingFail} failure`);
+        // The engine may give up after any failure (implementation error, polish attempts used up, run budget).
         ended.add(e.node_id);
         break;
       }

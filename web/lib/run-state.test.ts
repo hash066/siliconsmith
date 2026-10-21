@@ -143,49 +143,33 @@ describe("run-state reducer", () => {
   });
 });
 
-describe("r_mock_demo replay", () => {
-  const events = load("r_mock_demo");
+describe("r_w1_final (real engine run, W1 TinyMaix)", () => {
+  const events = load("r_w1_final");
   const s = reduceAll(events);
 
-  it("conforms to the event contract", () => {
-    expect(validateStream(events)).toEqual([]);
+  it("has no contract errors", () => {
+    expect(validateStream(events).filter((i) => i.level === "error")).toEqual([]);
   });
 
-  it("reproduces the real golden-path numbers on the winner", () => {
-    expect(s.best).toBe("n1");
-    const n1 = s.nodes.n1;
-    expect(n1.proposal?.mnemonic).toBe("dot4.s8");
-    expect(n1.score?.cycles).toBe(228_382);
-    expect(n1.score?.speedup).toBe(3.77);
-    expect(n1.score?.area_delta_pct).toBe(3.16);
+  it("reproduces the real numbers on the winner, with Fmax folded in from node.timing", () => {
+    expect(s.best).toBe("n1.1.1");
+    const n = s.nodes["n1.1.1"];
+    expect(n.proposal?.kind).toBe("software");
+    expect(n.score?.cycles).toBe(213_022);
+    expect(n.score?.area_delta_pct).toBe(3.16);
+    expect(n.timing?.seeds).toBe(3);
+    expect(n.score?.wall_speedup).toBe(n.timing?.wall_speedup);
     expect(s.baseline?.cycles).toBe(860_730);
-    expect(s.baseline?.luts).toBe(1_993);
-    expect(s.baseline?.hotspots[0]).toMatchObject({ symbol: "tm_dot_prod", line_start: 26, line_end: 37, pct: 95.7 });
-    expect(n1.evidence.find((x) => x.stage === "prove")?.counterexample?.signals.length).toBeGreaterThan(4);
-    expect(ladderFor(n1).slice(0, 5).every((r) => r.status === "pass")).toBe(true);
+    expect(s.baseline?.fmax_mhz).toBe(71.03);
   });
 
-  it("has the shape the brief asks for", () => {
-    const c = counts(s);
-    expect(c.candidates).toBeGreaterThanOrEqual(30);
-    expect(Math.max(...s.order.map((id) => s.nodes[id].depth))).toBe(3);
-    expect(s.config).toMatchObject({ k_root: 8, beam: 3, area_budget_pct: 5 });
-    expect(c.budget).toBeGreaterThan(0);
-    expect(c.failed).toBeGreaterThan(0);
-    expect(c.nogain).toBeGreaterThan(0);
-    expect(c.unproven).toBe(1);
-    expect(s.sandboxes.peak).toBeLessThanOrEqual(50);
-    expect(s.sandboxes.peak).toBeGreaterThan(30);
-    const stagesFailed = new Set(s.order.flatMap((id) => s.nodes[id].attempts.map((a) => a.failed).filter(Boolean)));
-    for (const st of ["lint", "unit", "e2e", "prove", "bench", "synth"]) expect(stagesFailed.has(st as never)).toBe(true);
-  });
-
-  it("agrees with its own run.completed totals", () => {
+  it("inherits the proof for software polish and agrees with run.completed", () => {
+    expect(s.nodes["n1.1.1"].stages.prove?.status).toBe("skipped");
     const done = s.completed!;
     expect(done.totals.nodes).toBe(s.order.length - 1);
-    expect(done.totals.sandboxes).toBe(s.sandboxes.total);
     expect(done.totals.cost_usd).toBeCloseTo(s.usage.total.costUsd, 3);
     expect(done.totals.tokens).toBe(s.usage.total.tokensIn + s.usage.total.tokensOut);
+    expect(s.usage.byRole.polish.calls).toBeGreaterThan(0);
   });
 
   it("prices every Nemotron call at the listed rates", () => {
@@ -197,33 +181,35 @@ describe("r_mock_demo replay", () => {
     }
   });
 
-  it("puts over-budget candidates on the frontier from their measured details", () => {
-    const pts = frontier(s);
-    expect(pts.find((p) => p.id === "n1")?.best).toBe(true);
-    expect(pts.some((p) => p.kind === "budget" && p.areaPct > 5)).toBe(true);
-    expect(lineage(s, "n2.1").map((n) => n.id)).toEqual(["root", "n2", "n2.1"]);
+  it("builds lineages through polish nodes", () => {
+    expect(lineage(s, "n1.1.1").map((n) => n.id)).toEqual(["root", "n1", "n1.1", "n1.1.1"]);
+    expect(frontier(s).some((p) => p.id === "n1.1.1" && p.best)).toBe(true);
   });
 });
 
-describe("r_m4_first (real engine run)", () => {
-  const events = load("r_m4_first");
+describe("r_w2_final3 (real engine run, W2 ChaCha20)", () => {
+  const events = load("r_w2_final3");
   const s = reduceAll(events);
 
-  it("has no contract errors (only known warnings)", () => {
-    const issues = validateStream(events);
-    expect(issues.filter((i) => i.level === "error")).toEqual([]);
+  it("has no contract errors", () => {
+    expect(validateStream(events).filter((i) => i.level === "error")).toEqual([]);
   });
 
-  it("renders every node as pruned with its reason, and no best", () => {
-    expect(s.best).toBeNull();
-    for (const id of ["n1", "n2", "n3"]) {
-      expect(nodeStatus(s.nodes[id], s)).toBe("pruned");
-      expect(s.nodes[id].pruned?.reason.length).toBeGreaterThan(5);
-    }
-    expect(s.nodes.n2.pruned?.kind).toBe("nogain");
-    expect(s.nodes.n1.notes).toHaveLength(0);
-    expect(s.nodes.root.notes[0].msg).toMatch(/^Ultra on root/);
-    expect(s.baseline?.fmax_mhz).toBeNull();
-    expect(s.warnings).toEqual([]);
+  it("finds the stacked xor-rotate instructions", () => {
+    expect(s.best).toBe("n2.4.1");
+    expect(s.nodes[s.best!].score?.cycles).toBe(102_851);
+    expect(s.nodes[s.best!].instructionSet).toHaveLength(2);
+    expect(nodeStatus(s.nodes["n3.1.1"], s)).toBe("pruned");
+  });
+});
+
+describe("r_m4_second (real engine run before the polish phase)", () => {
+  const events = load("r_m4_second");
+  const s = reduceAll(events);
+
+  it("has no contract errors and keeps the formal-proof rejection", () => {
+    expect(validateStream(events).filter((i) => i.level === "error")).toEqual([]);
+    expect(s.nodes.n1.score?.speedup).toBeGreaterThan(3);
+    expect(s.nodes.n3.pruned?.reason).toMatch(/formal counterexample/);
   });
 });

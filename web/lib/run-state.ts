@@ -13,6 +13,7 @@ import {
   type Model,
   type NodeId,
   type NodeScored,
+  type NodeTiming,
   type Proposal,
   type Role,
   type Rung,
@@ -88,6 +89,8 @@ export interface NodeState {
   artifactsByAttempt: Record<number, StageArtifacts>;
   evidence: Evidence[];
   score: NodeScored | null;
+  /** v1.3: median-of-seeds Fmax for final nodes; also folded into `score` so every view shows wall-clock. */
+  timing: NodeTiming | null;
   pruned: { reason: string; t: number; kind: PruneKind } | null;
   expanded: boolean;
   usage: Usage;
@@ -204,6 +207,7 @@ function newNode(id: NodeId, t: number): NodeState {
     artifactsByAttempt: {},
     evidence: [],
     score: null,
+    timing: null,
     pruned: null,
     expanded: false,
     usage: emptyUsage(),
@@ -468,6 +472,22 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           tone: e.feasible ? "signal" : "warn",
           kind: "scored",
           text: `${e.node_id} scored · ${wallOf(e).toFixed(2)}× · ${e.area_delta_pct >= 0 ? "+" : ""}${e.area_delta_pct.toFixed(2)}% area${e.feasible ? "" : " · not eligible"}`,
+        });
+        break;
+      }
+      case "node.timing": {
+        const n = node(e.node_id);
+        if (!n || !n.score) {
+          warn(`timing for unscored node ${e.node_id}`);
+          break;
+        }
+        n.timing = e;
+        n.score = { ...n.score, fmax_mhz: e.fmax_mhz, wall_speedup: e.wall_speedup };
+        tick(s, e, {
+          nodeId: e.node_id,
+          tone: "neutral",
+          kind: "timing",
+          text: `${e.node_id} Fmax ${e.fmax_mhz.toFixed(1)} MHz (median of ${e.seeds} seeds) · wall-clock ${e.wall_speedup.toFixed(2)}×`,
         });
         break;
       }

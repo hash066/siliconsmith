@@ -104,6 +104,7 @@ export function BranchTree({
                 fill="none"
                 stroke={onBest ? "var(--signal)" : onSel ? "var(--ink-2)" : "var(--line-2)"}
                 strokeWidth={onBest ? 1.5 : 1}
+                strokeDasharray={state.nodes[n.id]?.proposal?.kind && state.nodes[n.id]?.proposal?.kind !== "instruction" ? "3 3" : undefined}
                 initial={reduce ? false : { pathLength: 0, opacity: 0.4 }}
                 animate={{ pathLength: 1, opacity: 1, d }}
                 transition={t(0.7)}
@@ -118,7 +119,8 @@ export function BranchTree({
             const isRoot = n.depth === 0;
             const val = rowValue(node, state);
             const isSel = selected === n.id;
-            const mnemonic = isRoot ? "baseline" : (node.proposal?.mnemonic ?? n.id);
+            const polish = node.proposal?.kind === "area" ? "area polish" : node.proposal?.kind === "software" ? "sw polish" : null;
+            const mnemonic = isRoot ? "baseline" : (polish ?? node.proposal?.mnemonic ?? n.id);
             const dim = visual === "nogain" || visual === "failed" || visual === "budget";
             const label = `${n.id} ${mnemonic}: ${VISUAL_LABEL[visual]}${val.text ? `, ${val.text}` : ""}`;
             const rowW = isRoot ? ROOTW - 22 : COLW - 24;

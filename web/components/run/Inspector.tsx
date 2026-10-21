@@ -252,7 +252,7 @@ export function Inspector({ state, nodeId, onSelect, reportHref }: { state: RunS
                 <Figure label="Area Δ" value={pct(sc.area_delta_pct)} sub={budget !== undefined ? `budget ${budget.toFixed(1)}%` : undefined} tone={budget !== undefined && sc.area_delta_pct > budget ? "amber" : undefined} />
                 <Figure label="LUTs" value={int(sc.luts)} />
                 <Figure label="FFs" value={int(sc.ffs)} />
-                <Figure label="Fmax" value={sc.fmax_mhz === null ? "—" : `${mhz(sc.fmax_mhz)} MHz`} sub={sc.fmax_mhz === null ? "not measured" : state.baseline?.fmax_mhz ? `base ${mhz(state.baseline.fmax_mhz)}` : undefined} />
+                <Figure label="Fmax" value={sc.fmax_mhz === null ? "—" : `${mhz(sc.fmax_mhz)} MHz`} sub={sc.fmax_mhz === null ? "not measured" : node.timing ? `median of ${node.timing.seeds} seeds · base ${state.baseline?.fmax_mhz ? mhz(state.baseline.fmax_mhz) : "—"}` : state.baseline?.fmax_mhz ? `base ${mhz(state.baseline.fmax_mhz)}` : undefined} />
               </div>
             </Section>
           )}
@@ -297,7 +297,7 @@ export function Inspector({ state, nodeId, onSelect, reportHref }: { state: RunS
               </p>
               <blockquote className="mt-3 border-l-2 border-line-2 pl-3 text-[13px] leading-relaxed text-ink-2">
                 {p.rationale}
-                <footer className="mt-1 text-[12px] text-ink-3">Nemotron Ultra, architect</footer>
+                <footer className="mt-1 text-[12px] text-ink-3">{p.kind === "area" || p.kind === "software" ? "Nemotron Super, polish" : "Nemotron Ultra, architect"}</footer>
               </blockquote>
               {(p.est_speedup !== undefined || p.est_area_pct !== undefined) && (
                 <p className="num mt-3 text-[12px] text-ink-3">
