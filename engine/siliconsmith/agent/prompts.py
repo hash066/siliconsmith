@@ -17,6 +17,10 @@ CUSTOM-INSTRUCTION SLOT (hard constraints):
 - Area is measured with Yosys synth_gowin (Gowin GW1N FPGA). Multipliers map to MULT9X9 DSP
   blocks (an 8x8 signed multiply costs one). Area budget counts LUTs + ALUs.
 - Software calls it through a generated intrinsic: uint32_t ss_<name>(uint32_t rs1, uint32_t rs2).
+- There are NO immediates and NO third operand: the semantics are exactly f(rs1, rs2) and nothing else.
+  A constant (e.g. a rotate amount) cannot be passed as an immediate. Either bake it into the instruction
+  (one instruction per constant, e.g. xor_rotl16(rs1, rs2) = rotl32(rs1 ^ rs2, 16); several such
+  instructions can be stacked by later rounds) or carry it in a source register.
 - The patched C must give BIT-IDENTICAL results to the original for ALL inputs.
 """
 
