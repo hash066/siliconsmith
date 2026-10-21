@@ -1,0 +1,72 @@
+# SiliconSmith GitHub integration. Copy to .github/workflows/siliconsmith.yml in the repo you want
+# accelerated (the demo uses a fork of sipeed/TinyMaix).
+#
+# Comment on an issue or PR:   /siliconsmith accelerate tm_dot_prod
+# The job runs the SiliconSmith search (Nemotron on Nebius Token Factory), verifies every candidate, and
+# opens a PR with the RTL, the intrinsics header, the patched kernel and the proof report.
+#
+# Needs the repository secret NEBIUS_API_KEY (and optionally NEBIUS_PROJECT_ID). Only collaborators can trigger it.
+name: siliconsmith
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency: siliconsmith
+
+jobs:
+  accelerate:
+    if: >-
+      startsWith(github.event.comment.body, '/siliconsmith accelerate ') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Parse the command
+        id: cmd
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          fn=$(printf '%s' "$BODY" | head -1 | awk '{print $3}')
+          case "$fn" in
+            tm_dot_prod) echo "workload=w1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "unsupported function: $fn (supported: tm_dot_prod)" >&2; exit 1 ;;
+          esac
+          echo "fn=$fn" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with: { path: target }
+      - uses: actions/checkout@v4
+        with:
+          repository: hash066/siliconsmith
+          path: siliconsmith
+
+      - name: Install the toolchain (Verilator, Yosys, RISC-V GCC)
+        run: sudo bash siliconsmith/scripts/setup-toolchain.sh
+
+      - name: Install SiliconSmith
+        run: |
+          python3 -m venv /opt/ss-venv
+          /opt/ss-venv/bin/pip install -q -e siliconsmith/engine
+
+      - name: Search, verify, write the bundle
+        env:
+          NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+          NEBIUS_PROJECT_ID: ${{ secrets.NEBIUS_PROJECT_ID }}
+          SS_RUN_BUDGET_USD: "4"
+        run: |
+          bash -lc '/opt/ss-venv/bin/siliconsmith accelerate ${{ steps.cmd.outputs.workload }} \
+            --k 6 --k-child 4 --beam 2 --depth 2 --run-id r_gh_${{ github.run_id }} --out "$PWD/bundles"'
+
+      - name: Open the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C target config user.name "SiliconSmith"
+          git -C target config user.email "siliconsmith@users.noreply.github.com"
+          bash -lc '/opt/ss-venv/bin/siliconsmith pr bundles/r_gh_${{ github.run_id }} --repo target \
+            --function ${{ steps.cmd.outputs.fn }} --base ${{ github.event.repository.default_branch }} --push --open'
