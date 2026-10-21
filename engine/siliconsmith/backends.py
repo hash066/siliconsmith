@@ -12,6 +12,7 @@ so the search never knows which one it is talking to.
 from __future__ import annotations
 
 import json
+import time
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -183,9 +184,15 @@ class ContreeBackend:
 
     def _run(self, image_ref: str, shell: str, files: dict | None = None):
         img = self.sdk.images.use(image_ref)
-        res = img.run(shell=shell, files=files, timeout=self.timeout_s, disposable=False,
-                      truncate_output_at=16 * 1024 * 1024).wait()
-        return res
+        handle = img.run(shell=shell, files=files, timeout=self.timeout_s, disposable=False,
+                         truncate_output_at=16 * 1024 * 1024)
+        for attempt in range(40):  # the status endpoint answers a transient 500 now and then; the run continues
+            try:
+                return handle.wait()
+            except Exception as e:  # noqa: BLE001
+                if attempt == 39 or "500" not in str(e):
+                    raise
+                time.sleep(10)
 
     def baseline(self, wl: Workload, work: Path) -> tuple[ladder.Measured, str]:
         res = self._run(self.base_image, f"{self.WORKER} baseline {wl.id}")
