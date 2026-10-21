@@ -52,7 +52,7 @@ export default function How() {
         </ol>
 
         <h2 className="mt-16 text-[26px] font-semibold tracking-[-0.02em] text-ink">Three Nemotron models, three jobs</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           {ROLES.map(([m, r, b]) => (
             <article key={m} className="rounded-xl border border-line p-5">
               <p className="num text-[12.5px] text-signal-ink">{r}</p>

@@ -38,7 +38,7 @@ function Body({ c }: { c: RunController }) {
   const node = focus ? s.nodes[focus] : null;
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="graticule relative h-[300px] overflow-hidden border-b border-line sm:h-[420px] lg:h-[460px] lg:border-b-0 lg:border-r">
         <div className="absolute inset-0 overflow-hidden p-3">
           {wide ? <BranchTree state={s} selected={focus} compact /> : <OutlineTree state={s} selected={focus} onSelect={() => {}} />}

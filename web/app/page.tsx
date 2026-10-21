@@ -106,7 +106,7 @@ export default function Home() {
             Wall-clock speedup is cycles multiplied by the clock ratio from a Tang Nano 9K place-and-route (median of {w1.seeds} nextpnr seeds; the seed
             noise is about ±8%). Area is LUT-equivalents on PicoRV32 with a fast multiplier. Nothing here is estimated by the model.
           </p>
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
+          <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
             <Result
               r={w1}
               label="TinyMaix int8 fully-connected layer (W1)"
@@ -131,7 +131,7 @@ export default function Home() {
           <h2 id="how" className="text-[clamp(28px,4vw,48px)] font-semibold leading-tight tracking-[-0.03em] text-ink">
             Three steps, every one checked.
           </h2>
-          <ol className="mt-10 grid gap-5 md:grid-cols-3">
+          <ol className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
             {STEPS.map((s) => (
               <li key={s.n} className="rounded-xl border border-line p-6">
                 <span className="num text-[13px] text-signal-ink">{s.n}</span>
@@ -161,7 +161,7 @@ export default function Home() {
           <h2 id="related" className="max-w-[24ch] text-[clamp(28px,4vw,48px)] font-semibold leading-tight tracking-[-0.03em] text-ink">
             The architect&apos;s decision is the part we automate.
           </h2>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
             <article className="rounded-xl border border-line p-6">
               <h3 className="text-[16px] font-semibold text-ink">Commercial flows</h3>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-2">

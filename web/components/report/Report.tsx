@@ -65,8 +65,8 @@ function InstructionCard({ n }: { n: NodeState }) {
         </div>
         <p className="num text-[12px] text-ink-3">.insn r 0x0B, 0, {funct7}, rd, rs1, rs2 · custom-0</p>
       </header>
-      <div className="grid gap-5 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div className="min-w-0">
           <dl className="grid grid-cols-3 gap-3 text-[13px]">
             {(["rs1", "rs2", "rd"] as const).map((k) => (
               <div key={k}>
@@ -78,7 +78,7 @@ function InstructionCard({ n }: { n: NodeState }) {
           <p className="mt-4 text-[13.5px] leading-relaxed text-ink-2">{p.rationale}</p>
           <p className="mt-2 text-[12px] text-ink-3">Proposed by Nemotron Ultra as architect; implemented and repaired by Nemotron Super.</p>
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="mb-2 text-[12px] text-ink-3">Semantics: the C reference every rung checks against</p>
           <Code code={n.artifacts.c_ref ?? p.semantics_c} lang="c" maxHeight={240} />
         </div>
@@ -226,7 +226,7 @@ function ReportBody({ s, runId }: { s: RunState; runId: string }) {
         <H2 id="frontier" sub="Every candidate that reached synthesis, by the area it costs and the wall-clock speedup it buys. Wall-clock is cycles × Fmax, so a faster cycle count that slows the clock does not win.">
           Speedup against area
         </H2>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="rounded-lg border border-line bg-panel p-4">
             <ParetoLegend />
             <div className="mt-3">
@@ -262,7 +262,7 @@ function ReportBody({ s, runId }: { s: RunState; runId: string }) {
       </section>
 
       {pairs.length > 0 && best && (
-        <section aria-labelledby="ba" className="mt-16 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section aria-labelledby="ba" className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div>
             <H2 id="ba" sub={`Baseline PicoRV32 against the CPU with ${best.instructionSet.join(" + ")}, on the same workload and inputs.`}>
               Before and after
@@ -318,7 +318,7 @@ function ReportBody({ s, runId }: { s: RunState; runId: string }) {
         </section>
       )}
 
-      <section aria-labelledby="deliver" className="mt-16 grid gap-8 lg:grid-cols-2">
+      <section aria-labelledby="deliver" className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div>
           <H2 id="deliver" sub="Everything the pull request carries, taken from the run's own events.">
             Deliverables
