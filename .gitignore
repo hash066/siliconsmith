@@ -24,3 +24,6 @@ hw/formal/**/work*/
 # local agent tooling and handoff notes
 .claude/
 docs/HANDOFF.md
+
+# large local capture footage
+/video-assets/
