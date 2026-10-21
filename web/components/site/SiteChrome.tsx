@@ -39,15 +39,15 @@ export function SiteFooter() {
           <div>
             <p className="text-ink">Change the chip, not just the code.</p>
             <p className="mt-2 leading-relaxed text-ink-3">
-              Built for the Nebius × NVIDIA Global AI Hackathon. The agent runs on NVIDIA Nemotron through Nebius Token Factory, and searches in Token Factory Sandboxes.
+              Built for the Nebius × NVIDIA Global AI Hackathon. The agent runs on NVIDIA Nemotron through Nebius Token Factory. Each candidate CPU is verified in its own isolated workspace.
             </p>
           </div>
           <nav aria-label="Footer" className="flex flex-col gap-2">
             <Link href="/runs/r_w1_final" className="text-ink-2 hover:text-ink">
-              Demo run
+              W1 run: TinyMaix
             </Link>
             <Link href="/runs/r_w2_final3" className="text-ink-2 hover:text-ink">
-              First real engine run
+              W2 run: ChaCha20
             </Link>
             <Link href="/how" className="text-ink-2 hover:text-ink">
               How it works
@@ -57,7 +57,7 @@ export function SiteFooter() {
             </Link>
           </nav>
           <p className="leading-relaxed text-ink-3">
-            Apache-2.0. Workload: TinyMaix by Sipeed (Apache-2.0). Core: PicoRV32 by Claire Wolf (ISC). The demo run is sample data in the engine&apos;s event format; its badge says so.
+            Apache-2.0. Workload: TinyMaix by Sipeed (Apache-2.0). Core: PicoRV32 by Claire Wolf (ISC). Every run shown here is a real engine run, replayed from its event log.
           </p>
         </div>
       </div>

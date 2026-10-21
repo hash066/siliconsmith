@@ -9,7 +9,6 @@ import type { RunController } from "@/lib/controller";
 import { BranchTree } from "../run/BranchTree";
 import { Ladder } from "../run/Ladder";
 import { OutlineTree } from "../run/OutlineTree";
-import { DemoBadge } from "../site/Brand";
 
 function Readout({ label, value, tone }: { label: string; value: string; tone?: "signal" }) {
   return (
@@ -64,7 +63,7 @@ function Body({ c }: { c: RunController }) {
               <Ladder node={node} dense />
             </div>
           ) : (
-            <p className="mt-3 text-[13px] leading-relaxed text-ink-3">Building the baseline core and profiling the workload in a sandbox…</p>
+            <p className="mt-3 text-[13px] leading-relaxed text-ink-3">Building the baseline core and profiling the workload…</p>
           )}
         </div>
       </div>
@@ -80,13 +79,15 @@ export function HeroInstrument() {
       <div className="flex h-11 items-center gap-3 border-b border-line px-4">
         <span className="h-2 w-2 shrink-0 rounded-full bg-signal anim-breathe" aria-hidden="true" />
         <span className="num truncate text-[12.5px] text-ink-2">runs/r_w1_final · TinyMaix int8 FC · 16× replay</span>
-        <DemoBadge className="ml-auto hidden sm:inline-flex" />
+        <span className="ml-auto hidden h-6 items-center rounded-full bg-signal-dim px-2.5 text-[12px] font-medium text-signal-ink sm:inline-flex" title="Recorded from a real engine run; nothing here is simulated">
+          Real run · replay
+        </span>
         <Link href="/runs/r_w1_final" className="shrink-0 text-[12.5px] text-signal-ink hover:underline">
           Open the run
         </Link>
       </div>
       {src.status === "ready" ? <Body c={src.controller} /> : <div className="graticule h-[300px] sm:h-[460px]" role="status" aria-label="Loading the demo run" />}
-      <figcaption className="sr-only">A recorded search over 32 candidate CPUs for TinyMaix&apos;s int8 dot product, replayed at 16× speed. Demo data.</figcaption>
+      <figcaption className="sr-only">A recorded search over candidate CPUs for TinyMaix&apos;s int8 dot product, replayed at 16× speed. Real engine run.</figcaption>
     </figure>
   );
 }
