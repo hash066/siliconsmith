@@ -173,7 +173,8 @@ class ContreeBackend:
     checkpoint image, so the child inherits the parent's build caches and becomes a checkpoint itself."""
 
     name = "contree"
-    WORKER = "cd /work/engine && python3 -m siliconsmith.worker"
+    WORKER = ("export PATH=/opt/oss-cad-suite/bin:$PATH SS_ROOT=/work PYTHONPATH=/work/engine PYTHONDONTWRITEBYTECODE=1; "
+              "cd /work/engine && python3 -m siliconsmith.worker")
 
     def __init__(self, base_image: str = "siliconsmith-base:latest", timeout_s: int = 3600):
         from contree_sdk import ContreeSync  # optional dependency
