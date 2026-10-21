@@ -146,7 +146,7 @@ function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: strin
           <Wordmark />
           <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-2 text-[13px] text-ink-3 md:flex">
             <span aria-hidden="true">/</span>
-            <Link href="/runs/r_w1_final" className="hover:text-ink">
+            <Link href="/runs/r_w1_contree3" className="hover:text-ink">
               Runs
             </Link>
             <span aria-hidden="true">/</span>
@@ -292,7 +292,7 @@ export function RunConsole({ runId, initialNode, start, speed }: { runId: string
             <h1 className="text-[22px] font-semibold text-ink">Run {runId} is not available</h1>
             <p className="mt-2 text-[14px] text-ink-2">{src.reason}</p>
             <div className="mt-5 flex justify-center gap-2">
-              <Link href="/runs/r_w1_final" className="inline-flex h-10 items-center rounded-md bg-signal px-4 text-[14px] font-medium text-on-signal">
+              <Link href="/runs/r_w1_contree3" className="inline-flex h-10 items-center rounded-md bg-signal px-4 text-[14px] font-medium text-on-signal">
                 Watch the W1 run
               </Link>
               <Link href="/runs/r_w2_final3" className="inline-flex h-10 items-center rounded-md border border-line-2 px-4 text-[14px] text-ink">

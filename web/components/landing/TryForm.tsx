@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ENGINE_URL } from "@/lib/controller";
 
 const PRESETS = [
-  { id: "w1", title: "TinyMaix int8 fully-connected layer", source: "sipeed/TinyMaix · tm_dot_prod", replay: "r_w1_final" },
+  { id: "w1", title: "TinyMaix int8 fully-connected layer", source: "sipeed/TinyMaix · tm_dot_prod", replay: "r_w1_contree3" },
   { id: "w2", title: "Monocypher ChaCha20", source: "LoupVaillant/Monocypher · rotl32 in the rounds", replay: "r_w2_final3" },
 ];
 

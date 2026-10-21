@@ -414,7 +414,7 @@ export function Report({ runId }: { runId: string }) {
         <main id="main" className="mx-auto max-w-[720px] px-4 py-24 text-center">
           <h1 className="text-[22px] font-semibold text-ink">No report for {runId}</h1>
           <p className="mt-2 text-ink-2">{src.reason}</p>
-          <Link href="/runs/r_w1_final/report" className="mt-5 inline-flex h-10 items-center rounded-md bg-signal px-4 text-[14px] font-medium text-on-signal">
+          <Link href="/runs/r_w1_contree3/report" className="mt-5 inline-flex h-10 items-center rounded-md bg-signal px-4 text-[14px] font-medium text-on-signal">
             Open the demo report
           </Link>
         </main>

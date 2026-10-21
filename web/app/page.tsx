@@ -52,6 +52,8 @@ function Result({ r, label, note }: { r: RunSummary; label: string; note: string
         <dd className="text-right text-ink">
           {r.baseFmaxMhz?.toFixed(1)} → {r.fmaxMhz?.toFixed(1)} MHz
         </dd>
+        <dt className="text-ink-3">Verified in</dt>
+        <dd className="text-right text-ink">{r.backend === "contree" ? `Token Factory Sandboxes · ${r.sandboxPeak} at once` : "isolated local workspaces"}</dd>
         <dt className="text-ink-3">Search</dt>
         <dd className="text-right text-ink">
           {r.nodes} CPUs · {usd(r.costUsd, 2)} · {Math.round(r.wallSeconds / 60)} min
@@ -66,7 +68,8 @@ function Result({ r, label, note }: { r: RunSummary; label: string; note: string
 }
 
 export default function Home() {
-  const w1 = summarize("r_w1_final");
+  const w1 = summarize("r_w1_contree3");
+  const w1local = summarize("r_w1_final");
   const w2 = summarize("r_w2_final3");
   const w1weak = summarize("r_w1_v3");
   return (
@@ -83,7 +86,7 @@ export default function Home() {
             proves the hardware correct, and measures the speedup and what it costs in area. The output is a pull request that changes your hardware.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/runs/r_w1_final" className="inline-flex h-12 items-center rounded-md bg-signal px-6 text-[15px] font-medium text-on-signal transition-transform duration-150 active:scale-[0.97]">
+            <Link href="/runs/r_w1_contree3" className="inline-flex h-12 items-center rounded-md bg-signal px-6 text-[15px] font-medium text-on-signal transition-transform duration-150 active:scale-[0.97]">
               Watch a real run
             </Link>
             <Link href="/try" className="inline-flex h-12 items-center rounded-md border border-line-2 px-6 text-[15px] text-ink transition-colors duration-150 hover:bg-raised">
@@ -107,7 +110,7 @@ export default function Home() {
             <Result
               r={w1}
               label="TinyMaix int8 fully-connected layer (W1)"
-              note="The hand-built reference instruction reaches 3.77× cycles at +3.16% area. The agent invented the same idea itself, then shrank its hardware and rewrote the loop around it."
+              note={`Every candidate was verified in its own Token Factory Sandbox, started from its parent's checkpoint image (${w1.sandboxOps} sandbox runs). The hand-built reference instruction reaches 3.77× cycles; the agent invented the same idea itself and its software polish went past it. A run on the local backend reached ${times(w1local.wallSpeedup)} wall-clock at ${pct(w1local.areaPct, 1)} area, because its area polish also shrank the hardware.`}
             />
             <Result
               r={w2}
@@ -116,11 +119,11 @@ export default function Home() {
             />
           </div>
           <p className="mt-5 text-[13px] text-ink-3">
-            Runs differ because the model does: of two W1 runs with Fmax measured on the final prompts, this one reached {times(w1.wallSpeedup)} and{" "}
+            Runs differ because the model does: of the W1 runs with Fmax measured, this one reached {times(w1.wallSpeedup)}, the local run above {times(w1local.wallSpeedup)} and{" "}
             <Link href={`/runs/${w1weak.id}`} className="text-signal-ink hover:underline">
               the other
             </Link>{" "}
-            {times(w1weak.wallSpeedup)}. The page shows the better run, not an average.
+            {times(w1weak.wallSpeedup)}. The page shows runs, not an average.
           </p>
         </section>
 

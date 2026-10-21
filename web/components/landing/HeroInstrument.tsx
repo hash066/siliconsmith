@@ -73,16 +73,16 @@ function Body({ c }: { c: RunController }) {
 
 /** The landing hero: the demo run replaying at 16×, looping. A real interface fragment, not a picture of one. */
 export function HeroInstrument() {
-  const src = useRunSource("r_w1_final", { autoplay: true, speed: 16, loop: true });
+  const src = useRunSource("r_w1_contree3", { autoplay: true, speed: 16, loop: true });
   return (
     <figure data-ui className="overflow-hidden rounded-xl border border-line bg-panel shadow-[var(--shadow-float)]">
       <div className="flex h-11 items-center gap-3 border-b border-line px-4">
         <span className="h-2 w-2 shrink-0 rounded-full bg-signal anim-breathe" aria-hidden="true" />
-        <span className="num truncate text-[12.5px] text-ink-2">runs/r_w1_final · TinyMaix int8 FC · 16× replay</span>
+        <span className="num truncate text-[12.5px] text-ink-2">runs/r_w1_contree3 · TinyMaix int8 FC · 16× replay</span>
         <span className="ml-auto hidden h-6 items-center rounded-full bg-signal-dim px-2.5 text-[12px] font-medium text-signal-ink sm:inline-flex" title="Recorded from a real engine run; nothing here is simulated">
           Real run · replay
         </span>
-        <Link href="/runs/r_w1_final" className="shrink-0 text-[12.5px] text-signal-ink hover:underline">
+        <Link href="/runs/r_w1_contree3" className="shrink-0 text-[12.5px] text-signal-ink hover:underline">
           Open the run
         </Link>
       </div>

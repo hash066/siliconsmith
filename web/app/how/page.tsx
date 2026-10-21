@@ -86,8 +86,9 @@ export default function How() {
         <h2 className="mt-16 text-[26px] font-semibold tracking-[-0.02em] text-ink">Where it runs, and what is not claimed</h2>
         <ul className="mt-4 max-w-[70ch] list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-ink-2">
           <li>
-            The runs on this site used the local backend: each candidate is verified in an isolated working directory on one machine. A Token Factory Sandboxes
-            backend (one checkpoint image per node) is implemented and tested against the same job protocol; it is not what produced these runs.
+            The headline W1 run was verified in Token Factory Sandboxes: each candidate runs from its parent&apos;s checkpoint image, and its result image is the checkpoint
+            its children branch from. The other runs on this site used the local backend (isolated working directories on one machine); each run page says which. Fmax
+            place-and-route runs on the orchestrating machine in both cases.
           </li>
           <li>Instructions are R-type with two source registers and no accumulate, because PicoRV32&apos;s co-processor port provides no third operand.</li>
           <li>
@@ -97,10 +98,10 @@ export default function How() {
         </ul>
 
         <div className="mt-14 flex flex-wrap gap-3">
-          <Link href="/runs/r_w1_final" className="inline-flex h-11 items-center rounded-md bg-signal px-5 text-[15px] font-medium text-on-signal">
+          <Link href="/runs/r_w1_contree3" className="inline-flex h-11 items-center rounded-md bg-signal px-5 text-[15px] font-medium text-on-signal">
             Watch the W1 run
           </Link>
-          <Link href="/runs/r_w1_final/report" className="inline-flex h-11 items-center rounded-md border border-line-2 px-5 text-[15px] text-ink hover:bg-raised">
+          <Link href="/runs/r_w1_contree3/report" className="inline-flex h-11 items-center rounded-md border border-line-2 px-5 text-[15px] text-ink hover:bg-raised">
             Read its report
           </Link>
         </div>

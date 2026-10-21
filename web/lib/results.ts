@@ -20,6 +20,9 @@ export interface RunSummary {
   nodes: number;
   wallSeconds: number;
   tokens: number;
+  backend: string;
+  sandboxPeak: number;
+  sandboxOps: number;
 }
 
 export function summarize(id: string): RunSummary {
@@ -43,5 +46,8 @@ export function summarize(id: string): RunSummary {
     nodes: s.completed.totals.nodes,
     wallSeconds: s.completed.totals.wall_s,
     tokens: s.completed.totals.tokens,
+    backend: s.backend ?? "local",
+    sandboxPeak: s.sandboxes.peak,
+    sandboxOps: s.sandboxes.total,
   };
 }

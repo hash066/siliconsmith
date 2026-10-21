@@ -5,7 +5,7 @@
 # vendored clones (fetched by scripts/vendor.sh); picorv32 core is copied into hw/
 _vendor/
 # build + runs
-runs/
+/runs/
 **/build/
 **/obj_dir/
 *.vcd

@@ -12,10 +12,10 @@ mkdirSync(out, { recursive: true });
 
 const SCREENS = [
   { name: "landing", path: "/", full: true, wait: 4000 },
-  { name: "run-demo-end", path: "/runs/r_w1_final?t=end&node=n1", full: false, wait: 2500 },
-  { name: "run-demo-cex", path: "/runs/r_w1_final?t=232&speed=1", full: false, wait: 2500 },
+  { name: "run-demo-end", path: "/runs/r_w1_contree3?t=end&node=n1", full: false, wait: 2500 },
+  { name: "run-demo-cex", path: "/runs/r_w1_contree3?t=232&speed=1", full: false, wait: 2500 },
   { name: "run-real", path: "/runs/r_m4_first?t=end", full: false, wait: 2500 },
-  { name: "report-demo", path: "/runs/r_w1_final/report", full: true, wait: 3000 },
+  { name: "report-demo", path: "/runs/r_w1_contree3/report", full: true, wait: 3000 },
   { name: "report-real", path: "/runs/r_m4_first/report", full: true, wait: 3000 },
   { name: "try", path: "/try", full: true, wait: 2000 },
   { name: "how", path: "/how", full: true, wait: 2000 },

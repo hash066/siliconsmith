@@ -56,9 +56,10 @@ profile ──► Ultra proposes k instructions ──► each candidate CPU = a
   protocol (`engine/siliconsmith/worker.py`): a job in, stage events and an outcome out. Three backends run
   it: `local` (in-process), `subprocess` (the exact sandbox protocol, in a separate process) and `contree`
   (**Nebius Token Factory Sandboxes**: each candidate runs from its parent's checkpoint image, and its result
-  image is the checkpoint its children branch from). **Every result in this README was produced with the
-  `local` backend.** The `contree` backend is implemented and tested against the same protocol, but Sandboxes
-  is not yet activated on our project, so it has not run a search. See `docs/feedback.md`.
+  image is the checkpoint its children branch from). **The `r_w1_contree3` run was verified in Token Factory Sandboxes**: 21 sandbox
+  runs, up to 8 at once, and every child started from its parent's checkpoint image (checked from the event log).
+  The other runs below used the `local` backend, and each says which in its row. Fmax place-and-route runs on the
+  orchestrating machine in both cases. Platform notes are in `docs/feedback.md`.
 * **Nemotron, routed by difficulty.**
 
   | Model | Role |
@@ -93,7 +94,8 @@ Nano 9K (GW1NR-9), **median of 3 seeds** (seed noise is about ±8%). Area is LUT
 
 | Workload (real open-source code) | Baseline | Best found | Cycles | Wall-clock | Area | Search | Run |
 |---|---|---|---|---|---|---|---|
-| TinyMaix `tm_dot_prod` (int8 NN layer) | 860,730 cycles | `dot4`, area- then software-polished | **4.04×** | **3.86×** (71.0 → 67.8 MHz) | +3.16% | 20 CPUs, 22 min, $0.56 | `r_w1_final` |
+| TinyMaix `tm_dot_prod` (int8 NN layer), **Token Factory Sandboxes** | 860,730 cycles | `dot4`, software-polished | **4.04×** | **3.76×** (71.0 → 66.2 MHz) | +4.83% | 21 CPUs, 19 min, $0.44 | `r_w1_contree3` |
+| TinyMaix `tm_dot_prod`, local backend | 860,730 cycles | `dot4`, area- then software-polished | **4.04×** | **3.86×** (71.0 → 67.8 MHz) | +3.16% | 20 CPUs, 22 min, $0.56 | `r_w1_final` |
 | Monocypher ChaCha20 (1 KiB) | 133,255 cycles | `xor.rotl12` + `chacha.xor.rotl8` (stacked) | **1.30×** | **1.22×** (71.0 → 66.6 MHz) | +3.04% | 22 CPUs, 30 min, $0.40 | `r_w2_final3` |
 
 Reference point: the hand-built `dot4.s8` (`siliconsmith golden`) reaches 3.77× cycles at +3.16%. The agent
@@ -109,6 +111,7 @@ found the same idea on its own, then its polish phase beat the hand-built softwa
 | `r_w1_final` | + real Fmax (the run above) | 4.04× | 3.86× | +3.16% |
 | `r_20261021_083715` | started through the HTTP API (k=3, depth 1, beam 1) | 4.04× | 3.86× | +3.16% |
 | `r_w1_v3` | same settings as `r_w1_final` | 3.32× | 3.17× | +3.16% |
+| `r_w1_contree3` | same settings, **on Token Factory Sandboxes** | 4.04× | 3.76× | +4.83% (area polish found no saving this time) |
 
 We report the best run, with the others shown above rather than hidden. W2 took three runs: the first two
 found nothing (truncated model JSON, then proposals with an immediate operand the co-processor port cannot
@@ -127,7 +130,7 @@ encode); each failure fixed a real engine or prompt problem, and the logs are ke
   web `/try` page run only the whitelisted workloads and do not accept arbitrary C.
 * **TinyMaix PR alignment.** The generated TinyMaix patch reads int8 buffers as 32-bit words and so assumes
   4-byte-aligned buffers; the PR body says so.
-* **Local backend.** The runs here did not use Token Factory Sandboxes (see above).
+* **Sandboxes covers verification, not Fmax.** Fmax place-and-route runs on the orchestrating machine, not in a sandbox. Only `r_w1_contree3` used Sandboxes; the W2 run and the other W1 runs used the local backend.
 
 ## Other surfaces
 

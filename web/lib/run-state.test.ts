@@ -213,3 +213,39 @@ describe("r_m4_second (real engine run before the polish phase)", () => {
     expect(s.nodes.n3.pruned?.reason).toMatch(/formal counterexample/);
   });
 });
+
+describe("r_w1_contree3 (real run on Token Factory Sandboxes)", () => {
+  const events = load("r_w1_contree3");
+  const s = reduceAll(events);
+
+  it("has no contract errors and ran on the contree backend", () => {
+    expect(validateStream(events).filter((i) => i.level === "error")).toEqual([]);
+    expect(s.backend).toBe("contree");
+    expect(s.sandboxes.total).toBe(s.completed!.totals.sandboxes);
+    expect(s.sandboxes.peak).toBeGreaterThan(1);
+  });
+
+  it("starts every child from its parent's checkpoint image", () => {
+    const parent = new Map<string, string | null>();
+    const imageOf = new Map<string, string>();
+    for (const e of events) {
+      if (e.type === "node.created") parent.set(e.node_id, e.parent_id);
+      if (e.type === "sandbox.op" && e.status === "succeeded" && e.to_image && !imageOf.has(e.node_id)) imageOf.set(e.node_id, e.to_image);
+    }
+    let checked = 0;
+    for (const e of events) {
+      if (e.type !== "sandbox.op" || e.status !== "started") continue;
+      const p = parent.get(e.node_id);
+      if (!p || p === "root") continue;
+      expect(e.from_image).toBe(imageOf.get(p));
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(5);
+  });
+
+  it("reproduces the winner", () => {
+    expect(s.best).toBe("n1.2.1");
+    expect(s.nodes["n1.2.1"].score?.cycles).toBe(213_022);
+    expect(s.nodes["n1.2.1"].timing?.seeds).toBe(3);
+  });
+});
