@@ -66,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git -C target config user.name "SiliconSmith"
-          git -C target config user.email "siliconsmith@users.noreply.github.com"
+          git -C target config user.name "${{ github.actor }}"
+          git -C target config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           bash -lc '/opt/ss-venv/bin/siliconsmith pr bundles/r_gh_${{ github.run_id }} --repo target \
             --function ${{ steps.cmd.outputs.fn }} --base ${{ github.event.repository.default_branch }} --push --open'

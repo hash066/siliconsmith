@@ -16,7 +16,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-PR_FOOTER = "\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n"
 ARCH = "RV32SS"
 
 
@@ -112,9 +111,8 @@ def prepare(bundle: Path, repo: Path, fn: str, branch: str | None = None) -> dic
               "- Caveat: the rewrite reads int8 buffers as 32-bit words, so they must be 4-byte aligned.\n\n---\n\n"
             + report)
     _git(repo, "add", "-A")
-    _git(repo, "-c", "user.name=SiliconSmith", "-c", "user.email=siliconsmith@users.noreply.github.com",
-         "commit", "-q", "-m", title)
-    return {"branch": branch, "title": title, "body": body + PR_FOOTER, "repo": str(repo)}
+    _git(repo, "commit", "-q", "-m", title)  # authored by the checkout's own git identity: the user's
+    return {"branch": branch, "title": title, "body": body, "repo": str(repo)}
 
 
 def push_and_open(info: dict, remote: str = "origin", base: str = "main", upstream: str | None = None) -> str:

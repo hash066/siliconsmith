@@ -20,3 +20,7 @@ node_modules/
 # formal scratch dirs
 hw/formal/**/work*/
 *.egg-info/
+
+# local agent tooling and handoff notes
+.claude/
+docs/HANDOFF.md
