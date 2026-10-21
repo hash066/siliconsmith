@@ -34,7 +34,7 @@ export function OutlineTree({ state, selected, onSelect }: { state: RunState; se
             >
               <GlyphIcon visual={visual} />
               <span className="num min-w-0 flex-1 truncate text-[13px]" style={{ color: visual === "nogain" || visual === "failed" || visual === "budget" ? "var(--ink-3)" : "var(--ink)" }}>
-                {isRoot ? "baseline" : n.proposal?.kind === "area" ? "area polish" : n.proposal?.kind === "software" ? "sw polish" : n.proposal?.mnemonic}
+                {isRoot ? "baseline" : n.proposal?.kind === "area" ? "area opt" : n.proposal?.kind === "software" ? "sw opt" : n.proposal?.mnemonic}
                 <span className="ml-2 text-[11px] text-ink-3">{id}</span>
               </span>
               {!isRoot && (

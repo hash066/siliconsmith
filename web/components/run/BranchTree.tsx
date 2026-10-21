@@ -42,6 +42,8 @@ export function useTreeLayout(state: RunState, row: number, colW: number, rootW:
   }, [state.nodes, state.rootId, state.config?.max_depth, row, colW, rootW]);
 }
 
+const shorten = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
 export function BranchTree({
   state,
   selected,
@@ -119,7 +121,7 @@ export function BranchTree({
             const isRoot = n.depth === 0;
             const val = rowValue(node, state);
             const isSel = selected === n.id;
-            const polish = node.proposal?.kind === "area" ? "area polish" : node.proposal?.kind === "software" ? "sw polish" : null;
+            const polish = node.proposal?.kind === "area" ? "area opt" : node.proposal?.kind === "software" ? "sw opt" : null;
             const mnemonic = isRoot ? "baseline" : (polish ?? node.proposal?.mnemonic ?? n.id);
             const dim = visual === "nogain" || visual === "failed" || visual === "budget";
             const label = `${n.id} ${mnemonic}: ${VISUAL_LABEL[visual]}${val.text ? `, ${val.text}` : ""}`;
@@ -168,7 +170,7 @@ export function BranchTree({
                   fill={dim ? "var(--ink-3)" : "var(--ink)"}
                   fontWeight={visual === "best" ? 600 : 400}
                 >
-                  {mnemonic}
+                  {shorten(mnemonic, compact ? 9 : 10)}
                 </text>
                 {!isRoot && (
                   <g transform={`translate(${compact ? 72 : 76}, -4)`} aria-hidden="true">
