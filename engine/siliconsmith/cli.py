@@ -124,6 +124,22 @@ def cmd_accelerate(args: argparse.Namespace) -> int:
     return 0 if best.id != "root" else 3
 
 
+def cmd_pr(args: argparse.Namespace) -> int:
+    """Turn a bundle into a branch on a TinyMaix checkout; push and open the PR only with --push --open."""
+    from . import pr
+
+    try:
+        info = pr.prepare(Path(args.bundle), Path(args.repo), args.function, args.branch)
+        url = pr.push_and_open(info, base=args.base, upstream=args.upstream) if args.push and args.open else None
+    except pr.PrError as e:
+        _emit({"ok": False, "error": str(e)})
+        return 2
+    (Path(args.repo) / ".git" / "SILICONSMITH_PR_BODY.md").write_text(info["body"], encoding="utf-8")
+    _emit({"branch": info["branch"], "title": info["title"], "pr_url": url,
+           "pr_body": str(Path(args.repo) / ".git" / "SILICONSMITH_PR_BODY.md"), "pushed": bool(url)})
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="siliconsmith",
@@ -154,10 +170,19 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--run-id")
         if name == "accelerate":
             p.add_argument("--out", default="siliconsmith-out", help="bundle directory")
+    p = sub.add_parser("pr", help="turn a bundle into a branch (and with --push --open, a PR) on a TinyMaix checkout")
+    p.add_argument("bundle")
+    p.add_argument("--repo", required=True, help="path to a TinyMaix clone (must be clean)")
+    p.add_argument("--function", default="tm_dot_prod")
+    p.add_argument("--branch")
+    p.add_argument("--base", default="main")
+    p.add_argument("--upstream", help="owner/repo to open the PR against (when --repo is a fork)")
+    p.add_argument("--push", action="store_true", help="push the branch (outward-facing)")
+    p.add_argument("--open", action="store_true", help="open the PR with gh (needs --push)")
     args = ap.parse_args(argv)
     try:
         return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden, "run": cmd_run,
-                "accelerate": cmd_accelerate}[args.cmd](args)
+                "accelerate": cmd_accelerate, "pr": cmd_pr}[args.cmd](args)
     except ToolError as e:
         _emit({"ok": False, "stage": e.stage, "error": e.message, "log": e.log})
         return 2
