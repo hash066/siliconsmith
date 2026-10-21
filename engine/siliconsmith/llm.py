@@ -96,13 +96,14 @@ class Nemotron:
         think: bool,
         node_id: str | None = None,
         max_tokens: int = 12000,
-        attempts: int = 2,
+        attempts: int = 3,
     ) -> tuple[T, Reply]:
         """Ask for JSON matching `schema`; on parse/validation failure, show the model its error once."""
         msgs = list(messages)
         last_err = ""
-        for _ in range(attempts):
-            rep = self.chat(tier, role, msgs, think=think, node_id=node_id, max_tokens=max_tokens)
+        for i in range(attempts):
+            # A reply that fails to parse is usually thinking that ate the token budget: retry without thinking.
+            rep = self.chat(tier, role, msgs, think=think and i == 0, node_id=node_id, max_tokens=max_tokens)
             try:
                 return schema.model_validate(extract_json(rep.content)), rep
             except (ValueError, ValidationError) as e:
