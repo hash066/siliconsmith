@@ -5,13 +5,12 @@
 SiliconSmith profiles a C hot loop, **invents a custom RISC-V instruction** for it, writes the hardware
 (Verilog) and the software that uses it, **proves the hardware correct**, measures the real speedup and
 area, and hands you a reviewable bundle (or pull request). Nemotron is the architect and the engineer;
-every candidate CPU is built and verified in its own sandbox.
+every candidate CPU is built and verified in its own isolated workspace.
 
 ```bash
 pip install -e 'engine[sandboxes]'          # from this repo (see "Run it locally")
 siliconsmith accelerate w1 --area-budget 5
-#  run r_20261021_101500 on contree
-#    watch: https://<console>/runs/r_20261021_101500
+#  run r_20261021_101500 on local
 #  -> siliconsmith-out/r_20261021_101500/{rtl/, include/, src/, REPORT.md}
 ```
 
@@ -53,9 +52,13 @@ profile ──► Ultra proposes k instructions ──► each candidate CPU = a
   + the software rewritten to use it. Each round, Nemotron 3 Ultra reads the remaining hot spots and
   proposes new instructions. The winners are then **polished by the agent itself**: an area pass
   (same function, less hardware, formally re-proven) and a software pass (same hardware, faster code).
-* **Sandboxes.** On Nebius Token Factory Sandboxes, each candidate runs in its own microVM **started from
-  its parent's checkpoint image**, and its result image becomes the checkpoint its children branch from,
-  so build caches and verified state flow down the tree. Up to 50 run in parallel.
+* **Isolation and sandboxes.** Every candidate is evaluated by a worker that speaks one small job
+  protocol (`engine/siliconsmith/worker.py`): a job in, stage events and an outcome out. Three backends run
+  it: `local` (in-process), `subprocess` (the exact sandbox protocol, in a separate process) and `contree`
+  (**Nebius Token Factory Sandboxes**: each candidate runs from its parent's checkpoint image, and its result
+  image is the checkpoint its children branch from). **Every result in this README was produced with the
+  `local` backend.** The `contree` backend is implemented and tested against the same protocol, but Sandboxes
+  is not yet activated on our project, so it has not run a search. See `docs/feedback.md`.
 * **Nemotron, routed by difficulty.**
 
   | Model | Role |
@@ -84,12 +87,59 @@ multiplier, hardware divide and barrel shifter.
 
 ## Results
 
-| Workload (real open-source code) | Baseline | Best found | Speedup | Area | Nemotron cost |
-|---|---|---|---|---|---|
-| TinyMaix `tm_dot_prod` (int8 NN layer) | 860,730 cycles | `dot4` | **3.32×** | +4.8% LUT | $0.33 |
-| Monocypher `chacha20_rounds` | 133,255 cycles | (pending) | | | |
+All numbers are from real engine runs (the event logs are in `web/public/replays/`, replayable in the run
+console). Wall-clock speedup = cycle speedup × Fmax ratio, with Fmax from nextpnr place-and-route for a Tang
+Nano 9K (GW1NR-9), **median of 3 seeds** (seed noise is about ±8%). Area is LUT-equivalents of the whole core.
 
-*(Updated from the hero runs; each row links to its replay and report.)*
+| Workload (real open-source code) | Baseline | Best found | Cycles | Wall-clock | Area | Search | Run |
+|---|---|---|---|---|---|---|---|
+| TinyMaix `tm_dot_prod` (int8 NN layer) | 860,730 cycles | `dot4`, area- then software-polished | **4.04×** | **3.86×** (71.0 → 67.8 MHz) | +3.16% | 20 CPUs, 22 min, $0.56 | `r_w1_final` |
+| Monocypher ChaCha20 (1 KiB) | 133,255 cycles | `xor.rotl12` + `chacha.xor.rotl8` (stacked) | **1.30×** | **1.22×** (71.0 → 66.6 MHz) | +3.04% | 22 CPUs, 30 min, $0.40 | `r_w2_final3` |
+
+Reference point: the hand-built `dot4.s8` (`siliconsmith golden`) reaches 3.77× cycles at +3.16%. The agent
+found the same idea on its own, then its polish phase beat the hand-built software (4.04×).
+
+**Results vary from run to run, because the model does.** Every W1 run we made, in order:
+
+| Run | What changed | Cycles | Wall-clock | Area |
+|---|---|---|---|---|
+| `r_m4_second` | before the polish phase existed | 3.32× | n/a | +4.83% |
+| `r_w1_hero` | first polish run | 2.68× | n/a | +3.16% |
+| `r_w1_hero2` | polish prompt tuned, up to 3 software passes | 3.90× | n/a | +3.16% |
+| `r_w1_final` | + real Fmax (the run above) | 4.04× | 3.86× | +3.16% |
+| `r_20261021_083715` | started through the HTTP API (k=3, depth 1, beam 1) | 4.04× | 3.86× | +3.16% |
+| `r_w1_v3` | same settings as `r_w1_final` | 3.32× | 3.17× | +3.16% |
+
+We report the best run, with the others shown above rather than hidden. W2 took three runs: the first two
+found nothing (truncated model JSON, then proposals with an immediate operand the co-processor port cannot
+encode); each failure fixed a real engine or prompt problem, and the logs are kept.
+
+## Limitations (stated plainly)
+
+* **Two source registers.** PicoRV32's co-processor port gives an instruction `rs1` and `rs2` and no accumulator
+  or immediate, so ideas like a multiply-accumulate (T-Head's `smaqa` reads three registers) or a rotate by a
+  constant need one instruction per constant. This caps W2 at two fused XOR-rotates inside the area budget.
+* **No compiler backend.** Software calls instructions through inline assembly (`.insn`). A production flow
+  would teach GCC/LLVM the instruction.
+* **Simulation and FPGA place-and-route, not silicon.** L6 (a physical board) has not run. Fmax is an estimate
+  from nextpnr with about ±8% seed noise.
+* **Two harnessed workloads.** A new kernel needs a test harness and a host differential check. The API and the
+  web `/try` page run only the whitelisted workloads and do not accept arbitrary C.
+* **TinyMaix PR alignment.** The generated TinyMaix patch reads int8 buffers as 32-bit words and so assumes
+  4-byte-aligned buffers; the PR body says so.
+* **Local backend.** The runs here did not use Token Factory Sandboxes (see above).
+
+## Other surfaces
+
+* **HTTP API** (`engine/siliconsmith/api.py`): `POST /api/runs`, SSE `GET /api/runs/{id}/events`, `GET /api/runs`.
+  Whitelisted workloads, capped parameters, per-IP and daily-spend limits.
+  `uvicorn siliconsmith.api:app --host 0.0.0.0 --port 8080`.
+* **Pull request** (`siliconsmith pr <bundle> --repo <TinyMaix clone>`): creates a branch with
+  `hw/siliconsmith/`, `src/arch_rv32ss.h` (`TM_ARCH_RV32SS`) and the report. It pushes and opens a PR only with
+  `--push --open`. A GitHub Actions template for `/siliconsmith accelerate <fn>` comments is in
+  `integrations/github/`.
+* **Run console** (`web/`, Next.js): `cd web && npm install && npm run dev`. It replays the recorded runs without a
+  backend, and shows a live run when `NEXT_PUBLIC_ENGINE_URL` points at the API.
 
 ## Run it locally
 
