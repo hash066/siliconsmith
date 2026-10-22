@@ -149,3 +149,29 @@ def resolve_fact(library: dict[str, Part], fact_id: str) -> Provenance | None:
         return None
     part = library.get(fact_id[5:].split(".", 1)[0])
     return part.fact_provenance().get(fact_id) if part else None
+
+
+def describe_fact(library: dict[str, Part], fact_id: str) -> dict | None:
+    """What an evidence id says, for a UI chip: its text and provenance. None when the id is not in the library."""
+    prov = resolve_fact(library, fact_id)
+    if prov is None:
+        return None
+    part = library[fact_id[5:].split(".", 1)[0]]
+    rest = fact_id[len(f"part:{part.id}."):]
+    if rest == "pin_table":
+        text = f"{part.name}: pin table"
+    else:
+        pin_name, _, cap = rest.partition(".")
+        pin = next((p for p in part.pins if p.name.lower() == pin_name), None)
+        fact = part.fact(rest)
+        if fact is not None:
+            text = fact.text
+        elif pin is not None and cap:
+            text = f"{part.name} pin {pin.name} has capability '{cap}'"
+        elif pin is not None:
+            text = (f"{part.name} pin {pin.name} (pad {pin.number}), {pin.direction}"
+                    + (f", capabilities: {', '.join(pin.capabilities)}" if pin.capabilities else ""))
+        else:
+            text = rest
+    return {"id": fact_id, "part": part.id, "origin": part.origin, "text": text, "source": prov.source,
+            "section": prov.section, "citation_checked": prov.citation_checked, "url": prov.url}

@@ -23,7 +23,6 @@ from typing import Any
 
 from . import faults
 from .agent import LADDER_EVENT, AgentResult, Brief, propose_design, repair_design
-from .checks import IMPLEMENTED_RUNGS
 from .export import bom, kicad_netlist
 from .netlist import dump_design
 from .parts import Part, load_library
@@ -57,41 +56,57 @@ def load_env_file(path: Path) -> None:
         os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def write_artifacts(result: AgentResult, library: dict[str, Part], out_dir: Path, bus: Any) -> list[dict[str, str]]:
-    """Write design JSON, KiCad netlist, firmware header and BOM for a PASSING final attempt; emit artifact.created."""
+def build_artifacts(result: AgentResult, library: dict[str, Part]) -> list[dict[str, str]]:
+    """Design JSON, KiCad netlist, firmware header and BOM of a PASSING final attempt, with the SHA-256 of each text
+    (UTF-8, LF line endings). Empty for a failed run. Pure: nothing is written."""
     final = result.final
     if not result.passed or final is None:
         return []
-    out_dir.mkdir(parents=True, exist_ok=True)
     files = {
         "design": ("design.json", dump_design(final.design)),
         "kicad-netlist": ("netlist.net", kicad_netlist(final.design, library)),
         "firmware-header": ("pins.h", final.header),
         "bom": ("bom.json", json.dumps(bom(final.design, library), indent=2) + "\n"),
     }
+    return [{"kind": kind, "path": name, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "content": text}
+            for kind, (name, text) in files.items()]
+
+
+def write_artifacts(result: AgentResult, library: dict[str, Part], out_dir: Path, bus: Any) -> list[dict[str, str]]:
+    """Write the artifacts of a PASSING final attempt to out_dir and emit artifact.created for each."""
     made = []
-    for kind, (name, text) in files.items():
-        path = out_dir / name
-        path.write_text(text, encoding="utf-8", newline="\n")
-        digest = _sha256(path)
-        bus.emit("artifact.created", kind=kind, path=name, sha256=digest, node_id=final.node_id)
-        made.append({"kind": kind, "path": name, "sha256": digest})
+    for art in build_artifacts(result, library):
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / art["path"]).write_text(art["content"], encoding="utf-8", newline="\n")
+        bus.emit("artifact.created", kind=art["kind"], path=art["path"], sha256=art["sha256"],
+                 node_id=result.final.node_id)
+        made.append({k: art[k] for k in ("kind", "path", "sha256")})
     return made
 
 
-def run_board(llm: Any, bus: Any, brief: Brief, library: dict[str, Part], *, mode: str = "propose",
-              fault_id: str | None = None, out_dir: Path, max_repairs: int = 2) -> AgentResult:
-    t0 = time.monotonic()
+def emit_started(bus: Any, brief: Brief, *, fault_id: str | None = None, max_repairs: int = 2) -> None:
     bus.emit("run.started", domain="board", ladder=LADDER_EVENT,
              workload={"id": TEMPLATE_ID, "title": brief.name + (f" (injected fault: {fault_id})" if fault_id else ""),
                        "lang": "c"},
              config={"area_budget_pct": 0, "beam": 1, "k_root": 1, "k_child": 1, "max_depth": max_repairs + 1,
                      "max_concurrency": 1},
              backend="local")
+
+
+def emit_finished(bus: Any, result: AgentResult, llm: Any, t0: float) -> None:
+    if result.passed:
+        bus.emit("run.completed", best_node_id=result.final.node_id, pareto=[result.final.node_id],
+                 totals={"nodes": len(result.attempts), "sandboxes": 0, "cost_usd": round(result.cost_usd, 6),
+                         "tokens": getattr(llm, "tokens", 0), "wall_s": round(time.monotonic() - t0, 1)},
+                 report={})
+    else:
+        bus.emit("run.failed", error=result.error or "ladder did not pass")
+
+
+def run_board(llm: Any, bus: Any, brief: Brief, library: dict[str, Part], *, mode: str = "propose",
+              fault_id: str | None = None, out_dir: Path, max_repairs: int = 2) -> AgentResult:
+    t0 = time.monotonic()
+    emit_started(bus, brief, fault_id=fault_id, max_repairs=max_repairs)
     try:
         if mode == "repair":
             if not fault_id:
@@ -111,14 +126,8 @@ def run_board(llm: Any, bus: Any, brief: Brief, library: dict[str, Part], *, mod
     attempts_dir.mkdir(parents=True, exist_ok=True)
     for att in result.attempts:
         (attempts_dir / f"{att.node_id}.json").write_text(dump_design(att.design), encoding="utf-8", newline="\n")
-    artifacts = write_artifacts(result, library, out_dir, bus)
-    if result.passed:
-        bus.emit("run.completed", best_node_id=result.final.node_id, pareto=[result.final.node_id],
-                 totals={"nodes": len(result.attempts), "sandboxes": 0, "cost_usd": round(result.cost_usd, 6),
-                         "tokens": getattr(llm, "tokens", 0), "wall_s": round(time.monotonic() - t0, 1)},
-                 report={})
-    else:
-        bus.emit("run.failed", error=result.error or "ladder did not pass")
+    write_artifacts(result, library, out_dir, bus)
+    emit_finished(bus, result, llm, t0)
     if hasattr(bus, "close"):
         bus.close()
     return result
