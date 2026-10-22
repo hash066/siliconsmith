@@ -1,4 +1,5 @@
-// Event contract v1.3 — mirrors docs/contracts/events.md (v1.1 stage order + nullable fmax; v1.2 polish nodes; v1.3 node.timing).
+// Event contract v1.3 + v2 (additive) — mirrors docs/contracts/events.md (v1.1 stage order + nullable fmax; v1.2 polish nodes; v1.3 node.timing;
+// v2: run.started.domain/ladder/tool_versions, free-string node.stage.stage for non-silicon domains, artifact.created). The envelope `v` stays 1.
 // The web app derives everything it renders from a stream of these events.
 
 export const CONTRACT_VERSION = 1 as const;
@@ -14,6 +15,7 @@ export type EventType =
   | "node.pruned"
   | "node.expanded"
   | "node.timing"
+  | "artifact.created"
   | "llm.call"
   | "sandbox.op"
   | "log";
@@ -40,8 +42,23 @@ export interface EventBase {
   type: EventType;
 }
 
+/** v2: one rung of a domain's verification ladder, as announced by `run.started.ladder`. */
+export interface LadderRung {
+  id: string;
+  label: string;
+  tool?: string;
+}
+
+export const DEFAULT_DOMAIN = "silicon";
+
 export interface RunStarted extends EventBase {
   type: "run.started";
+  /** v2: which workbench produced the run. Absent = "silicon". */
+  domain?: string;
+  /** v2: the domain's rung list (id, label, tool). Absent = the silicon L1..L6 ladder. */
+  ladder?: LadderRung[];
+  /** v2, optional: tool name -> version string, when the engine records it. The UI never invents a version. */
+  tool_versions?: Record<string, string>;
   workload: { id: string; title: string; source_repo?: string; source_path?: string; lang: "c" };
   config: {
     area_budget_pct: number;
@@ -120,10 +137,13 @@ export interface StageArtifacts {
   counterexample?: Counterexample;
 }
 
+/** v2: silicon stages are the `Stage` union; other domains use free strings (typically their ladder rung ids). */
+export type StageName = Stage | (string & {});
+
 export interface NodeStage extends EventBase {
   type: "node.stage";
   node_id: NodeId;
-  stage: Stage;
+  stage: StageName;
   status: StageStatus;
   attempt: number;
   detail?: string;
@@ -166,6 +186,16 @@ export interface NodeTiming extends EventBase {
   wall_speedup: number;
   seeds: number;
   samples_mhz?: number[];
+}
+
+/** v2: a file the run produced (netlist, STL, bundle...). `sha256` is the lowercase hex digest of the file at `path`. */
+export interface ArtifactCreated extends EventBase {
+  type: "artifact.created";
+  kind: string;
+  path: string;
+  sha256: string;
+  /** Optional: the node the artifact belongs to. */
+  node_id?: NodeId | null;
 }
 
 export interface LlmCall extends EventBase {
@@ -221,6 +251,7 @@ export type RunEvent =
   | NodePruned
   | NodeExpanded
   | NodeTiming
+  | ArtifactCreated
   | LlmCall
   | SandboxOp
   | LogEvent;

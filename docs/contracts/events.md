@@ -140,3 +140,34 @@ interface NodeTiming extends EventBase {
   samples_mhz?: number[];    // per-seed Fmax
 }
 ```
+
+## v2 (additive): domains, ladders and artifacts
+
+Event contract v2 lets Board and Matter runs share the same stream shape as Silicon. **It is additive**: the envelope `v` stays `1`, and every v1.x stream (all replays in `web/public/replays`) is still valid and renders unchanged. A stream without the new fields is a `silicon` run.
+
+```ts
+interface RunStarted {            // new optional fields
+  domain?: string;                // "silicon" (default) | "board" | "matter"
+  ladder?: Array<{ id: string; label: string; tool?: string }>;  // the domain's rungs, in order; ids unique
+  tool_versions?: Record<string, string>;  // optional: tool name -> version, if the engine records it
+}
+
+interface NodeStage {
+  stage: Stage | string;          // free string for non-silicon domains (typically a ladder rung id)
+}
+
+interface ArtifactCreated extends EventBase {
+  type: "artifact.created";
+  kind: string;                   // "kicad-netlist", "stl", "bundle", ...
+  path: string;                   // path of the file, relative to the run's output directory
+  sha256: string;                 // lowercase hex, 64 chars, digest of the file at `path`
+  node_id?: NodeId | null;        // optional: the node the artifact belongs to
+}
+```
+
+Rules:
+- `domain` absent means `silicon`. For `silicon`, stage names and order follow v1.1 exactly. For any other domain the validator accepts any non-empty `stage` string, does not apply the silicon stage order or the "fail is followed by implement" repair rule, and does not require `node.scored` to follow a `synth` pass.
+- `ladder`, when present, is a list of `{id, label, tool?}` with unique non-empty ids. The UI shows a rung's label as a claim only when the rung passed.
+- `artifact.created.sha256` must be 64 lowercase hex characters; a `node_id`, if given, must already exist. The UI shows the hash in the evidence drawer and never computes or invents one.
+- `tool_versions` is optional and not emitted by the engine today; the UI shows "version not recorded in this run's event log" when it is absent. It never guesses a version.
+- Not yet specified for non-silicon domains: a domain-specific replacement for `node.scored` (the v1 `ladder: L1..L6` map). Until it exists, the validator still requires the v1 fields on `node.scored`.
