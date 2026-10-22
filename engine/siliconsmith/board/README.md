@@ -42,7 +42,7 @@ Evidence ids look like `part:esp32.gpio12.strapping` and resolve through `parts.
 | B1 | Netlist is well formed | implemented |
 | B2 | Electrical limits respected (curated facts) | implemented |
 | B3 | Bus and connector rules satisfied (curated facts) | implemented |
-| B4 | Firmware matches the netlist | pending |
+| B4 | Firmware matches the netlist | implemented |
 | B5 | Battery estimate meets target (model, not measured) | pending |
 
 B2 checks (net voltage = what the net's `power_out` pins declare; passives are not traced): supply pins within
@@ -59,6 +59,11 @@ tolerance; the USB-IF tolerance was not read). Bus capacitance and mode are **de
 without them the rise-time check is unknown. The I2C limits come from TI app note SLVA689A (read in full, it quotes
 the I2C spec; the spec itself was not read).
 
+B4 checks: for every function the firmware header and the netlist agree on pin and use; the MCU pin is wired to the
+assigned net; no input-only pin is driven; no flash pin and no strapping pin is used (conservative: any use of a
+strapping pin fails, the level at reset is not analysed); no pin serves two functions. The `pin_mismatch` demo fault is
+flagged twice, for the mismatch and because GPIO12 is a strapping pin.
+
 B1 checks: every connected pin exists in its part's pin table; required pins are connected; a pin is on
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the
 rung, otherwise an unknown finding (part not in the library, driver direction unknown) makes it unknown.
@@ -70,9 +75,9 @@ implemented rungs stay silent on faults they do not own.
 
 | Fault | Rung that will catch it | Status |
 |---|---|---|
-| pin_mismatch | B4 | pending |
-| strapping_pin_misuse | B4 | pending |
-| input_only_output | B4 | pending |
+| pin_mismatch | B4 | detected |
+| strapping_pin_misuse | B4 | detected |
+| input_only_output | B4 | detected |
 | i2c_pullup_too_large | B3 | detected |
 | missing_cc_resistors | B3 | detected |
 | regulator_overload | B2 | detected |

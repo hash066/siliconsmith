@@ -100,6 +100,6 @@ def test_b3_stays_silent_on_faults_owned_by_other_rungs():
 
 def test_ladder_includes_b3_and_skips_it_when_b1_fails():
     clean = {r.rung: r.status for r in run_ladder(reference_design(), LIB)}
-    assert clean == {"B1": "pass", "B2": "pass", "B3": "pass"}
+    assert clean == {"B1": "pass", "B2": "pass", "B3": "pass", "B4": "pass"}
     broken = {r.rung: r.status for r in run_ladder(inject_fault(reference_design(), "nonexistent_pin"), LIB)}
-    assert broken == {"B1": "fail", "B2": "unknown", "B3": "unknown"}
+    assert broken == {"B1": "fail", "B2": "unknown", "B3": "unknown", "B4": "unknown"}

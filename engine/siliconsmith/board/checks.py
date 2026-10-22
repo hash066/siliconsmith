@@ -1,4 +1,4 @@
-"""Board ladder, deterministic code only (no LLM). Implemented: B1, B2 and B3.
+"""Board ladder, deterministic code only (no LLM). Implemented: B1 to B4.
 
 B1 "Netlist is well formed": every connected pin exists in its part's pin table; required pins are
 connected; no pin sits on two nets; no net has two output drivers. Status rules: any failed
@@ -24,7 +24,7 @@ RUNG_LABELS = {
     "B4": "Firmware matches the netlist",
     "B5": "Battery estimate meets target (model, not measured)",
 }
-IMPLEMENTED_RUNGS = ("B1", "B2", "B3")
+IMPLEMENTED_RUNGS = ("B1", "B2", "B3", "B4")
 
 
 class Finding(BaseModel):
@@ -485,10 +485,90 @@ def run_b3(design: Design, library: dict[str, Part]) -> CheckResult:
                              _b3_addresses(design, parts, bus), _b3_usbc(design, parts)])
 
 
+def run_b4(design: Design, library: dict[str, Part]) -> CheckResult:
+    """Firmware pin header against the netlist: same pin and use for every function, the netlist really wires that
+    pin to the stated net, no input-only pin driven, no flash pin used, no strapping pin used. The strapping rule is
+    deliberately conservative (any use fails): it does not analyse the level present at reset."""
+    mcu = design.instance(design.mcu_ref) if design.mcu_ref else None
+    part = library.get(mcu.part) if mcu else None
+    if mcu is None or part is None:
+        why = "mcu_ref does not name an instance" if mcu is None else f"MCU part {mcu.part!r} not in library"
+        return _summarise("B4", [Finding(check="MCU known", status="unknown", detail=why)])
+
+    asg = {a.function: a for a in design.mcu_assignments}
+    fw = {f.function: f for f in design.firmware_pins}
+
+    # firmware and netlist name the same functions on the same pins with the same use
+    fails, ev_fail, ev_ok = [], [], []
+    for fn, f in sorted(fw.items()):
+        a = asg.get(fn)
+        if a is None:
+            fails.append(f"firmware uses {fn} on {f.pin} but the netlist has no such function")
+        elif a.pin != f.pin:
+            fails.append(f"{fn}: firmware says {f.pin}, netlist wires {a.pin}")
+            ev_fail += [part.pin_fact_id(p) for p in (f.pin, a.pin) if part.pin(p)]
+        elif a.use != f.use:
+            fails.append(f"{fn} on {f.pin}: firmware says {f.use}, netlist says {a.use}")
+            ev_fail.append(part.pin_fact_id(f.pin))
+        else:
+            ev_ok.append(part.pin_fact_id(f.pin))
+    for fn, a in sorted(asg.items()):
+        if fn not in fw:
+            fails.append(f"netlist wires {fn} on {a.pin} but the firmware header does not declare it")
+    agree = _finding("firmware matches netlist", fails, [], "firmware and netlist agree on every function, pin and use",
+                     ev_fail, ev_ok)
+
+    # the netlist wires each assigned pin to the net the assignment names
+    fails, ev_fail, ev_ok = [], [], []
+    for fn, a in sorted(asg.items()):
+        nets = design.nets_of(mcu.ref, a.pin)
+        if part.pin(a.pin) is None:
+            continue  # reported by B1
+        if a.net is not None and nets != [a.net]:
+            fails.append(f"{fn}: {mcu.ref}.{a.pin} is on {', '.join(nets) or 'no net'}, assignment says {a.net}")
+            ev_fail.append(part.pin_fact_id(a.pin))
+        else:
+            ev_ok.append(part.pin_fact_id(a.pin))
+    wired = _finding("assigned pins wired", fails, [], "every assigned pin sits on the net its assignment names", ev_fail, ev_ok)
+
+    # pin hazards, checked on the firmware's view and the netlist's view
+    fails, unknowns, ev_fail, ev_ok = [], [], [], []
+    users: dict[str, list[str]] = {}
+    for source, items in (("firmware", fw.values()), ("netlist", asg.values())):
+        for it in items:
+            rec = part.pin(it.pin)
+            if rec is None:
+                fails.append(f"{source}: {it.function} uses {it.pin}, not a pin of {part.id}")
+                ev_fail.append(f"part:{part.id}.pin_table")
+                continue
+            users.setdefault(it.pin, [])
+            if it.function not in users[it.pin]:
+                users[it.pin].append(it.function)
+            caps = rec.capabilities
+            if "input_only" in caps and it.use in ("output", "bidir"):
+                fails.append(f"{source}: {it.function} drives {it.pin}, which is input-only")
+                ev_fail.append(part.pin_fact_id(it.pin, "input_only"))
+            if "flash" in caps:
+                fails.append(f"{source}: {it.function} uses {it.pin}, which is connected to the module's SPI flash")
+                ev_fail.append(part.pin_fact_id(it.pin, "flash"))
+            if "strapping" in caps:
+                fails.append(f"{source}: {it.function} uses {it.pin}, a boot-strapping pin; its level at reset selects boot behaviour")
+                ev_fail.append(part.pin_fact_id(it.pin, "strapping"))
+            if not any(c in caps for c in ("input_only", "flash", "strapping")):
+                ev_ok.append(part.pin_fact_id(it.pin))
+    for pin, fns in sorted(users.items()):
+        if len(fns) > 1:
+            fails.append(f"{pin} is used by more than one function: {', '.join(fns)}")
+    fails = list(dict.fromkeys(fails))
+    hazards = _finding("pin hazards", fails, unknowns, "no input-only pin is driven, and no flash or strapping pin is used",
+                       ev_fail, ev_ok)
+    return _summarise("B4", [agree, wired, hazards])
+
+
 def run_ladder(design: Design, library: dict[str, Part]) -> list[CheckResult]:
     """Implemented rungs only; later rungs are reported unknown (not run) when B1 did not pass.
-    B4 and B5 are not run and are not reported as passed."""
+    B5 is not run and is not reported as passed."""
     b1 = run_b1(design, library)
     if b1.status != "pass":
-        return [b1] + [CheckResult(rung=r, status="unknown", detail="not run: B1 did not pass") for r in ("B2", "B3")]
-    return [b1, run_b2(design, library), run_b3(design, library)]
+        return [b1] + [CheckResult(rung=r, status="unknown", detail="not run: B1 did not pass") for r in ("B2", "B3", "B4")]
+    return [b1, run_b2(design, library), run_b3(design, library), run_b4(design, library)]
