@@ -15,3 +15,8 @@ GRID_REFINEMENT_REL = 0.02
 
 # Independently written second solver vs the primary one (used from Oct 23).
 SECOND_SOLVER_REL = 0.03
+
+# Added 2026-10-22 BEFORE the radial case was run. Disc with a centre source and adiabatic rim vs the analytic
+# Bessel solution; looser than the straight fin because a disc on a square grid is a staircase approximation
+# (equivalent radii are used). Relative error of the peak temperature rise.
+RADIAL_ANALYTIC_REL = 0.03
