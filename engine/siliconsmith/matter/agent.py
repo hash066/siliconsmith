@@ -378,6 +378,8 @@ class MatterRun:
             baseline_peak_c=bpeak, baseline=bparams, pareto=front,
             nodes={nid: dict(generator=n["idea"].name, status=n["status"], ladder=n["ladder"], reason=n.get("reason", ""),
                              peak_c=(n.get("best") or {}).get("peak"),
+                             equal_material_baseline_c=(n.get("m5") or {}).get("baseline_peak"),
+                             delta_vs_equal_material_k=(n.get("m5") or {}).get("delta_k"),
                              material_fraction=(n.get("best") or {}).get("material_fraction"))
                    for nid, n in self.nodes.items()},
             stopped=stopped, cost_usd=round(getattr(self.llm, "spent_usd", 0.0), 6),
@@ -403,8 +405,12 @@ def render_report(s: dict, sp: Spreader) -> str:
     if s["best_node_id"]:
         n = s["nodes"][s["best_node_id"]]
         verdict = "all rungs M1-M5 passed" if s["all_rungs_passed"] else "NOT all rungs passed"
-        L += [f"Best node: **{s['best_node_id']}** `{n['generator']}`: {n['peak_c']:.2f} C peak "
-              f"({s['baseline_peak_c'] - n['peak_c']:+.2f} K vs baseline), {n['material_fraction']:.1%} material; {verdict}.", ""]
+        eq = n.get("delta_vs_equal_material_k")
+        L += [f"Best node: **{s['best_node_id']}** `{n['generator']}`: {n['peak_c']:.2f} C peak using {n['material_fraction']:.1%} material; {verdict}.",
+              (f"M5 compares against the best plain rectangular-fin plate using no more material than the candidate: "
+               f"{n['equal_material_baseline_c']:.2f} C, so the candidate is {eq:+.2f} K better at equal material." if eq is not None else ""),
+              ("It does " + ("" if n["peak_c"] < s["baseline_peak_c"] else "NOT ") +
+               f"beat the full-budget rectangular-fin baseline ({s['baseline_peak_c']:.2f} C)."), ""]
     else:
         L += ["No candidate produced a feasible (valid and printable) geometry.", ""]
     L += ["| node | generator | M1 | M2 | M3 | M4 | M5 | peak C | material | note |", "|---|---|---|---|---|---|---|---|---|---|"]
