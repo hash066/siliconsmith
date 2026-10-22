@@ -5,9 +5,10 @@
   "kind": "ic",
   "origin": "datasheet",
   "pin_table_provenance": {
-    "source": "BME280 Datasheet (Bosch Sensortec)",
-    "section": "Pin-out and connection diagram",
-    "citation_checked": false
+    "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+    "section": "7.1 Pin-out (Table 35: Pin description)",
+    "citation_checked": true,
+    "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
   },
   "pins": [
     {
@@ -51,7 +52,7 @@
       "number": "5",
       "direction": "input",
       "required": true,
-      "note": "I2C address select: ground gives 0x76, VDDIO gives 0x77; must not float"
+      "note": "I2C address select: GND gives 0x76, VDDIO gives 0x77 (datasheet lists SDO as In/Out; modelled as an input for the address bit)"
     },
     {
       "name": "VDDIO",
@@ -65,9 +66,10 @@
       "v_rec_min": 1.2,
       "v_rec_max": 3.6,
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "General electrical specification",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     },
     {
@@ -91,9 +93,10 @@
       "v_rec_min": 1.71,
       "v_rec_max": 3.6,
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "General electrical specification",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     }
   ],
@@ -104,9 +107,10 @@
       "value": "0x76",
       "text": "I2C address is 0x76 when SDO is connected to GND.",
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "I2C interface",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "6.2 I2C Interface",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     },
     {
@@ -115,9 +119,10 @@
       "value": "0x77",
       "text": "I2C address is 0x77 when SDO is connected to VDDIO.",
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "I2C interface",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "6.2 I2C Interface",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     },
     {
@@ -126,9 +131,10 @@
       "value": "1.71 to 3.6 V",
       "text": "Supply voltage VDD operating range.",
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "General electrical specification",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     },
     {
@@ -138,9 +144,10 @@
       "unit": "V",
       "text": "Absolute maximum VDD.",
       "provenance": {
-        "source": "BME280 Datasheet (Bosch Sensortec)",
-        "section": "Absolute maximum ratings",
-        "citation_checked": false
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "2. Absolute maximum ratings (Table 5)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
       }
     }
   ]

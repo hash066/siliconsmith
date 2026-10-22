@@ -8,18 +8,20 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
 
 * Netlist level only. **No** PCB layout, routing, EMC, thermal or fabrication, and no claim that a
   design "will work on a real board".
-* Facts are **author-curated** from public datasheets and standards, recalled without re-reading them.
-  Every fact carries `{source, section, citation_checked}`. All are `citation_checked: false`: nobody
-  has fetched and cross-checked these citations. The UI must say "author-curated, not independently
-  verified". Only the document and section name are cited; no page numbers are recorded, and section
-  names are the author's recollection, so treat them as pointers to verify.
+* Facts are **author-curated** from public documents. Every fact carries `{source, section, citation_checked, url}`.
+  `esp32` and `bme280` facts are `citation_checked: true`: on 2026-10-22 the author read the full PDFs
+  (ESP32-WROOM-32 Datasheet v3.8 from documentation.espressif.com; BME280 data sheet rev 1.6, BST-BME280-DS002-15,
+  from a SparkFun-hosted copy, not Bosch's own site) and matched pin tables, ratings, addresses and strapping pins.
+  "Checked" means one reader matched them to that document; it is still author-curated, not independently
+  reviewed. Everything else is unchecked and the UI must say "author-curated, not independently verified".
+  Only document and section names are cited; no page numbers are recorded.
+* The USB-C sink Rd (5.1 kOhm on CC1 and CC2) fact is **unchecked**: the USB-IF specification itself was not read.
 * Of the 9 library parts, only 2 cite a public datasheet (`esp32`, `bme280`). The other 7 are
   `origin: author_defined`: `ldo33` is a **generic LDO with values chosen for the template**, not a
   datasheet part (the day-1 brief asked for an LDO; no specific product is named), and `res`, `led`,
   `btn`, `load`, `batt`, `usbc` are placeholders. `usbc` cites the USB Type-C Rd rule as a fact.
 * The reference design is partial: no Li-ion charger IC exists in the library yet, so the USB-C VBUS net
   ends at the connector.
-* Pad numbers of the ESP32 module pin table are from the author's memory and unchecked.
 
 ## Layout
 

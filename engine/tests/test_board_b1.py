@@ -46,12 +46,18 @@ def test_library_loads_and_seed_parts_present():
     assert LIB["ldo33"].fact("iout_max_ma").value == 600
 
 
-def test_no_fact_claims_a_checked_citation_and_placeholders_say_so():
+def test_checked_citations_carry_a_url_and_only_datasheet_parts_are_checked():
+    """Only esp32 and bme280 were read in full (2026-10-22); everything else must stay unchecked."""
     for part in LIB.values():
         for fid, prov in part.fact_provenance().items():
-            assert prov.citation_checked is False, fid
+            if prov.citation_checked:
+                assert prov.url and part.id in ("esp32", "bme280"), fid
+            elif part.id in ("esp32", "bme280"):
+                raise AssertionError(f"{fid} should be checked")
         if part.origin == "author_defined":
-            assert "author-defined" in part.pin_table_provenance.source
+            assert "author-defined" in part.pin_table_provenance.source or part.id == "usbc"
+    assert not LIB["ldo33"].pin_table_provenance.citation_checked
+    assert not LIB["usbc"].fact("sink_rd_ohm").provenance.citation_checked
 
 
 def test_schema_rejects_fact_without_provenance():
@@ -85,7 +91,7 @@ def test_schema_rejects_unknown_capability_and_duplicate_pins():
 
 def test_evidence_ids_resolve_to_provenance():
     prov = resolve_fact(LIB, "part:esp32.gpio12.strapping")
-    assert prov is not None and prov.section == "Strapping Pins"
+    assert prov is not None and prov.section.startswith("3 Boot Configurations")
     assert resolve_fact(LIB, "part:esp32.gpio99") is None
     assert resolve_fact(LIB, "nonsense") is None
 
