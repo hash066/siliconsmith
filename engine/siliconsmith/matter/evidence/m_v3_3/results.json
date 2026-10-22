@@ -1,0 +1,345 @@
+{
+  "ok": true,
+  "best_node_id": "n2.1.4",
+  "verdict": {
+    "label": "Beats the full-budget rectangular-fin baseline by 0.22 K (model estimate)",
+    "delta_equal_material_k": 0.2194476354597441,
+    "delta_full_budget_k": 0.2194476354597441,
+    "beats_equal_material": true,
+    "beats_full_budget": true,
+    "note": "2D steady-state model, stated h and k, no airflow CFD, not validated on a printed part."
+  },
+  "baselines": {
+    "equal_material_peak_c": 72.82004535448596,
+    "full_budget_peak_c": 72.82004535448596
+  },
+  "all_rungs_passed": true,
+  "baseline_peak_c": 72.82004535448596,
+  "baseline": {
+    "spine": 6,
+    "spine_len": 60,
+    "n_fins": 15,
+    "fin_w": 4,
+    "fin_len": 9,
+    "cells": 1440
+  },
+  "pareto": [
+    "n1",
+    "n1.1",
+    "n2",
+    "n2.1.2",
+    "n2.1.4",
+    "n2.1.5",
+    "n3.2",
+    "n3.2.1",
+    "n3.2.1.1",
+    "n3.2.2",
+    "n3.3"
+  ],
+  "nodes": {
+    "n1": {
+      "generator": "orthogonal_cross_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 170.18 C vs baseline 168.40 C using <= 468 cells (7 fins 3x8): does not beat baseline (-1.78 K)",
+      "peak_c": 170.1753254472569,
+      "equal_material_baseline_c": 168.39962152870493,
+      "delta_vs_equal_material_k": -1.775703918551983,
+      "material_fraction": 0.13
+    },
+    "n2": {
+      "generator": "branching_tree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 314.28 C vs baseline 308.32 C using <= 236 cells (5 fins 3x2): does not beat baseline (-5.96 K)",
+      "peak_c": 314.27510741308447,
+      "equal_material_baseline_c": 308.31848438160114,
+      "delta_vs_equal_material_k": -5.956623031483332,
+      "material_fraction": 0.06555555555555556
+    },
+    "n3": {
+      "generator": "concentric_rings",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 364 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 79.75086211942109,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.3552777777777778
+    },
+    "n3.1": {
+      "generator": "tapered_radial_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 36 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 101.44521192376949,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.24583333333333332
+    },
+    "n2.1": {
+      "generator": "hierarchical_quadtree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 72.62 C vs baseline 72.82 C using <= 1440 cells (15 fins 4x9): beats baseline by 0.20 K",
+      "peak_c": 72.6224093758883,
+      "equal_material_baseline_c": 72.82004535448596,
+      "delta_vs_equal_material_k": 0.1976359785976598,
+      "material_fraction": 0.4
+    },
+    "n1.1": {
+      "generator": "serpentine_spiral",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 216.86 C vs baseline 214.79 C using <= 354 cells (9 fins 3x3): does not beat baseline (-2.06 K)",
+      "peak_c": 216.85586737812702,
+      "equal_material_baseline_c": 214.79353444629788,
+      "delta_vs_equal_material_k": -2.0623329318291326,
+      "material_fraction": 0.09833333333333333
+    },
+    "n2.1.1": {
+      "generator": "radial_quadtree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 73.77 C vs baseline 72.82 C using <= 1440 cells (15 fins 4x9): does not beat baseline (-0.95 K)",
+      "peak_c": 73.76825472044194,
+      "equal_material_baseline_c": 72.82004535448596,
+      "delta_vs_equal_material_k": -0.9482093659559894,
+      "material_fraction": 0.4
+    },
+    "n2.1.2": {
+      "generator": "tapered_hilbert_curve",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 83.37 C vs baseline 78.32 C using <= 1293 cells (8 fins 4x17): does not beat baseline (-5.05 K)",
+      "peak_c": 83.37444871050975,
+      "equal_material_baseline_c": 78.31949689646454,
+      "delta_vs_equal_material_k": -5.054951814045211,
+      "material_fraction": 0.3591666666666667
+    },
+    "n3.2": {
+      "generator": "hybrid_radial_orthogonal",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 90.37 C vs baseline 90.75 C using <= 1038 cells (15 fins 2x13): beats baseline by 0.38 K",
+      "peak_c": 90.3726797586285,
+      "equal_material_baseline_c": 90.75347625895854,
+      "delta_vs_equal_material_k": 0.3807965003300495,
+      "material_fraction": 0.28833333333333333
+    },
+    "n2.1.2.1": {
+      "generator": "adaptive_hilbert_fill",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 73.22 C vs baseline 72.82 C using <= 1440 cells (15 fins 4x9): does not beat baseline (-0.40 K)",
+      "peak_c": 73.22470815134503,
+      "equal_material_baseline_c": 72.82004535448596,
+      "delta_vs_equal_material_k": -0.40466279685907125,
+      "material_fraction": 0.4
+    },
+    "n3.3": {
+      "generator": "flux_matched_radial_web",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 1385.83 C vs baseline 1876.85 C using <= 49 cells (0 fins 0x0): beats baseline by 491.02 K",
+      "peak_c": 1385.8311755332647,
+      "equal_material_baseline_c": 1876.8518518491908,
+      "delta_vs_equal_material_k": 491.02067631592604,
+      "material_fraction": 0.01361111111111111
+    },
+    "n2.1.3": {
+      "generator": "dendritic_quadtree_mesh",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: param_space must have 1..8 parameters",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    },
+    "n2.1.4": {
+      "generator": "adaptive_quadtree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 72.60 C vs baseline 72.82 C using <= 1440 cells (15 fins 4x9): beats baseline by 0.22 K",
+      "peak_c": 72.60059771902621,
+      "equal_material_baseline_c": 72.82004535448596,
+      "delta_vs_equal_material_k": 0.2194476354597441,
+      "material_fraction": 0.4
+    },
+    "n2.1.1.1": {
+      "generator": "radial_spoke_web",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: param_space must have 1..8 parameters",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    },
+    "n3.2.1": {
+      "generator": "graded_orthogonal_mesh",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 509.20 C vs baseline 508.70 C using <= 138 cells (3 fins 3x3): does not beat baseline (-0.51 K)",
+      "peak_c": 509.2029113621436,
+      "equal_material_baseline_c": 508.6977537277445,
+      "delta_vs_equal_material_k": -0.5051576343990973,
+      "material_fraction": 0.03833333333333333
+    },
+    "n2.1.5": {
+      "generator": "murray_tree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 77.05 C vs baseline 76.78 C using <= 1320 cells (11 fins 4x12): does not beat baseline (-0.28 K)",
+      "peak_c": 77.05444792543287,
+      "equal_material_baseline_c": 76.77919935712805,
+      "delta_vs_equal_material_k": -0.2752485683048178,
+      "material_fraction": 0.36666666666666664
+    },
+    "n3.2.2": {
+      "generator": "radial_to_cartesian",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 95.49 C vs baseline 95.56 C using <= 961 cells (8 fins 4x12): beats baseline by 0.07 K",
+      "peak_c": 95.48923131390679,
+      "equal_material_baseline_c": 95.55676685852225,
+      "delta_vs_equal_material_k": 0.06753554461546685,
+      "material_fraction": 0.26694444444444443
+    },
+    "n3.2.1.1": {
+      "generator": "variable_density_lattice",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 118.52 C vs baseline 116.84 C using <= 737 cells (10 fins 2x14): does not beat baseline (-1.68 K)",
+      "peak_c": 118.52432230181786,
+      "equal_material_baseline_c": 116.84111090212218,
+      "delta_vs_equal_material_k": -1.6832113996956792,
+      "material_fraction": 0.20472222222222222
+    }
+  },
+  "stopped": null,
+  "cost_usd": 0.090016,
+  "tokens": 101274,
+  "wall_s": 247.2,
+  "spreader": {
+    "n": 60,
+    "dx": 0.001,
+    "t": 0.002,
+    "k": 200.0,
+    "h": 15.0,
+    "T_inf": 25.0,
+    "Q": 2.0,
+    "chip": 6,
+    "budget_fraction": 0.4,
+    "min_feature": 2
+  }
+}
