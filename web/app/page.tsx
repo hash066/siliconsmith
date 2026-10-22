@@ -86,11 +86,11 @@ export default function Home() {
             proves the hardware correct, and measures the speedup and what it costs in area. The output is a pull request that changes your hardware.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/runs/r_w1_contree3" className="inline-flex h-12 items-center rounded-md bg-signal px-6 text-[15px] font-medium text-on-signal transition-transform duration-150 active:scale-[0.97]">
-              Watch a real run
+            <Link href="/workstation" className="inline-flex h-12 items-center rounded-md bg-signal px-6 text-[15px] font-medium text-on-signal transition-transform duration-150 active:scale-[0.97]">
+              Open the workstation
             </Link>
             <Link href="/try" className="inline-flex h-12 items-center rounded-md border border-line-2 px-6 text-[15px] text-ink transition-colors duration-150 hover:bg-raised">
-              Try it on your code
+              Try it yourself
             </Link>
           </div>
           <div className="mt-14">

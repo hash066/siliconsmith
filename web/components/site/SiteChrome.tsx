@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ThemeToggle, Wordmark } from "./Brand";
 
 const NAV = [
+  { href: "/workstation", label: "Workstation" },
   { href: "/how", label: "How it works" },
   { href: "/runs/r_w1_contree3/report", label: "Report" },
   { href: "/try", label: "Try your code" },
@@ -21,8 +22,9 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/runs/r_w1_contree3" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
-            Watch a run
+          <Link href="/workstation" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
+            <span className="sm:hidden">Workstation</span>
+            <span className="hidden sm:inline">Open the workstation</span>
           </Link>
         </div>
       </div>
@@ -43,6 +45,9 @@ export function SiteFooter() {
             </p>
           </div>
           <nav aria-label="Footer" className="flex flex-col gap-2">
+            <Link href="/workstation" className="text-ink-2 hover:text-ink">
+              Workstation
+            </Link>
             <Link href="/runs/r_w1_contree3" className="text-ink-2 hover:text-ink">
               W1 run: TinyMaix
             </Link>

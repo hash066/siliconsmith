@@ -26,14 +26,18 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 const Roadmap = () => <span className="rounded-full border border-line-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3">Roadmap</span>;
 
 /** Left rail: Intent, Runs, Library, Templates. Intent and Runs are real; Library and Templates are honest empty states. */
-export function ProjectRail({ runs, runId, onPickRun, state }: { runs: RunIndexEntry[]; runId: string; onPickRun: (id: string) => void; state: RunState | null }) {
+export function ProjectRail({ runs, runId, onPickRun, state, toolView = null }: { runs: RunIndexEntry[]; runId: string; onPickRun: (id: string) => void; state: RunState | null; toolView?: "board" | "matter" | null }) {
   const w = state?.workload;
   const hot = state?.baseline?.hotspots[0];
   const repo = w?.source_repo?.replace(/^https?:\/\/(www\.)?github\.com\//, "");
   return (
     <nav aria-label="Project" className="flex min-w-0 flex-col">
       <Section title="Intent">
-        {w ? (
+        {toolView ? (
+          <p className="text-[13px] leading-snug text-ink-2">
+            {toolView === "board" ? "A design you check right now: a real template or your own JSON, judged by deterministic code." : "A plate you simulate right now: a built-in generator through the validated solver."}
+          </p>
+        ) : w ? (
           <dl className="grid grid-cols-[minmax(0,1fr)] gap-1.5 text-[13px]">
             <dt className="sr-only">Workload</dt>
             <dd className="break-words text-ink">{w.title}</dd>

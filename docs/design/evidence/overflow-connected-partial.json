@@ -1,0 +1,102 @@
+[
+  {
+    "viewport": "360x780",
+    "view": "default",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-default-connected.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "agent",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-agent-connected.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "default",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-default-connected.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "agent",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-agent-connected.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "default",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-default-connected.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "agent",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-agent-connected.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "default",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-default-connected.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "agent",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-agent-connected.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "default",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-default-connected.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "default",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-default-connected.png"
+  }
+]

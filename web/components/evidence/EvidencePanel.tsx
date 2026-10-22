@@ -39,7 +39,13 @@ function RungDetails({ ev, onClear, compact }: { ev: RungEvidenceRef; onClear: (
     <>
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="min-w-0 text-[13px] text-ink-2">
-          Rung <span className="num text-[15px] text-ink">{ev.rung}</span> on <span className="num text-ink">{ev.nodeId}</span>
+          Rung <span className="num text-[15px] text-ink">{ev.rung}</span>
+          {ev.nodeId ? (
+            <>
+              {" "}
+              on <span className="num text-ink">{ev.nodeId}</span>
+            </>
+          ) : null}
         </h3>
         <button type="button" onClick={onClear} className="h-7 rounded-md px-2 text-[12px] text-ink-3 hover:text-ink">
           Clear

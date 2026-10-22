@@ -105,6 +105,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
     reveal();
   };
   const pickRunRef = useRef<(id: string) => void>(() => {});
+  const chooseWbRef = useRef<(w: Workbench) => void>(() => {});
   const domainOf = (id: string) => runs.find((r) => r.id === id)?.domain ?? "silicon";
   const pickRun = (id: string) => {
     if (id === runId) return;
@@ -116,6 +117,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
     setMobileTab("canvas");
   };
   pickRunRef.current = pickRun;
+  chooseWbRef.current = (w) => chooseWb(w);
   // A workbench tab opens that workbench's live tool; a recorded run of the domain is one click away when the replays hold one.
   const chooseWb = (w: Workbench) => {
     setWb(w);
@@ -129,14 +131,19 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   };
   // `?run=<id>` opens that recorded run (used by the templates page); applied after mount so the markup matches the server's.
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("run");
+    const q = new URLSearchParams(window.location.search);
+    const id = q.get("run");
+    const w = q.get("wb");
     if (id && runs.some((r) => r.id === id)) pickRunRef.current(id);
+    else if (w === "board" || w === "matter") chooseWbRef.current(w);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const wbHasRun = (w: Workbench) => runs.some((r) => r.domain === w);
 
-  const status = !snap ? "Loading" : snap.mode === "live" ? "Live" : s.status === "completed" ? "Replay · completed" : s.status === "failed" ? "Replay · failed" : "Replay · playing";
-  const projectName = s.workload?.title ?? (src.status === "not-found" ? "Run not available" : "Loading…");
+  // Board and Matter tools call free hosted functions: no run, no replay and no model cost behind them.
+  const toolView = wb !== "silicon" && view === "tool";
+  const status = toolView ? "Hosted tool · no model" : !snap ? "Loading" : snap.mode === "live" ? "Live" : s.status === "completed" ? "Replay · completed" : s.status === "failed" ? "Replay · failed" : "Replay · playing";
+  const projectName = toolView ? (wb === "board" ? "Board · live design check" : "Matter · live plate simulation") : s.workload?.title ?? (src.status === "not-found" ? "Run not available" : "Loading…");
   const rungList = rungsOf(s);
   const verified = Object.values(s.nodes).filter((n) => n.parentId !== null && (s.domain === "silicon" ? n.score?.feasible : allPass(n, rungList))).length;
 
@@ -174,11 +181,11 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
           <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
             <span className="inline-flex h-6 min-w-0 items-center gap-1.5 truncate rounded-full bg-raised px-2.5 text-[12px] text-ink-2" role="status" aria-label="Run status">
               {status}
-              {snap && s.status === "completed" && <span className="num hidden text-ink-3 sm:inline">· {verified} verified</span>}
+              {!toolView && snap && s.status === "completed" && <span className="num hidden text-ink-3 sm:inline">· {verified} verified</span>}
             </span>
-            <div className="flex shrink-0 flex-col items-end leading-none" title="LLM spend recorded in this run's events">
+            <div className="flex shrink-0 flex-col items-end leading-none" title={toolView ? "Board checks and Matter simulations call no model" : "LLM spend recorded in this run's events"}>
               <span className="text-[10px] uppercase tracking-[0.08em] text-ink-3">Cost</span>
-              <span className="num mt-0.5 text-[13px] text-ink" data-testid="cost-meter">{snap ? usd(s.usage.total.costUsd) : "—"}</span>
+              <span className="num mt-0.5 text-[13px] text-ink" data-testid="cost-meter">{toolView ? "$0.00" : snap ? usd(s.usage.total.costUsd) : "—"}</span>
             </div>
             <ThemeToggle />
           </div>
@@ -204,7 +211,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
         className={`min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[184px_minmax(0,1fr)_300px] xl:grid-cols-[208px_minmax(0,1fr)_340px] [&>*]:min-w-0 ${mobileTab === "drawer" ? "hidden lg:grid" : "grid"}`}
       >
         <aside className={`scroll-quiet min-h-0 flex-col border-line bg-panel lg:overflow-y-auto lg:border-r ${show("project")}`}>
-          <ProjectRail runs={runs} runId={runId} onPickRun={pickRun} state={snap ? s : null} />
+          <ProjectRail runs={runs} runId={runId} onPickRun={pickRun} state={snap && !toolView ? s : null} toolView={toolView ? wb : null} />
         </aside>
 
         <main id="main" className={`scroll-quiet min-h-0 flex-col px-4 py-4 lg:overflow-y-auto lg:px-5 ${show("canvas")}`}>
@@ -271,8 +278,8 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
         <aside className={`min-h-[70dvh] flex-col border-line bg-panel lg:min-h-0 lg:border-l ${show("agent")}`}>
           <AgentPanel
             transport={transport}
-            limitsNote={agent.limits ? `Read-only: it looks up recorded runs. Up to ${agent.limits.visitorTurnsPerDay} turns per visitor per day and ${agent.limits.maxInputChars} characters per message. Limits are counted in server memory (per instance), so they reset on restart.` : undefined}
-            context={snap ? `${runId} · ${s.eventCount} events received` : undefined} />
+            limitsNote={agent.limits ? `Read-only: it looks up recorded runs and the evidence library, and runs the free Board and Matter checks. Up to ${agent.limits.visitorTurnsPerDay} turns per visitor per day and ${agent.limits.maxInputChars} characters per message. Limits are counted in server memory (per instance), so they reset on restart.` : undefined}
+            context={toolView ? `${wb} live tool (no recorded run)` : snap ? `${runId} · ${s.eventCount} events received` : undefined} />
         </aside>
       </div>
 

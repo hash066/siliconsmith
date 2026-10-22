@@ -46,3 +46,12 @@ describe("AgentPanel (server-rendered; the fixtures below exist only in this tes
     expect(renderToStaticMarkup(<ActionConfirm action={{ id: "p", tool: "run_start", summary: "Start W2", costEstimateUsd: null }} onConfirm={noop} onCancel={noop} />)).toContain("No estimate available");
   });
 });
+
+describe("AgentPanel starters", () => {
+  it("offers starter prompts when connected with an empty conversation, and none when not connected", () => {
+    const connected = view(initialAgentState(), true);
+    expect(connected).toContain("Ask about what is on this site");
+    expect(connected).toContain("fault_gpio12_vs_gpio14");
+    expect(view(initialAgentState(), false)).not.toContain("Ask about what is on this site");
+  });
+});
