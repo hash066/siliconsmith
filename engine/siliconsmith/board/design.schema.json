@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "FirmwarePin": {
+      "description": "What the firmware pin header claims (compared with the netlist from rung B4).",
+      "properties": {
+        "function": {
+          "title": "Function",
+          "type": "string"
+        },
+        "pin": {
+          "title": "Pin",
+          "type": "string"
+        },
+        "use": {
+          "enum": [
+            "input",
+            "output",
+            "bidir"
+          ],
+          "title": "Use",
+          "type": "string"
+        }
+      },
+      "required": [
+        "function",
+        "pin",
+        "use"
+      ],
+      "title": "FirmwarePin",
+      "type": "object"
+    },
+    "Instance": {
+      "properties": {
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "part": {
+          "minLength": 1,
+          "title": "Part",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "default": {},
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "ref",
+        "part"
+      ],
+      "title": "Instance",
+      "type": "object"
+    },
+    "McuAssignment": {
+      "description": "What the netlist says a function is wired to.",
+      "properties": {
+        "function": {
+          "title": "Function",
+          "type": "string"
+        },
+        "pin": {
+          "title": "Pin",
+          "type": "string"
+        },
+        "use": {
+          "enum": [
+            "input",
+            "output",
+            "bidir"
+          ],
+          "title": "Use",
+          "type": "string"
+        },
+        "net": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Net"
+        }
+      },
+      "required": [
+        "function",
+        "pin",
+        "use"
+      ],
+      "title": "McuAssignment",
+      "type": "object"
+    },
+    "Net": {
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "pins": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Pins",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Net",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "template": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Template"
+    },
+    "mcu_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mcu Ref"
+    },
+    "assumptions": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "default": {},
+      "title": "Assumptions",
+      "type": "object"
+    },
+    "instances": {
+      "items": {
+        "$ref": "#/$defs/Instance"
+      },
+      "title": "Instances",
+      "type": "array"
+    },
+    "nets": {
+      "items": {
+        "$ref": "#/$defs/Net"
+      },
+      "title": "Nets",
+      "type": "array"
+    },
+    "mcu_assignments": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/McuAssignment"
+      },
+      "title": "Mcu Assignments",
+      "type": "array"
+    },
+    "firmware_pins": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/FirmwarePin"
+      },
+      "title": "Firmware Pins",
+      "type": "array"
+    }
+  },
+  "required": [
+    "instances",
+    "nets"
+  ],
+  "title": "Board design",
+  "type": "object",
+  "description": "A netlist-level board design. Nets list connected pins as REF.PIN. 'assumptions' are inputs the checks need but a netlist cannot state; only the keys in x-assumptions are accepted. Parts come from the parts library (GET /api/board/parts); unknown parts make rungs report unknown, never pass.",
+  "x-limits": {
+    "max_body_bytes": 64000,
+    "max_header_bytes": 8000,
+    "max_brief_chars": 1500,
+    "max_instances": 100,
+    "max_nets": 200,
+    "max_pins_per_net": 200,
+    "max_string": 80
+  },
+  "x-assumptions": {
+    "i2c_cb_pf": {
+      "type": "number",
+      "min": 1,
+      "max": 1000
+    },
+    "battery_capacity_mah": {
+      "type": "number",
+      "min": 10,
+      "max": 100000
+    },
+    "battery_usable_fraction": {
+      "type": "number",
+      "min": 0.05,
+      "max": 1.0
+    },
+    "target_hours": {
+      "type": "number",
+      "min": 1,
+      "max": 100000
+    },
+    "active_s": {
+      "type": "number",
+      "min": 0.01,
+      "max": 86400
+    },
+    "period_s": {
+      "type": "number",
+      "min": 0.01,
+      "max": 604800
+    },
+    "i2c_mode": {
+      "enum": [
+        "standard",
+        "fast"
+      ]
+    }
+  },
+  "x-rungs": [
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5"
+  ]
+}
