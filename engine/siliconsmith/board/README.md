@@ -30,6 +30,8 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
 | `parts.py`, `parts/*.json` | Part, Pin, Fact, Provenance schema (pydantic) and the library |
 | `netlist.py`, `designs/*.json` | Design model, JSON load/dump, the clean reference design |
 | `checks.py` | The ladder: rungs B1 to B5 are implemented (`run_b1` .. `run_b5`, `run_ladder`) |
+| `serverless.py`, `limits.py`, `api.py`, `vercel_handler.py` | Hostable entry points (`check`, `explain_failure`, `run_agent`, `handle_request`), input limits and in-memory rate limiter, FastAPI router, Vercel handler; contract in `HOSTING.md` |
+| `templates.py`, `templates/*.json`, `design.schema.json` | Three ready designs (clean, GPIO12-vs-GPIO14, strapping pin) and the design JSON Schema |
 | `agent.py` | Agent loop: Nemotron (via `llm.Nemotron.json`) proposes or repairs a design; the ladder judges; failures are fed back; user assumptions are enforced |
 | `export.py` | Firmware pin header (C), BOM, KiCad `.net` netlist; no footprints, no layout |
 | `faults.py` | 8-fault catalogue as data, 3 structural faults, `inject_fault` |
@@ -120,10 +122,11 @@ reported:
 | 1 `board-live-20261022-114123` | PASS 8/8, 0 FP | **FAIL** 3/5 = 60% | PASS 6/8 = 75% | PASS $0.0045 |
 | 2 `board-live-20261022-115924` (after format, hint and charger changes) | PASS | PASS 5/5 = 100% | **FAIL** 5/8 = 62.5% | PASS $0.0053 |
 | 3 `board-live-20261022-120244` (after B2 feedback change) | PASS | PASS 4/5 = 80% (at threshold) | PASS 6/8 = 75% (at threshold) | PASS $0.0052 |
+| 4 `board-live-20261022-122016` (final, after the hosting work; no prompt change since batch 3) | PASS | PASS 4/5 = 80% (at threshold) | PASS 6/8 = 75% (at threshold) | PASS $0.0051 (total $0.066 over 13 sessions) |
 
-Read batch 3 as "at the threshold, with run-to-run variance of a size that moved the repair result between 62.5% and 75%
+Batches 3 and 4 are the same code and gave the same counts (the unreliable repairs were the same two). Read them as "at the threshold, with run-to-run variance of a size that moved the repair result between 62.5% and 75%
 in one afternoon". `regulator_overload` (the model edits the load number instead of removing it) and
-`i2c_address_collision` remain unreliable; five repairs are reliable across batches. 5 and 8 sessions are small samples.
+`i2c_address_collision` failed in both of the last two batches and remain unreliable; six repairs are reliable. 5 and 8 sessions are small samples.
 
 Fixes made after batch 1, all in the model-facing layer or in check feedback (the checks' pass/fail logic was not loosened):
 a per-pin `connections` draft format, a net named like a pin means "wired to that pin", safe-GPIO lists and load-parameter
