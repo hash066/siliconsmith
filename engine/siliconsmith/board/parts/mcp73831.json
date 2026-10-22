@@ -1,0 +1,66 @@
+{
+  "id": "mcp73831",
+  "name": "MCP73831-class single-cell Li-ion charger (SOT-23-5)",
+  "package": "SOT-23-5",
+  "kind": "ic",
+  "origin": "datasheet",
+  "description": "Pin numbers are the SOT-23-5 package. The charge-current programming resistor value is not modelled; the template uses 2 kOhm as in the datasheet's typical application figure.",
+  "pin_table_provenance": {
+    "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+    "section": "3.0 Pin Description (Table 3-1: Pin Function Tables) and the SOT-23-5 package diagram",
+    "citation_checked": true,
+    "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+  },
+  "pins": [
+    {
+      "name": "STAT",
+      "number": "1",
+      "direction": "output",
+      "note": "charge status output; tri-state on MCP73831, open-drain on MCP73832"
+    },
+    {
+      "name": "VSS",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "VBAT",
+      "number": "3",
+      "direction": "bidir",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "note": "connects to the positive terminal of the cell; modelled bidirectional so it does not count as a second driver on the battery net"
+    },
+    {
+      "name": "VDD",
+      "number": "4",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "v_abs_max": 7.0,
+      "v_rec_min": 3.75,
+      "v_rec_max": 6.0,
+      "provenance": {
+        "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+        "section": "1.0 Electrical Characteristics (Absolute Maximum Ratings: VDD 7.0 V; DC Characteristics: Supply Input VDD 3.75 to 6 V)",
+        "citation_checked": true,
+        "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+      }
+    },
+    {
+      "name": "PROG",
+      "number": "5",
+      "direction": "input",
+      "required": true,
+      "note": "charge current set resistor to VSS; floating disables charging"
+    }
+  ]
+}

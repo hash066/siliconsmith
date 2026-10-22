@@ -1,0 +1,47 @@
+{
+  "id": "batt",
+  "name": "Li-ion cell connector (placeholder)",
+  "package": "2-pin connector",
+  "kind": "connector",
+  "origin": "author_defined",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "BAT_P",
+      "number": "1",
+      "direction": "power_out",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "v_out_min": 3.5,
+      "v_out_max": 4.2
+    },
+    {
+      "name": "BAT_N",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    }
+  ],
+  "facts": [
+    {
+      "key": "v_operating",
+      "kind": "property",
+      "value": "3.5 to 4.2 V",
+      "text": "Design assumes a single Li-ion cell cut off at 3.5 V and 4.2 V when full.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "assumption",
+        "citation_checked": false
+      }
+    }
+  ]
+}

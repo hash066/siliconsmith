@@ -1,0 +1,180 @@
+{
+  "id": "bme280",
+  "name": "BME280-class humidity/pressure/temperature sensor",
+  "package": "8-pin LGA",
+  "kind": "ic",
+  "origin": "datasheet",
+  "pin_table_provenance": {
+    "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+    "section": "7.1 Pin-out (Table 35: Pin description)",
+    "citation_checked": true,
+    "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "pins": [
+    {
+      "name": "GND1",
+      "number": "1",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "CSB",
+      "number": "2",
+      "direction": "input",
+      "required": true,
+      "note": "chip select; tie to VDDIO to select the I2C interface"
+    },
+    {
+      "name": "SDI",
+      "number": "3",
+      "direction": "bidir",
+      "capabilities": [
+        "i2c"
+      ],
+      "required": true,
+      "note": "SDA in I2C mode"
+    },
+    {
+      "name": "SCK",
+      "number": "4",
+      "direction": "input",
+      "capabilities": [
+        "i2c"
+      ],
+      "required": true,
+      "note": "SCL in I2C mode"
+    },
+    {
+      "name": "SDO",
+      "number": "5",
+      "direction": "input",
+      "required": true,
+      "note": "I2C address select: GND gives 0x76, VDDIO gives 0x77 (datasheet lists SDO as In/Out; modelled as an input for the address bit)"
+    },
+    {
+      "name": "VDDIO",
+      "number": "6",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "v_abs_max": 4.25,
+      "v_rec_min": 1.2,
+      "v_rec_max": 3.6,
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "name": "GND2",
+      "number": "7",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "number": "8",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "v_abs_max": 4.25,
+      "v_rec_min": 1.71,
+      "v_rec_max": 3.6,
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "key": "i2c_addr_sdo_low",
+      "kind": "property",
+      "value": "0x76",
+      "text": "I2C address is 0x76 when SDO is connected to GND.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "6.2 I2C Interface",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "i2c_addr_sdo_high",
+      "kind": "property",
+      "value": "0x77",
+      "text": "I2C address is 0x77 when SDO is connected to VDDIO.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "6.2 I2C Interface",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "vdd_recommended",
+      "kind": "recommended",
+      "value": "1.71 to 3.6 V",
+      "text": "Supply voltage VDD operating range.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "iddp_ma",
+      "kind": "peak_current",
+      "value": 0.714,
+      "unit": "mA",
+      "text": "Current during pressure measurement, the largest of the three per-measurement currents in Table 1 (humidity 340 uA, pressure 714 uA, temperature 350 uA).",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "sleep_ua",
+      "kind": "typical_current",
+      "value": 0.1,
+      "unit": "uA",
+      "text": "Sleep current, typical.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "vdd_abs_max",
+      "kind": "abs_max",
+      "value": 4.25,
+      "unit": "V",
+      "text": "Absolute maximum VDD.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "2. Absolute maximum ratings (Table 5)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    }
+  ]
+}
