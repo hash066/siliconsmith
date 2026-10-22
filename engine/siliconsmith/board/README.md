@@ -79,13 +79,49 @@ B1 checks: every connected pin exists in its part's pin table; required pins are
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the
 rung, otherwise an unknown finding (part not in the library, driver direction unknown) makes it unknown.
 
-## Agent loop status
+## Agent loop, events and runs
 
-`agent.propose_design` and `agent.repair_design` are implemented and tested **only with a scripted stand-in for the
-model**: the tests prove the loop, the feedback, the honest failure reporting and that the model cannot change the user's
-assumptions. **No live Nemotron run has been made**, so there is no measured agent pass rate or cost; the plan's
-agent evals (pass@3 over 5 runs, repair >= 75%, cost < $0.05 per session) are not yet run and must be reported as
-whatever they turn out to be. Events (`on_event`) are a plain callback; wiring into the event contract v2 is not done.
+`agent.propose_design` / `agent.repair_design`: Nemotron **Ultra architects** the design from the brief, **Super repairs**
+it (up to 2 repairs) from the structured check failures (rung, detail, evidence ids). The model writes a per-pin
+`connections` draft (`"REF.PIN": "NET"`, so a pin cannot be on two nets) that code converts to a Design; **the ladder, not
+the model, decides**: a run passes only when B1 to B5 all return `pass`. The user's brief assumptions replace anything the
+model writes. `run.py` is the CLI and event writer (`python -m siliconsmith.board.run propose|repair --fault ID`).
+
+Events follow the additive v2 shape (`docs/contracts/events.md` on the web branch): `run.started` with `domain: "board"` and
+`ladder: [{id,label,tool}]`; `node.stage.stage` is `implement` or a rung id, with extra `evidence` (fact ids) and `label`
+(only on pass); `node.scored` carries `metrics` and `ladder {B1: pass|fail|skipped}` (unknown, including "not run", is
+reported `skipped`, never pass) and **omits the silicon numeric fields** (cycles, luts, ...) rather than inventing them;
+`artifact.created {kind, path, sha256, node_id}` for design JSON, KiCad netlist, firmware header and BOM, written
+**only for a passing design**; every judged design is kept in `runs/board/<run_id>/attempts/`. `node.created.proposal`
+uses silicon's required fields with honest placeholders (`semantics_c` empty, operands `-`). Logs: `runs/logs/<run_id>.ndjson`
+(the `runs/` directory is git-ignored, so logs are evidence on disk, not in the commit).
+
+Cost control: each session has a USD cap (`--budget`, default 0.30) enforced by `Nemotron`; the first live iterations
+(prompt and format fixes: missing `name`, a net-per-resistor misreading, resistor values) are recorded in the real-run list
+below, failures included.
+
+## Real runs and eval results (live Nemotron on Nebius Token Factory, 2026-10-22)
+
+Run logs (`runs/logs/<id>.ndjson`, git-ignored; copies in the shared notes folder `board/`):
+
+| Run id | What | Result |
+|---|---|---|
+| board-propose-template-1 .. -5 | template to design while the prompt and draft format were being fixed (missing `name`, resistor modelled as bridging two nets, resistor values omitted, strapping pins) | all failed the ladder or the JSON parse; these are the iteration history, not evals |
+| board-propose-template-6 | template to design, Ultra architect + Super repairs | **passed B1 to B5** in 3 judged designs, $0.0093, artifacts with SHA-256 in the log |
+| board-repair-pin_mismatch-1 | injected GPIO12-vs-GPIO14 firmware/netlist mismatch: B4 flags it, Super repairs, rerun passes B1 to B5 | **passed** in 2 judged designs, $0.0020 |
+
+Evals (plan section 10; thresholds fixed in `evals.py`, never edited after seeing results), one live batch,
+`runs/evals/board-live-20261022-114123.json`, a fresh budget-capped client per session, no re-runs cherry-picked:
+
+| Eval | Target | Result |
+|---|---|---|
+| Fault detection, 8 faults, clean design | 8/8, 0 false positives | **PASS** 8/8, 0 false positives (deterministic) |
+| Agent: template to design passing B1 to B5, 5 runs, pass@3 | >= 80% | **FAIL**: 3/5 = 60% (runs 3 and 5 hit the repair limit) |
+| Agent: repair each of the 8 faults, pass@3 | >= 75% | **PASS** at the threshold: 6/8 = 75% (`missing_cc_resistors` and `regulator_overload` not repaired) |
+| Cost per session | mean < $0.05 | **PASS**: mean $0.0045, total $0.059 over 13 sessions |
+
+The agent-design eval failed its target and is reported as failed. The prompt was tuned on runs 1 to 6 before this batch
+(on the same template), so the 60% is not a held-out estimate either way; 5 runs is a small sample.
 
 ## Fault detection status
 
