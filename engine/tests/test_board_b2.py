@@ -106,3 +106,13 @@ def test_charger_prog_pin_left_floating_fails_b1():
     d.net("PROG").pins.remove("U5.PROG")
     r = run_b1(d, LIB)
     assert r.status == "fail" and "U5.PROG" in r.detail
+
+
+def test_overload_feedback_gives_a_fitting_value_strictly_below_the_headroom():
+    r = run_b2(inject_fault(reference_design(), "regulator_overload"), LIB)
+    assert "leaving 99.286 mA" in r.detail and "at most 89 mA in all" in r.detail and "remove the load instance" in r.detail
+    from siliconsmith.board.faults import inject_ops
+    d = inject_ops(reference_design(), [{"op": "add_instance", "ref": "LOAD1", "part": "load", "params": {"peak_ma": 89, "sleep_ma": 0.1}},
+                                        {"op": "connect", "ref": "LOAD1", "pin": "VCC", "net": "3V3"},
+                                        {"op": "connect", "ref": "LOAD1", "pin": "GND", "net": "GND"}])
+    assert run_b2(d, LIB).status == "pass"  # the suggested value really satisfies the unchanged check

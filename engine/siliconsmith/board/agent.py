@@ -36,7 +36,8 @@ SYSTEM = (
     "same net name; a pin has exactly one net. Example of the format only (not part of the answer): a 1 kohm resistor "
     "between rail RAIL and signal SIG: instances [{\"ref\":\"R9\",\"part\":\"res\",\"params\":{\"ohms\":1000}}], "
     "connections {\"R9.1\":\"RAIL\",\"R9.2\":\"SIG\"}. A net name may also be a pin, written REF.PIN, meaning the pin is wired directly to that pin. To tie a pin to ground "
-    "or to a rail, give it the SAME net name as that ground or rail (never invent a separate net for it). "
+    "or to a rail, give it the SAME net name as that ground or rail (never invent a separate net for it, and never name a net after a pin such as VDDIO or SDO: use the existing rail name). "
+    "When the checks report a numeric limit, choose a value that satisfies it strictly, or remove the offending part. "
     "Do not include an 'assumptions' field. "
     "Reply with the JSON object only, with no text before or after it."
 )

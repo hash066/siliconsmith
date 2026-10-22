@@ -103,3 +103,34 @@ def test_ladder_includes_b3_and_skips_it_when_b1_fails():
     assert clean == {r: "pass" for r in IMPLEMENTED_RUNGS}
     broken = {r.rung: r.status for r in run_ladder(inject_fault(reference_design(), "nonexistent_pin"), LIB)}
     assert broken == {"B1": "fail", **{r: "unknown" for r in IMPLEMENTED_RUNGS[1:]}}
+
+
+def test_collision_feedback_names_the_free_address_and_the_existing_net_to_use():
+    r = run_b3(inject_fault(reference_design(), "i2c_address_collision"), LIB)
+    assert "U3 keeps 0x76; put U4.SDO in net 3V3 to get 0x77" in r.detail
+    d = inject_fault(reference_design(), "i2c_address_collision")
+    d.net("GND").pins.remove("U4.SDO")
+    d.net("3V3").pins.append("U4.SDO")
+    d.net("GND").pins.remove("U3.SDO")
+    d.net("3V3").pins.append("U3.SDO")
+    assert "U3 keeps 0x77; put U4.SDO in net GND to get 0x76" in run_b3(d, LIB).detail
+
+
+def test_collision_with_no_free_address_says_to_remove_the_device():
+    d = inject_fault(reference_design(), "i2c_address_collision")
+    d2 = d.copy()
+    d2.instances.append(type(d.instances[0])(ref="U8", part="bme280"))
+    for pin, net in (("VDD", "3V3"), ("VDDIO", "3V3"), ("CSB", "3V3"), ("GND1", "GND"), ("GND2", "GND"), ("SDO", "3V3"),
+                     ("SDI", "SDA"), ("SCK", "SCL")):
+        d2.net(net).pins.append(f"U8.{pin}")
+    r = run_b3(d2, LIB)
+    assert "remove" in r.detail and "cannot share it" in r.detail
+
+
+def test_floating_strap_message_names_existing_nets_and_forbids_pin_named_nets():
+    d = reference_design()
+    d.net("GND").pins.remove("U3.SDO")
+    from siliconsmith.board.netlist import Net
+    d.nets.append(Net(name="VDDIO", pins=["U3.SDO"]))
+    detail = run_b3(d, LIB).detail
+    assert "put U3.SDO in net GND for the low address or in net 3V3 for the high one" in detail

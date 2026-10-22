@@ -8,6 +8,7 @@ is attached only on pass, and unknown never counts as pass.
 
 from __future__ import annotations
 
+import math
 from typing import Literal
 
 from pydantic import BaseModel, model_validator
@@ -298,8 +299,13 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
                 continue
             line = f"{inst.ref} rail {nets[0]}: " + (" + ".join(terms) or "0") + f" = {total:g} mA vs limit {limit.value:g} mA"
             if total > float(limit.value):
-                fails.append(line + f" (overloaded; loads fixed by part facts total {fixed:g} mA, leaving "
-                             f"{max(float(limit.value) - fixed, 0):g} mA for the rest, which must stay below that)")
+                left = max(float(limit.value) - fixed, 0.0)
+                safe = math.floor(left * 0.9)
+                how = (f"set the loads' params.peak_ma so they total at most {safe:g} mA in all (for example one load at "
+                       f"{safe:g}), or remove the load instance and all its pins from the nets"
+                       if safe >= 1 else "there is no headroom: remove the load instances and all their pins from the nets")
+                fails.append(line + f" (overloaded; loads fixed by part facts total {fixed:g} mA, leaving {left:g} mA "
+                             f"for the rest, which must stay strictly below that: {how})")
                 ev_fail += [fid] + loads_ev
             else:
                 ok_lines.append(line)
@@ -420,21 +426,31 @@ def _b3_addresses(design: Design, parts: dict[str, Part | None], bus: dict[str, 
         return _finding("I2C addresses", [], [], "no I2C bus in the design", [], [])
     fails, unknowns, ev_fail, ev_ok = [], [], [], []
     seen: dict[str, str] = {}
+    devices = []
     for ref, pin in design.pins_on(bus["i2c_sda"]):
         part = parts.get(ref)
         rec = part.pin(pin) if part else None
         if rec is None or "i2c" not in rec.capabilities or ref == design.mcu_ref or part.fact("i2c_addr_sdo_low") is None:
             continue
-        addr = _i2c_address(design, parts, part, ref)
+        devices.append((ref, part, _i2c_address(design, parts, part, ref)))
+    taken = {addr[0] for _, _, addr in devices if addr is not None}
+    ground_net = next((n.name for n in design.nets if _on_ground(design, parts, n.name)), "GND")
+    for ref, part, addr in devices:
+        vio = design.nets_of(ref, "VDDIO")
+        vio_net = vio[0] if vio else "(none)"
         if addr is None:
             sdo = design.nets_of(ref, "SDO")
-            vio = design.nets_of(ref, "VDDIO")
             unknowns.append(f"{ref}: I2C address cannot be determined: SDO is on net {sdo[0] if sdo else '(none)'}, which holds no "
-                            f"ground pin and is not the VDDIO net ({vio[0] if vio else '(none)'}); tie SDO to the ground net "
-                            f"for the low address or to the VDDIO net for the high one")
+                            f"ground pin and is not the VDDIO net ({vio_net}). Net names must be ones that already exist: "
+                            f"put {ref}.SDO in net {ground_net} for the low address or in net {vio_net} for the high one "
+                            f"(do not make a new net named after a pin)")
             ev_fail.append(part.pin_fact_id("SDO"))
         elif addr[0] in seen:
-            fails.append(f"{ref} and {seen[addr[0]]} are both at I2C address {addr[0]} on net {bus['i2c_sda']}")
+            low, high = part.fact("i2c_addr_sdo_low"), part.fact("i2c_addr_sdo_high")
+            free = [(str(f.value), net) for f, net in ((low, ground_net), (high, vio_net)) if str(f.value) not in taken]
+            fix = (f"{seen[addr[0]]} keeps {addr[0]}; put {ref}.SDO in net {free[0][1]} to get {free[0][0]}" if free else
+                   f"both addresses of this part are taken on the bus, so {ref} cannot share it: remove {ref} and all its pins")
+            fails.append(f"{ref} and {seen[addr[0]]} are both at I2C address {addr[0]} on net {bus['i2c_sda']}; {fix}")
             ev_fail.append(addr[1])
         else:
             seen[addr[0]] = ref
