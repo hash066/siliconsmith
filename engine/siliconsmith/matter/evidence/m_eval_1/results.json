@@ -1,0 +1,183 @@
+{
+  "ok": true,
+  "best_node_id": "n7",
+  "all_rungs_passed": true,
+  "baseline_peak_c": 72.82004535448596,
+  "baseline": {
+    "spine": 6,
+    "n_fins": 15,
+    "fin_w": 4,
+    "fin_len": 9,
+    "cells": 1440
+  },
+  "pareto": [
+    "n1.1",
+    "n2.1",
+    "n2.1.1",
+    "n3",
+    "n3.1",
+    "n7"
+  ],
+  "nodes": {
+    "n1": {
+      "generator": "radial_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 4 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 111.62579276594961,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.22
+    },
+    "n2": {
+      "generator": "branching_tree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 135.86 C vs baseline 134.13 C using <= 624 cells (6 fins 2x1): does not beat baseline (-1.73 K)",
+      "peak_c": 135.86327640485516,
+      "equal_material_baseline_c": 134.13110193616475,
+      "delta_vs_equal_material_k": -1.7321744686904026,
+      "material_fraction": 0.17333333333333334
+    },
+    "n3": {
+      "generator": "concentric_rings",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 1385.83 C vs baseline 1876.85 C using <= 49 cells (0 fins 0x0): beats baseline by 491.02 K",
+      "peak_c": 1385.8311755332647,
+      "equal_material_baseline_c": 1876.8518518491908,
+      "delta_vs_equal_material_k": 491.02067631592604,
+      "material_fraction": 0.01361111111111111
+    },
+    "n1.1": {
+      "generator": "tapered_radial_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 151.02 C vs baseline 152.07 C using <= 537 cells (7 fins 4x1): beats baseline by 1.04 K",
+      "peak_c": 151.02350298650893,
+      "equal_material_baseline_c": 152.06632003340533,
+      "delta_vs_equal_material_k": 1.0428170468964026,
+      "material_fraction": 0.14916666666666667
+    },
+    "n2.1": {
+      "generator": "branching_tree_v2",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 237.57 C vs baseline 1876.85 C using <= 316 cells (0 fins 0x0): beats baseline by 1639.28 K",
+      "peak_c": 237.56730542404327,
+      "equal_material_baseline_c": 1876.8518518491908,
+      "delta_vs_equal_material_k": 1639.2845464251475,
+      "material_fraction": 0.08777777777777777
+    },
+    "n3.1": {
+      "generator": "concentric_rings_with_spokes",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 419.97 C vs baseline 1876.85 C using <= 169 cells (0 fins 0x0): beats baseline by 1456.88 K",
+      "peak_c": 419.96688567535875,
+      "equal_material_baseline_c": 1876.8518518491908,
+      "delta_vs_equal_material_k": 1456.884966173832,
+      "material_fraction": 0.04694444444444444
+    },
+    "n7": {
+      "generator": "cross_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 134.67 C vs baseline 135.53 C using <= 617 cells (4 fins 2x1): beats baseline by 0.86 K",
+      "peak_c": 134.66689316016058,
+      "equal_material_baseline_c": 135.52786066293893,
+      "delta_vs_equal_material_k": 0.860967502778351,
+      "material_fraction": 0.1713888888888889
+    },
+    "n8": {
+      "generator": "spiral_arms",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 168.42 C vs baseline 162.17 C using <= 497 cells (4 fins 2x1): does not beat baseline (-6.26 K)",
+      "peak_c": 168.42310453797032,
+      "equal_material_baseline_c": 162.16699928776328,
+      "delta_vs_equal_material_k": -6.2561052502070424,
+      "material_fraction": 0.13805555555555554
+    },
+    "n2.1.1": {
+      "generator": "branching_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 167.38 C vs baseline 170.96 C using <= 471 cells (9 fins 3x2): beats baseline by 3.58 K",
+      "peak_c": 167.37930569592967,
+      "equal_material_baseline_c": 170.96314369726397,
+      "delta_vs_equal_material_k": 3.5838380013343,
+      "material_fraction": 0.13083333333333333
+    }
+  },
+  "stopped": null,
+  "cost_usd": 0.056394,
+  "tokens": 40291,
+  "wall_s": 86.8,
+  "spreader": {
+    "n": 60,
+    "dx": 0.001,
+    "t": 0.002,
+    "k": 200.0,
+    "h": 15.0,
+    "T_inf": 25.0,
+    "Q": 2.0,
+    "chip": 6,
+    "budget_fraction": 0.4,
+    "min_feature": 2
+  }
+}

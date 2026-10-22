@@ -1,0 +1,252 @@
+{
+  "node": "n3.2",
+  "generator": "ring_spoke_hybrid",
+  "params": {
+    "n_rings": 3,
+    "ring_w": 3,
+    "spoke_w": 2,
+    "spoke_spacing": 5,
+    "hub_r": 6
+  },
+  "metrics": {
+    "peak_temp_c": 73.99118738782236,
+    "peak_rise_k": 48.991187387822364,
+    "material_fraction": 0.38805555555555554,
+    "material_cells": 1397,
+    "baseline_peak_c": 74.70429151550196,
+    "delta_vs_baseline_k": 0.7131041276795997
+  },
+  "ladder": {
+    "M1": "pass",
+    "M2": "pass",
+    "M3": "pass",
+    "M4": "pass",
+    "M5": "pass"
+  },
+  "m4": {
+    "fv_rise": 48.991187387822364,
+    "fv2x_rise": 48.991807840128914,
+    "fem_rise": 48.99427073762806,
+    "refine_err": 1.2664409294179169e-05,
+    "fem_err": 6.29368253780793e-05,
+    "balance": 7.704059612419534e-12
+  },
+  "m5": {
+    "peak": 73.99118738782236,
+    "baseline_peak": 74.70429151550196,
+    "delta_k": 0.7131041276795997,
+    "baseline": {
+      "spine": 12,
+      "n_fins": 14,
+      "fin_w": 4,
+      "fin_len": 6,
+      "cells": 1392
+    }
+  },
+  "spreader": {
+    "n": 60,
+    "dx": 0.001,
+    "t": 0.002,
+    "k": 200.0,
+    "h": 15.0,
+    "T_inf": 25.0,
+    "Q": 2.0,
+    "chip": 6,
+    "budget_fraction": 0.4,
+    "min_feature": 2
+  },
+  "samples": [
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 6,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 4,
+        "hub_r": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 5,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 4,
+        "hub_r": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 6,
+        "ring_w": 4,
+        "spoke_w": 3,
+        "spoke_spacing": 4,
+        "hub_r": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 7,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 3,
+        "hub_r": 5
+      }
+    },
+    {
+      "cells": 1397,
+      "material_fraction": 0.38805555555555554,
+      "m2": "pass",
+      "m2_detail": "1397 cells (38.8% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 73.99118738782236,
+      "params": {
+        "n_rings": 3,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 5,
+        "hub_r": 6
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 5,
+        "ring_w": 4,
+        "spoke_w": 2,
+        "spoke_spacing": 4,
+        "hub_r": 3
+      }
+    },
+    {
+      "cells": 1189,
+      "material_fraction": 0.3302777777777778,
+      "m2": "pass",
+      "m2_detail": "1189 cells (33.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 82.2934838853565,
+      "params": {
+        "n_rings": 3,
+        "ring_w": 2,
+        "spoke_w": 2,
+        "spoke_spacing": 3,
+        "hub_r": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 5,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 6,
+        "hub_r": 6
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 4,
+        "ring_w": 2,
+        "spoke_w": 3,
+        "spoke_spacing": 6,
+        "hub_r": 5
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 4,
+        "ring_w": 4,
+        "spoke_w": 2,
+        "spoke_spacing": 6,
+        "hub_r": 6
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 4,
+        "ring_w": 3,
+        "spoke_w": 2,
+        "spoke_spacing": 6,
+        "hub_r": 3
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.56716462591052,
+      "params": {
+        "n_rings": 8,
+        "ring_w": 2,
+        "spoke_w": 2,
+        "spoke_spacing": 6,
+        "hub_r": 4
+      }
+    }
+  ]
+}
