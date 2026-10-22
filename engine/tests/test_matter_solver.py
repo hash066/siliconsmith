@@ -57,3 +57,11 @@ def test_input_validation():
     m2[1, 1] = False
     with pytest.raises(ValueError):
         solve(m2, 1e-3, 100, 1e-3, 10.0, 25.0, Source(1, 2, 1, 2, 1.0))
+
+
+def test_radial_disc_vs_analytic():
+    for f in v.radial_errors():
+        print(f"RADIAL dx={f['dx']:.1e} analytic={f['ana_peak']:.4f} K FV={f['num_peak']:.4f} K err={f['err']:.3e} "
+              f"FEM err={f['fem_err']:.3e} balance={f['balance']:.1e}")
+        assert f["err"] <= th.RADIAL_ANALYTIC_REL
+        assert f["balance"] < 1e-9

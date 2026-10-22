@@ -15,6 +15,15 @@ L=0.05 m, w=0.01 m, t=0.002 m, k=200.0, h=25.0, base +50.0 K, adiabatic tip.
 | 1.0e-03 | 1.415e-05 | 1.415e-05 | 1.560e-05 | 1.989e-05 | yes |
 | 5.0e-04 | 3.537e-06 | 3.537e-06 | 3.903e-06 | 4.972e-06 | yes |
 
+## (a2) Radial disc with centre source vs analytic Bessel solution
+
+R=0.025 m, source radius 0.005 m, Q=5.0 W, adiabatic rim. Threshold 3% on peak rise.
+
+| dx (m) | analytic rise (K) | FV rise (K) | FV err | FEM err | pass |
+|---|---|---|---|---|---|
+| 5.0e-04 | 87.5313 | 87.5291 | 2.486e-05 | 6.783e-06 | yes |
+| 2.5e-04 | 87.5633 | 87.5628 | 6.420e-06 | 1.870e-06 | yes |
+
 ## (b) Heat balance on random masks
 
 25 random masks/sources/boundaries: worst relative balance error 3.203e-12, worst linear residual 3.008e-12.

@@ -49,14 +49,19 @@ def solve_fem(
     t: float,
     h: float,
     T_inf: float,
-    source_cells: tuple[int, int, int, int],
+    source_cells: "tuple[int, int, int, int] | np.ndarray",
     Q: float,
     tol: float = 1e-11,
 ) -> FemResult:
     mask = np.asarray(mask, dtype=bool)
     ny, nx = mask.shape
-    i0, i1, j0, j1 = source_cells
-    if not mask[j0:j1, i0:i1].all():
+    if isinstance(source_cells, np.ndarray):
+        sm = source_cells.astype(bool)  # arbitrary source footprint (mask)
+    else:
+        i0, i1, j0, j1 = source_cells
+        sm = np.zeros_like(mask)
+        sm[j0:j1, i0:i1] = True
+    if not sm.any() or not mask[sm].all():
         raise ValueError("every source cell must be material")
     if h <= 0:
         raise ValueError("fem solver needs h > 0 (convection only)")
@@ -76,8 +81,8 @@ def solve_fem(
     # Right-hand side: convective load 2 h T_inf * (element area / 4 per node) + source.
     b = np.zeros(N)
     np.add.at(b, nodes.ravel(), 2.0 * h * T_inf * dx * dx / 4.0)
-    ncell = (i1 - i0) * (j1 - j0)
-    sj, si = np.mgrid[j0:j1, i0:i1]
+    ncell = int(sm.sum())
+    sj, si = np.nonzero(sm)
     snodes = np.stack([nid(sj, si), nid(sj, si + 1), nid(sj + 1, si + 1), nid(sj + 1, si)], axis=-1).reshape(-1, 4)
     np.add.at(b, snodes.ravel(), Q / ncell / 4.0)
 

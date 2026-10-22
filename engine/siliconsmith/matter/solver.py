@@ -63,6 +63,8 @@ def solve(
     source: Source | None = None,
     fixed_edges: tuple[str, ...] = (),
     T_fixed: float = 0.0,
+    source_mask: np.ndarray | None = None,
+    source_Q: float = 0.0,
 ) -> Result:
     mask = np.asarray(mask, dtype=bool)
     if mask.ndim != 2:
@@ -143,11 +145,17 @@ def solve(
 
     b = gconv * T_inf + bc_g * T_fixed
     Q_in = 0.0
+    if source_mask is not None:  # non-rectangular source: total source_Q spread over the masked cells
+        sm = np.asarray(source_mask, dtype=bool)
+        if sm.shape != mask.shape or not mask[sm].all() or not sm.any():
+            raise ValueError("source_mask must be a non-empty subset of the material mask")
+        np.add.at(b, idx[sm], source_Q / sm.sum())
+        Q_in += float(source_Q)
     if source is not None:
         qc = source.Q / source.cells()
         sc = idx[source.j0 : source.j1, source.i0 : source.i1].ravel()
         np.add.at(b, sc, qc)
-        Q_in = float(source.Q)
+        Q_in += float(source.Q)
 
     rows.append(np.arange(n))
     cols.append(np.arange(n))

@@ -33,8 +33,8 @@ Run `python -m siliconsmith.matter.validate --write` to regenerate `VALIDATION.m
 * 2D plate model: no through-thickness gradients, no fins in the third dimension.
 * Steady state only; no transients.
 * `h` and `k` are stated inputs, not measured; convection is a constant coefficient, no airflow CFD, no radiation.
-* Not validated on a printed part. Only the analytic straight fin and a grid-convergence study have been checked.
-* Not yet done: analytic radial case, viewer, Token Factory Sandbox backend for generators.
+* Not validated on a printed part. Only the analytic straight fin, the analytic radial disc (equivalent radii of the staircase disc) and a grid-convergence study have been checked.
+* Not yet done: viewer, Token Factory Sandbox backend for generators.
 * Grid convergence order of the peak temperature is not clean (observed 1.1 then 4.1 between successive levels); only the 2x-difference threshold is claimed.
 
 ## Workbench pieces (all in this package)

@@ -55,6 +55,49 @@ def fin_errors(dxs=(1e-3, 5e-4)) -> list[dict]:
     return [fin_case(d) for d in dxs]
 
 
+# ------------------------------------------------------- (a2) radial disc
+
+RADIAL = dict(R=0.025, a=0.005, Q=5.0, k=200.0, t=2e-3, h=15.0, T_inf=25.0)
+
+
+def radial_case(dx: float) -> dict:
+    """Disc (radius R) with a uniform centre source (radius a), adiabatic rim, convection both faces.
+
+    theta(r) = q/(2h) + C I0(mr) for r < a ;  A K0(mr) + B I0(mr) for r > a, theta'(R) = 0, with the staircase disc's
+    EQUIVALENT radii (from the actual cell counts) so area/power are consistent. Compares the peak temperature rise."""
+    from scipy.special import i0, i1, k0, k1
+
+    p = RADIAL
+    n = round(2 * p["R"] / dx)
+    c = (n - 1) / 2.0
+    yy, xx = np.mgrid[0:n, 0:n]
+    r = np.hypot(xx - c, yy - c) * dx
+    disc, src = r <= p["R"], r <= p["a"]
+    R_eq = np.sqrt(disc.sum() * dx * dx / np.pi)
+    a_eq = np.sqrt(src.sum() * dx * dx / np.pi)
+    m = np.sqrt(2 * p["h"] / (p["k"] * p["t"]))
+    q = p["Q"] / (np.pi * a_eq**2)  # W per m^2 of plate
+    th0 = q / (2 * p["h"])
+    # unknowns C, A, B:  C I0(ma) - A K0(ma) - B I0(ma) = -th0 ; C I1(ma) + A K1(ma) - B I1(ma) = 0 ; A K1(mR) - B I1(mR) = 0
+    Mx = np.array([[i0(m * a_eq), -k0(m * a_eq), -i0(m * a_eq)],
+                   [i1(m * a_eq), k1(m * a_eq), -i1(m * a_eq)],
+                   [0.0, k1(m * R_eq), -i1(m * R_eq)]])
+    C, A, B = np.linalg.solve(Mx, np.array([-th0, 0.0, 0.0]))
+    ana_peak = th0 + C  # r = 0
+    res = solve(disc, dx, p["k"], p["t"], p["h"], p["T_inf"], None, (), 0.0, source_mask=src, source_Q=p["Q"])
+    from .fem import solve_fem
+
+    fe = solve_fem(disc, dx, p["k"], p["t"], p["h"], p["T_inf"], src, p["Q"])
+    num = res.peak - p["T_inf"]
+    return dict(dx=dx, ana_peak=float(ana_peak), num_peak=float(num), err=float(abs(num - ana_peak) / ana_peak),
+                fem_err=float(abs(fe.peak - p["T_inf"] - ana_peak) / ana_peak), balance=res.balance_rel,
+                R_eq_mm=float(R_eq * 1e3), a_eq_mm=float(a_eq * 1e3))
+
+
+def radial_errors(dxs=(5e-4, 2.5e-4)) -> list[dict]:
+    return [radial_case(d) for d in dxs]
+
+
 # --------------------------------------------------------- (b) heat balance
 
 
@@ -149,6 +192,7 @@ def connectivity_checks() -> dict:
 def run_all() -> dict:
     return dict(
         fin=fin_errors(),
+        radial=radial_errors(),
         balance=random_balance(),
         convergence=grid_convergence(),
         symmetry=symmetry_error(),
@@ -176,6 +220,11 @@ def render_markdown(r: dict) -> str:
     for f in r["fin"]:
         ok = max(f["tip_err"], f["q_err"]) <= th.FIN_ANALYTIC_REL
         L.append(f"| {f['dx']:.1e} | {f['tip_err']:.3e} | {f['lastcell_err']:.3e} | {f['profile_err']:.3e} | {f['q_err']:.3e} | {'yes' if ok else 'NO'} |")
+    L += ["", "## (a2) Radial disc with centre source vs analytic Bessel solution", "",
+          f"R={RADIAL['R']} m, source radius {RADIAL['a']} m, Q={RADIAL['Q']} W, adiabatic rim. Threshold {th.RADIAL_ANALYTIC_REL:.0%} on peak rise.", "",
+          "| dx (m) | analytic rise (K) | FV rise (K) | FV err | FEM err | pass |", "|---|---|---|---|---|---|"]
+    for f in r["radial"]:
+        L.append(f"| {f['dx']:.1e} | {f['ana_peak']:.4f} | {f['num_peak']:.4f} | {f['err']:.3e} | {f['fem_err']:.3e} | {'yes' if f['err'] <= th.RADIAL_ANALYTIC_REL else 'NO'} |")
     b = max(x["balance"] for x in r["balance"])
     rs = max(x["residual"] for x in r["balance"])
     c = r["convergence"]
