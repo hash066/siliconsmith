@@ -161,10 +161,14 @@ def _apply(design: Design, op: dict[str, Any]) -> None:
         raise ValueError(f"unknown fault op {kind!r}")
 
 
-def inject_fault(design: Design, fault_id: str) -> Design:
-    """Return a copy of `design` with the named fault applied; the input is never modified."""
-    fault = fault_by_id(fault_id)
+def inject_ops(design: Design, ops: list[dict[str, Any]]) -> Design:
+    """Return a copy of `design` with the edit operations applied; the input is never modified."""
     out = design.copy()
-    for op in fault.ops:
+    for op in ops:
         _apply(out, op)
     return out
+
+
+def inject_fault(design: Design, fault_id: str) -> Design:
+    """Return a copy of `design` with the named fault applied; the input is never modified."""
+    return inject_ops(design, fault_by_id(fault_id).ops)

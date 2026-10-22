@@ -25,6 +25,7 @@ from typing import Any, Callable
 from . import faults
 from .agent import propose_design, repair_design
 from .checks import IMPLEMENTED_RUNGS, run_ladder
+from .heldout import HELDOUT
 from .parts import Part, load_library
 from .run import load_env_file, template_brief
 
@@ -80,6 +81,47 @@ def eval_repair(llm_factory: Callable[[], Any], library: dict[str, Part] | None 
             "passed": rate >= TARGETS["repair_pass_at_3"]}
 
 
+def eval_heldout(llm_factory: Callable[[], Any], trials: int = 3, library: dict[str, Part] | None = None,
+                 max_repairs: int = 2) -> dict[str, Any]:
+    """Repair the held-out scenarios (see heldout.py), `trials` independent sessions each. Reports the repaired
+    fraction overall and per family; no pass/fail target is attached (it is a before/after comparison)."""
+    lib = library or load_library()
+    rows = []
+    for sc in HELDOUT:
+        broken = faults.inject_ops(faults.reference_design(), sc["ops"])
+        got = {r.rung: r.status for r in run_ladder(broken, lib)}
+        assert got[sc["expected_rung"]] == "fail", (sc["id"], got)  # the scenario really breaks its rung
+        for t in range(trials):
+            res = repair_design(llm_factory(), broken, template_brief(), lib, max_repairs=max_repairs)
+            rows.append({"scenario": sc["id"], "family": sc["family"], "trial": t + 1, "repaired": res.passed,
+                         "attempts": len(res.attempts), "cost_usd": round(res.cost_usd, 5)})
+    fam = {}
+    for f in sorted({r["family"] for r in rows}):
+        sub = [r for r in rows if r["family"] == f]
+        fam[f] = {"repaired": sum(r["repaired"] for r in sub), "sessions": len(sub)}
+    return {"eval": "board_heldout_repair", "sessions": len(rows), "repaired": sum(r["repaired"] for r in rows),
+            "rate": sum(r["repaired"] for r in rows) / len(rows), "by_family": fam, "trials": trials, "rows": rows,
+            "total_usd": round(sum(r["cost_usd"] for r in rows), 5)}
+
+
+def eval_catalogue_repeats(llm_factory: Callable[[], Any], trials: int = 3, library: dict[str, Part] | None = None,
+                           max_repairs: int = 2) -> dict[str, Any]:
+    """The 8 catalogue faults, `trials` sessions each (the old tuned set, sampled like the held-out set)."""
+    lib = library or load_library()
+    rows = []
+    for f in faults.FAULTS:
+        broken = faults.inject_fault(faults.reference_design(), f.id)
+        for t in range(trials):
+            res = repair_design(llm_factory(), broken, template_brief(), lib, max_repairs=max_repairs)
+            rows.append({"scenario": f.id, "trial": t + 1, "repaired": res.passed, "attempts": len(res.attempts),
+                         "cost_usd": round(res.cost_usd, 5)})
+    weak = [r for r in rows if r["scenario"] in ("regulator_overload", "i2c_address_collision")]
+    return {"eval": "board_catalogue_repeats", "sessions": len(rows), "repaired": sum(r["repaired"] for r in rows),
+            "rate": sum(r["repaired"] for r in rows) / len(rows), "trials": trials,
+            "weak_two": {"repaired": sum(r["repaired"] for r in weak), "sessions": len(weak)}, "rows": rows,
+            "total_usd": round(sum(r["cost_usd"] for r in rows), 5)}
+
+
 def eval_cost(*results: dict[str, Any]) -> dict[str, Any]:
     costs = [r["cost_usd"] for res in results for r in res.get("runs", res.get("faults", []))]
     mean = sum(costs) / len(costs) if costs else 0.0
@@ -89,13 +131,23 @@ def eval_cost(*results: dict[str, Any]) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="siliconsmith.board.evals")
-    ap.add_argument("which", choices=["detect", "live"])
+    ap.add_argument("which", choices=["detect", "live", "heldout"])
     ap.add_argument("--runs", type=int, default=5)
+    ap.add_argument("--trials", type=int, default=3, help="sessions per scenario for `heldout`")
     ap.add_argument("--budget", type=float, default=0.30, help="USD cap per session")
     ap.add_argument("--env-file", type=Path)
     args = ap.parse_args(argv)
     if args.which == "detect":
         out = [eval_fault_detection()]
+    elif args.which == "heldout":
+        if args.env_file:
+            load_env_file(args.env_file)
+        from ..config import settings
+        from ..llm import Nemotron
+
+        cfg = dataclasses.replace(settings(), run_budget_usd=args.budget)
+        factory = lambda: Nemotron(cfg)  # noqa: E731
+        out = [eval_heldout(factory, args.trials), eval_catalogue_repeats(factory, args.trials)]
     else:
         if args.env_file:
             load_env_file(args.env_file)
@@ -114,9 +166,12 @@ def main(argv: list[str] | None = None) -> int:
     f = dest / f"board-{args.which}-{time.strftime('%Y%m%d-%H%M%S')}.json"
     f.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     for r in out:
-        print(f"{r['eval']}: {'PASS' if r['passed'] else 'FAIL'}  (target {r['target']})")
+        if isinstance(r.get("passed"), bool):
+            print(f"{r['eval']}: {'PASS' if r['passed'] else 'FAIL'}  (target {r['target']})")
+        else:
+            print(f"{r['eval']}: " + str({k: r[k] for k in ("repaired", "sessions", "by_family", "weak_two", "total_usd") if k in r}))
     print(f"written {f}")
-    return 0 if all(r["passed"] for r in out) else 1
+    return 0 if all(r.get("passed", True) for r in out) else 1
 
 
 if __name__ == "__main__":
