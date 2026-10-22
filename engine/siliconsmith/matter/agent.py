@@ -164,14 +164,43 @@ def pareto_front(points: list[tuple[float, float, str]]) -> set[str]:
     return front
 
 
+def field_summary(mask: np.ndarray, T: np.ndarray, sp: Spreader) -> str:
+    """Where the heat is and where material sits idle: mean temperature and material cells by distance band
+    from the chip centre. Shown to the architect so it can move material from cold regions to hot ones."""
+    n = sp.n
+    c = (n - 1) / 2.0
+    yy, xx = np.mgrid[0:n, 0:n]
+    r = np.hypot(xx - c, yy - c) * sp.dx * 1e3  # mm
+    edges = [0, 6, 12, 18, 24, 30, 44]
+    parts = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        sel = (r >= lo) & (r < hi) & ~np.isnan(T)
+        if sel.any():
+            parts.append(f"{lo}-{hi}mm: {int(sel.sum())} cells, mean {np.nanmean(T[sel]):.0f}C")
+    cold = float(np.mean((T[~np.isnan(T)] - sp.T_inf) < 0.25 * (np.nanmax(T) - sp.T_inf)))
+    return "; ".join(parts) + f"; {cold:.0%} of material is within 25% of ambient rise (idle fins)"
+
+
+def candidate_payload(nid: str, n: dict, sp: Spreader, field: dict, metrics: dict, ladder_status: dict) -> dict:
+    """Compact per-candidate JSON for the 3D viewer: mask rows ('1' material), temperature field, results."""
+    m = force_chip(n["mask"], sp)
+    return dict(
+        format="matter-candidate/1", node=nid, generator=n["idea"].name, title=n["idea"].title, params=n["best"]["params"],
+        n=sp.n, dx_mm=sp.dx * 1e3, thickness_mm=sp.t * 1e3, chip=list(sp.chip_cells),
+        mask=["".join("1" if v else "0" for v in row) for row in m], field=field, metrics=metrics, ladder=ladder_status,
+        reason=n.get("reason", ""))
+
+
 # ------------------------------------------------------------------ the run
 
 
 class MatterRun:
     def __init__(self, sp: Spreader, llm, bus: EventBus, outdir: Path, *, rounds: int = 3, ideas_per_round: int = 3,
                  samples: int = 12, seed: int = 0, max_concurrency: int = 3, max_repairs: int = 1,
-                 gen_timeout_s: float = 60.0, refine_samples: int = 12, runner=None):
+                 gen_timeout_s: float = 60.0, refine_samples: int = 12, runner=None,
+                 deadline_s: float | None = None):
         self.runner = runner
+        self.deadline = None if deadline_s is None else time.monotonic() + deadline_s
         self.refine_samples = refine_samples
         self.sp, self.llm, self.bus, self.out = sp, llm, bus, outdir
         self.rounds, self.k, self.samples, self.seed = rounds, ideas_per_round, samples, seed
@@ -199,7 +228,8 @@ class MatterRun:
                 continue
             peak = f"{b['peak']:.1f} C peak, {b['material_fraction']:.1%} material" if b["peak"] is not None else "no valid sample"
             lines.append(f"- {n['idea'].name} ({nid}): best sample {peak} at params {b.get('params')}; "
-                         f"rungs {n.get('ladder')}; {n.get('reason', '')}")
+                         f"rungs {n.get('ladder')}; {n.get('reason', '')}"
+                         + (f"\nfield: {n['field_text']}" if n.get("field_text") else ""))
         return "\n".join(lines[-14:])
 
     # -- one node
@@ -269,6 +299,9 @@ class MatterRun:
         n["rows"] = [r for r in rows if r]
         best, mask = rows[bi], outcomes[bi].mask
         n["best"], n["mask"], n["best_idx"] = best, mask, bi
+        if best["m2"] == "pass":
+            mm = force_chip(mask, sp)
+            n["field_text"] = field_summary(mm, solve_mask(mm, sp).T, sp)
         L = {"M1": "pass", "M2": best["m2"], "M3": best["m3"], "M4": "skipped", "M5": "skipped"}
         self.stage(nid, "M1", "pass", detail="solver suite validated once at run start (same code, same interpreter)")
         self.stage(nid, "M2", best["m2"], detail=best["m2_detail"])
@@ -327,9 +360,13 @@ class MatterRun:
                 self.artifact(nid, "code", p, s)
                 p, s = export.write_artifact(d / "plate.stl", export.mask_to_stl(n["mask"], sp))
                 self.artifact(nid, "stl", p, s)
-                p, s = export.write_results_json(d / "field.json", export.field_payload(
-                    force_chip(n["mask"], sp), solve_mask(force_chip(n["mask"], sp), sp).T, sp))
+                field = export.field_payload(force_chip(n["mask"], sp), solve_mask(force_chip(n["mask"], sp), sp).T, sp)
+                p, s = export.write_results_json(d / "field.json", field)
                 self.artifact(nid, "field", p, s)
+                cand = candidate_payload(nid, n, sp, field, metrics, L)
+                n["candidate"] = cand
+                p, s = export.write_results_json(d / "candidate.json", cand)
+                self.artifact(nid, "candidate", p, s)
                 p, s = export.write_results_json(d / "result.json", dict(
                     node=nid, generator=n["idea"].name, params=b["params"], metrics=metrics, ladder=L,
                     m4=n.get("m4"), m5=n.get("m5"), spreader=sp.as_dict(), samples=n["rows"]))
@@ -365,6 +402,10 @@ class MatterRun:
         self.bus.log(f"baseline: best plain rectangular fins within the full budget reach {bpeak:.2f} C ({bparams})")
         stopped = None
         for rnd in range(self.rounds):
+            if self.deadline is not None and time.monotonic() > self.deadline - 20:
+                stopped = "time limit reached; finished with the nodes evaluated so far"
+                self.bus.log(stopped, "warn")
+                break
             try:
                 ideas, _ = self.llm.json("ultra", "architect",
                                          architect_messages(sp, self.k, self.history(), bpeak, list(self.names)),
@@ -403,8 +444,15 @@ class MatterRun:
         feasible = [(n["best"]["material_fraction"], n["best"]["peak"], nid) for nid, n in scored.items() if n["best"]["m3"] == "pass"]
         front = sorted(pareto_front(feasible))
         wall = time.monotonic() - self.t0
+        verdict = None
+        if best_id:
+            bn = scored[best_id]
+            eq = (bn.get("m5") or {}).get("baseline_peak")
+            verdict = ladder.verdict(bn["best"]["peak"], eq, bpeak)
         summary = dict(
-            ok=True, best_node_id=best_id, all_rungs_passed=best_id in full if best_id else False,
+            ok=True, best_node_id=best_id, verdict=verdict,
+            baselines=dict(equal_material_peak_c=(scored[best_id].get("m5") or {}).get("baseline_peak") if best_id else None,
+                           full_budget_peak_c=bpeak), all_rungs_passed=best_id in full if best_id else False,
             baseline_peak_c=bpeak, baseline=bparams, pareto=front,
             nodes={nid: dict(generator=n["idea"].name, status=n["status"], ladder=n["ladder"], reason=n.get("reason", ""),
                              peak_c=(n.get("best") or {}).get("peak"),
@@ -436,6 +484,8 @@ def render_report(s: dict, sp: Spreader) -> str:
         n = s["nodes"][s["best_node_id"]]
         verdict = "all rungs M1-M5 passed" if s["all_rungs_passed"] else "NOT all rungs passed"
         eq = n.get("delta_vs_equal_material_k")
+        if s.get("verdict"):
+            L += [f"**Result: {s['verdict']['label']}.**", ""]
         L += [f"Best node: **{s['best_node_id']}** `{n['generator']}`: {n['peak_c']:.2f} C peak using {n['material_fraction']:.1%} material; {verdict}.",
               (f"M5 compares against the best plain rectangular-fin plate using no more material than the candidate: "
                f"{n['equal_material_baseline_c']:.2f} C, so the candidate is {eq:+.2f} K better at equal material." if eq is not None else ""),

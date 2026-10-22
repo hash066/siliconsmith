@@ -84,3 +84,19 @@ def m5_baseline(mask, sp: Spreader) -> RungResult:
               + (f"beats baseline by {delta:.2f} K" if delta > 0 else f"does not beat baseline ({delta:.2f} K)"))
     return RungResult("pass" if delta > 0 else "fail", detail,
                       dict(peak=peak, baseline_peak=bpeak, delta_k=delta, baseline=bparams))
+
+
+def verdict(peak: float, equal_material_peak: float | None, full_budget_peak: float) -> dict:
+    """Honest one-line result, with BOTH baselines. Margins are model outputs under stated assumptions."""
+    d_eq = None if equal_material_peak is None else equal_material_peak - peak
+    d_full = full_budget_peak - peak
+    if d_full > 0:
+        label = f"Beats the full-budget rectangular-fin baseline by {d_full:.2f} K (model estimate)"
+    elif d_eq is not None and d_eq > 0:
+        label = (f"Beats the equal-material rectangular-fin baseline by {d_eq:.2f} K; does NOT beat the full-budget "
+                 f"baseline ({-d_full:.2f} K hotter)")
+    else:
+        label = "Does not beat a rectangular-fin baseline"
+    return dict(label=label, delta_equal_material_k=d_eq, delta_full_budget_k=d_full,
+                beats_equal_material=bool(d_eq is not None and d_eq > 0), beats_full_budget=bool(d_full > 0),
+                note="2D steady-state model, stated h and k, no airflow CFD, not validated on a printed part.")
