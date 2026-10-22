@@ -2,13 +2,17 @@
 // No I/O, no clocks. Replay and live SSE both feed this same function.
 
 import {
+  DEFAULT_DOMAIN,
   MODELS,
   ROLES,
   RUNGS,
   STAGES,
   STAGE_RUNG,
   type Counterexample,
+  type DomainScored,
+  type ArtifactCreated,
   type Hotspot,
+  type LadderRung,
   type LlmCall,
   type Model,
   type NodeId,
@@ -30,7 +34,12 @@ export interface StageRecord {
   status: StageStatus;
   attempt: number;
   detail?: string;
+  /** v2: fact ids the check cited, and the rung label (pass only). */
+  evidence?: string[];
+  label?: string;
   t: number;
+  /** Sequence number of the event that set this record. */
+  seq?: number;
 }
 
 export interface AttemptRecord {
@@ -89,6 +98,8 @@ export interface NodeState {
   artifactsByAttempt: Record<number, StageArtifacts>;
   evidence: Evidence[];
   score: NodeScored | null;
+  /** v2: the scored result of a non-silicon domain (ladder by rung id, metrics). Silicon nodes use `score`. */
+  domainScore: DomainScored | null;
   /** v1.3: median-of-seeds Fmax for final nodes; also folded into `score` so every view shows wall-clock. */
   timing: NodeTiming | null;
   pruned: { reason: string; t: number; kind: PruneKind } | null;
@@ -117,8 +128,22 @@ export interface Marker {
   label: string;
 }
 
+/** v2: an `artifact.created` event, kept with where it arrived. */
+export interface ArtifactRecord extends Pick<ArtifactCreated, "kind" | "path" | "sha256"> {
+  seq: number;
+  t: number;
+  nodeId: NodeId | null;
+}
+
 export interface RunState {
   runId: string | null;
+  /** v2: the workbench that produced the run (`run.started.domain`, default "silicon"). */
+  domain: string;
+  /** v2: the rung list announced by `run.started.ladder`, or null (silicon's built-in L1..L6). */
+  ladderSpec: LadderRung[] | null;
+  /** v2, optional: tool versions announced by the engine; empty when the stream carries none. */
+  toolVersions: Record<string, string>;
+  artifacts: ArtifactRecord[];
   status: "waiting" | "running" | "completed" | "failed";
   workload: RunStarted["workload"] | null;
   config: RunStarted["config"] | null;
@@ -163,6 +188,10 @@ const usageMap = <K extends string>(keys: readonly K[]) =>
 export function initialRunState(): RunState {
   return {
     runId: null,
+    domain: DEFAULT_DOMAIN,
+    ladderSpec: null,
+    toolVersions: {},
+    artifacts: [],
     status: "waiting",
     workload: null,
     config: null,
@@ -207,6 +236,7 @@ function newNode(id: NodeId, t: number): NodeState {
     artifactsByAttempt: {},
     evidence: [],
     score: null,
+    domainScore: null,
     timing: null,
     pruned: null,
     expanded: false,
@@ -324,6 +354,7 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
     ticker: prev.ticker.slice(),
     markers: prev.markers,
     warnings: prev.warnings.slice(),
+    artifacts: prev.artifacts.slice(),
   };
   const touched = new Set<NodeId>();
   const node = (id: NodeId): NodeState | null => {
@@ -353,6 +384,9 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
         s.workload = e.workload;
         s.config = e.config;
         s.backend = e.backend;
+        s.domain = typeof e.domain === "string" && e.domain ? e.domain : DEFAULT_DOMAIN;
+        s.ladderSpec = Array.isArray(e.ladder) ? e.ladder.filter((r) => r && typeof r.id === "string").map((r) => ({ ...r })) : null;
+        s.toolVersions = e.tool_versions && typeof e.tool_versions === "object" ? { ...e.tool_versions } : {};
         tick(s, e, { nodeId: null, tone: "neutral", kind: "run", text: `Run started · ${e.workload.title} · ${e.backend}` });
         break;
       }
@@ -403,6 +437,7 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
         break;
       }
       case "node.stage": {
+        const stage = e.stage as Stage;
         const n = node(e.node_id);
         if (!n) {
           warn(`stage event for unknown node ${e.node_id}`);
@@ -417,17 +452,17 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           n.attempts.push(att);
           n.attempts.sort((a, b) => a.attempt - b.attempt);
         }
-        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t };
-        att.stages[e.stage] = rec;
-        n.stages[e.stage] = rec;
-        if (e.stage === "implement" && e.status === "running" && e.attempt > 0) {
+        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t, seq: e.seq, ...(e.evidence ? { evidence: e.evidence } : {}), ...(e.label ? { label: e.label } : {}) };
+        att.stages[stage] = rec;
+        n.stages[stage] = rec;
+        if (stage === "implement" && e.status === "running" && e.attempt > 0) {
           // A repair restarts the ladder: later stages from the failed attempt no longer apply.
           for (const st of STAGES) if (st !== "implement") delete n.stages[st];
         }
-        if (e.status === "running") n.activeStage = e.stage;
-        else if (n.activeStage === e.stage) n.activeStage = null;
+        if (e.status === "running") n.activeStage = stage;
+        else if (n.activeStage === stage) n.activeStage = null;
         if (e.status === "fail") {
-          att.failed = e.stage;
+          att.failed = stage;
           n.activeStage = null;
         }
         if (e.artifacts) {
@@ -437,21 +472,21 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
             n.artifactsByAttempt[e.attempt] = { ...(n.artifactsByAttempt[e.attempt] ?? {}), ...code };
           }
           if (error_log !== undefined || counterexample !== undefined) {
-            n.evidence.push({ attempt: e.attempt, stage: e.stage, t: e.t, detail: e.detail, log: error_log, counterexample });
+            n.evidence.push({ attempt: e.attempt, stage: stage, t: e.t, detail: e.detail, log: error_log, counterexample });
           }
         }
-        parseMeasured(n, e.stage, e.detail);
-        if (e.status === "pass" && e.stage !== "implement") {
-          tick(s, e, { nodeId: e.node_id, tone: "pass", kind: e.stage, text: `${e.node_id} ${e.stage} passed${e.detail ? ` · ${e.detail}` : ""}` });
+        parseMeasured(n, stage, e.detail);
+        if (e.status === "pass" && stage !== "implement") {
+          tick(s, e, { nodeId: e.node_id, tone: "pass", kind: stage, text: `${e.node_id} ${stage} passed${e.detail ? ` · ${e.detail}` : ""}` });
         } else if (e.status === "fail") {
-          tick(s, e, { nodeId: e.node_id, tone: "fail", kind: e.stage, text: `${e.node_id} ${e.stage} failed${e.detail ? ` · ${e.detail}` : ""}` });
+          tick(s, e, { nodeId: e.node_id, tone: "fail", kind: stage, text: `${e.node_id} ${stage} failed${e.detail ? ` · ${e.detail}` : ""}` });
           s.markers = [
             ...s.markers,
-            { t: e.t, seq: e.seq, nodeId: e.node_id, kind: "fail", label: `${e.node_id} ${e.stage} failed${e.artifacts?.counterexample ? " (counterexample)" : ""}` },
+            { t: e.t, seq: e.seq, nodeId: e.node_id, kind: "fail", label: `${e.node_id} ${stage} failed${e.artifacts?.counterexample ? " (counterexample)" : ""}` },
           ];
         } else if (e.status === "skipped") {
-          tick(s, e, { nodeId: e.node_id, tone: "warn", kind: e.stage, text: `${e.node_id} ${e.stage} skipped${e.detail ? ` · ${e.detail}` : ""}` });
-        } else if (e.stage === "implement" && e.status === "running" && e.attempt > 0) {
+          tick(s, e, { nodeId: e.node_id, tone: "warn", kind: stage, text: `${e.node_id} ${stage} skipped${e.detail ? ` · ${e.detail}` : ""}` });
+        } else if (stage === "implement" && e.status === "running" && e.attempt > 0) {
           tick(s, e, { nodeId: e.node_id, tone: "warn", kind: "repair", text: `${e.node_id} repair · attempt ${e.attempt}` });
         }
         break;
@@ -462,9 +497,20 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           warn(`score for unknown node ${e.node_id}`);
           break;
         }
-        n.score = e;
         n.activeStage = null;
         n.lastT = e.t;
+        if (s.domain !== DEFAULT_DOMAIN || !("cycles" in e)) {
+          n.domainScore = e as DomainScored;
+          if (e.on_pareto && !s.pareto.includes(e.node_id)) s.pareto.push(e.node_id);
+          tick(s, e, {
+            nodeId: e.node_id,
+            tone: e.feasible ? "signal" : "warn",
+            kind: "scored",
+            text: `${e.node_id} scored · ${Object.entries(e.ladder).map(([k, v]) => `${k} ${v}`).join(" ")}`,
+          });
+          break;
+        }
+        n.score = e;
         if (e.on_pareto && !s.pareto.includes(e.node_id)) s.pareto.push(e.node_id);
         recomputeBest(s);
         tick(s, e, {
@@ -489,6 +535,11 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           kind: "timing",
           text: `${e.node_id} Fmax ${e.fmax_mhz.toFixed(1)} MHz (median of ${e.seeds} seeds) · wall-clock ${e.wall_speedup.toFixed(2)}×`,
         });
+        break;
+      }
+      case "artifact.created": {
+        s.artifacts.push({ kind: e.kind, path: e.path, sha256: e.sha256, nodeId: e.node_id ?? null, seq: e.seq, t: e.t });
+        tick(s, e, { nodeId: e.node_id ?? null, tone: "neutral", kind: "artifact", text: `Artifact · ${e.kind} · ${e.path} · sha256 ${e.sha256.slice(0, 12)}…` });
         break;
       }
       case "node.pruned": {
@@ -570,7 +621,8 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
         s.completed = e;
         if (e.pareto?.length) s.pareto = e.pareto.filter((id) => s.nodes[id]);
         const declared = e.best_node_id;
-        if (declared && declared !== s.rootId && s.nodes[declared]?.score) s.best = declared;
+        if (declared && declared !== s.rootId && s.nodes[declared]?.domainScore) s.best = declared;
+        else if (declared && declared !== s.rootId && s.nodes[declared]?.score) s.best = declared;
         else if (declared === s.rootId) s.best = s.best && s.nodes[s.best]?.score?.feasible ? s.best : null;
         tick(s, e, {
           nodeId: s.best,
@@ -603,6 +655,7 @@ export const reduceAll = (events: readonly RunEvent[]) => applyEvents(initialRun
 export function nodeStatus(n: NodeState, s: RunState): NodeStatus {
   if (n.parentId === null) return s.baseline ? "baseline" : "running";
   if (n.pruned) return "pruned";
+  if (n.domainScore) return n.domainScore.feasible === false ? "unproven" : "scored";
   if (n.score) return n.score.feasible ? "scored" : "unproven";
   if (n.activeStage) return n.attempt > 0 ? "repairing" : "running";
   const anyRun = Object.keys(n.stages).length > 0;

@@ -1,0 +1,62 @@
+[
+  {
+    "viewport": "360x780",
+    "view": "library-evidence",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-library-evidence-fx.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "library-evidence",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-library-evidence-fx.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "library-evidence",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-library-evidence-fx.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "library-evidence",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-library-evidence-fx.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "library-evidence",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-library-evidence-fx.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "library-evidence",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-library-evidence-fx.png"
+  }
+]

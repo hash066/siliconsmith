@@ -1,0 +1,183 @@
+{
+  "keyboard": [
+    {
+      "tag": "A",
+      "label": "Skip to content",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "label": "SiliconSmith home",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Silicon",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Board (roadmap, not built yet)",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Matter (roadmap, not built yet)",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Switch to light theme",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "r_w1_contree3TinyMaix int8 fully-connect",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "r_m4_secondTinyMaix int8 fully-connected",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "r_w1_finalTinyMaix int8 fully-connected ",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "r_w1_v3TinyMaix int8 fully-connected lay",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "r_w2_final3Monocypher ChaCha20 stream ci",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Replay from the start",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "1×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "2×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "4×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "8×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "16×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Skip to end",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "DIV",
+      "label": "Run time",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Evidence for best wall-clock speedup",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Evidence for area change",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Evidence for cycles",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Evidence for Fmax",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "g",
+      "label": "root baseline: Baseline CPU, 1.00×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "g",
+      "label": "n1 dot4.sum: Verified, in budget, 2.69×",
+      "outline": "solid 2px",
+      "visible": true
+    },
+    {
+      "tag": "g",
+      "label": "n2 dot2.sum: Verified, in budget, 1.64×",
+      "outline": "solid 2px",
+      "visible": true
+    }
+  ],
+  "contrast": {
+    "dark": {
+      "checked": 34,
+      "min": 5.43,
+      "failures": []
+    },
+    "dark-evidence-open": {
+      "checked": 35,
+      "min": 5.43,
+      "failures": []
+    },
+    "light": {
+      "checked": 35,
+      "min": 5.25,
+      "failures": []
+    },
+    "light-evidence-open": {
+      "checked": 35,
+      "min": 5.25,
+      "failures": []
+    }
+  },
+  "keyboard_focus_ring_on_every_stop": true
+}
