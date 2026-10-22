@@ -6,6 +6,7 @@ import type { NodeId } from "./events";
 import { int, mhz, pct, times } from "./format";
 import { RUNG_TOOL } from "./labels";
 import { rungCell, rungsOf } from "./domain";
+import type { BoardCheck, BoardFact, MatterSimulation } from "./hosted";
 import { wallOf, type RunState } from "./run-state";
 
 export type EvidenceMetric = "wall_speedup" | "cycles" | "area" | "fmax";
@@ -140,12 +141,78 @@ export interface RungEvidenceRef {
   claim: string | null;
   /** Fact ids the check cited (for example "part:esp32.gpio12.strapping"). */
   facts: string[];
-  runId: string;
-  nodeId: string;
+  /** null for a live call to a hosted check (not a recorded run). */
+  runId: string | null;
+  nodeId: string | null;
   seq: number | null;
   domain: string;
-  runHref: string;
+  runHref: string | null;
   replayPath: string | null;
+  /** Where the result came from, when it is not a recorded run (for example "hosted check, this call"). */
+  origin?: string;
+}
+
+/** One curated fact a Board check cited, resolved by the hosted function (text and provenance). */
+export interface FactEvidenceRef {
+  kind: "fact";
+  id: string;
+  part: string;
+  origin: string;
+  text: string;
+  source: string | null;
+  section: string | null;
+  citationChecked: boolean;
+  url: string | null;
+  usedByRung: string | null;
+}
+
+export function buildFactEvidence(f: BoardFact, usedByRung: string | null): FactEvidenceRef {
+  return { kind: "fact", id: f.id, part: f.part, origin: f.origin, text: f.text, source: f.source, section: f.section, citationChecked: f.citation_checked, url: f.url, usedByRung };
+}
+
+/** A rung of a live Board check (hosted function), as drawer evidence. */
+export function boardRungEvidence(check: BoardCheck, rungId: string): RungEvidenceRef | null {
+  const r = check.rungs.find((x) => x.rung === rungId);
+  const spec = check.ladder.find((x) => x.id === rungId);
+  if (!r) return null;
+  return {
+    kind: "rung",
+    rung: r.rung,
+    tool: spec?.tool ?? "not recorded",
+    status: r.status,
+    detail: r.detail || null,
+    claim: r.status === "pass" ? r.label : null,
+    facts: r.evidence,
+    runId: null,
+    nodeId: null,
+    seq: null,
+    domain: "board",
+    runHref: null,
+    replayPath: null,
+    origin: "Hosted Board check, this call (deterministic code, no model)",
+  };
+}
+
+/** A rung of a live Matter simulation (hosted function), as drawer evidence. */
+export function matterRungEvidence(sim: MatterSimulation, rungId: string): RungEvidenceRef | null {
+  const r = sim.ladder.find((x) => x.id === rungId);
+  if (!r) return null;
+  return {
+    kind: "rung",
+    rung: r.id,
+    tool: r.check,
+    status: r.status === "skipped" ? "unknown" : r.status,
+    detail: r.detail || null,
+    claim: r.status === "pass" ? r.label : null,
+    facts: [],
+    runId: null,
+    nodeId: null,
+    seq: null,
+    domain: "matter",
+    runHref: null,
+    replayPath: null,
+    origin: `Hosted Matter simulation, this call (${sim.source}; ${sim.timings_ms} ms)`,
+  };
 }
 
 export function buildRungEvidence(s: RunState, nodeId: string, rungId: string, source: "replay" | "live" = "replay"): RungEvidenceRef | null {
@@ -166,6 +233,7 @@ export function buildRungEvidence(s: RunState, nodeId: string, rungId: string, s
     seq: c.seq ?? null,
     domain: s.domain,
     runHref: `/workstation?run=${s.runId}&node=${nodeId}`,
+    origin: undefined,
     replayPath: source === "replay" ? `web/public/replays/${s.runId}.ndjson` : null,
   };
 }

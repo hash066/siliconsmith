@@ -33,8 +33,10 @@ const hex = (s: string): [number, number, number] => {
   return m ? [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)] : [180, 185, 173];
 };
 
-/** Orthographic draw of the mesh, painter's order, flat shading from recomputed normals. */
-export function drawMesh(ctx: CanvasRenderingContext2D, mesh: Mesh, w: number, h: number, az: number, el: number, base: [number, number, number], zScale: number) {
+export type Rgb = [number, number, number];
+
+/** Orthographic draw of the mesh, painter's order, flat shading from recomputed normals. `colorOf` gives a triangle its own base colour. */
+export function drawMesh(ctx: CanvasRenderingContext2D, mesh: Mesh, w: number, h: number, az: number, el: number, base: Rgb, zScale: number, colorOf?: (tri: number) => Rgb) {
   const cx = (mesh.min[0] + mesh.max[0]) / 2;
   const cy = (mesh.min[1] + mesh.max[1]) / 2;
   const cz = (mesh.min[2] + mesh.max[2]) / 2;
@@ -87,7 +89,8 @@ export function drawMesh(ctx: CanvasRenderingContext2D, mesh: Mesh, w: number, h
     // light from the upper left and the viewer; depth axis points away, so a face toward the viewer has -nz.
     const lit = Math.abs(-nx * 0.35 + -ny * 0.55 + -nz * 0.75);
     const s = 0.28 + 0.72 * lit;
-    const col = `rgb(${Math.round(base[0] * s)},${Math.round(base[1] * s)},${Math.round(base[2] * s)})`;
+    const b = colorOf ? colorOf(i) : base;
+    const col = `rgb(${Math.round(b[0] * s)},${Math.round(b[1] * s)},${Math.round(b[2] * s)})`;
     ctx.fillStyle = col;
     ctx.strokeStyle = col;
     ctx.beginPath();
@@ -100,8 +103,8 @@ export function drawMesh(ctx: CanvasRenderingContext2D, mesh: Mesh, w: number, h
   }
 }
 
-export function StlViewer({ url, label }: { url: string | null; label: string }) {
-  const load = useStl(url);
+/** A draggable canvas for a mesh, with button-based rotation for keyboard users. */
+export function MeshCanvas({ mesh, label, colorOf, zScale = 6, footer }: { mesh: Mesh; label: string; colorOf?: (tri: number) => Rgb; zScale?: number; footer?: React.ReactNode }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [az, setAz] = useState(0.6);
@@ -120,61 +123,71 @@ export function StlViewer({ url, label }: { url: string | null; label: string })
   const h = Math.max(220, Math.min(380, Math.round(w * 0.72)));
   useEffect(() => {
     const cv = ref.current;
-    if (!cv || load.state !== "ok" || !w) return;
+    if (!cv || !w) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     cv.width = w * dpr;
     cv.height = h * dpr;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawMesh(ctx, load.mesh, w, h, az, el, hex(getComputedStyle(cv).getPropertyValue("--ink-2")), 6);
-  }, [load, w, h, az, el]);
+    drawMesh(ctx, mesh, w, h, az, el, hex(getComputedStyle(cv).getPropertyValue("--ink-2")), zScale, colorOf);
+  }, [mesh, w, h, az, el, zScale, colorOf]);
 
   return (
     <div ref={wrap} className="min-w-0">
-      {load.state === "ok" ? (
-        <>
-          <canvas
-            ref={ref}
-            role="img"
-            aria-label={label}
-            style={{ width: "100%", height: h, touchAction: "none", cursor: "grab" }}
-            className="block rounded-md bg-sunken"
-            onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId);
-              drag.current = { x: e.clientX, y: e.clientY, az, el };
-            }}
-            onPointerMove={(e) => {
-              const d = drag.current;
-              if (!d) return;
-              setAz(d.az + (e.clientX - d.x) * 0.01);
-              setEl(Math.max(0.15, Math.min(1.45, d.el + (e.clientY - d.y) * 0.006)));
-            }}
-            onPointerUp={() => (drag.current = null)}
-            onPointerCancel={() => (drag.current = null)}
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-ink-3">
-            <button type="button" onClick={() => setAz((a) => a - 0.3)} className="h-8 rounded-md border border-line-2 px-2.5 text-ink-2 hover:text-ink" aria-label="Rotate left">
-              ⟲ Rotate
-            </button>
-            <button type="button" onClick={() => setAz((a) => a + 0.3)} className="h-8 rounded-md border border-line-2 px-2.5 text-ink-2 hover:text-ink" aria-label="Rotate right">
-              Rotate ⟳
-            </button>
-            <button type="button" onClick={() => { setAz(0.6); setEl(0.95); }} className="h-8 rounded-md px-2.5 hover:text-ink">
-              Reset
-            </button>
-            <span className="num ml-auto">{load.mesh.count.toLocaleString("en-US")} triangles · z exaggerated 6×</span>
-          </div>
-        </>
-      ) : (
-        <p className="grid min-h-[140px] place-items-center rounded-md bg-sunken px-4 py-6 text-center text-[13px] leading-snug text-ink-3" role="status">
-          {load.state === "loading"
-            ? "Loading the geometry…"
-            : load.state === "bad"
-              ? `The geometry file could not be read (${load.why}).`
-              : "No geometry file is shipped with this replay for this candidate, so there is nothing to draw. The event log records the file's hash, not its contents."}
-        </p>
-      )}
+      <canvas
+        ref={ref}
+        role="img"
+        aria-label={label}
+        style={{ width: "100%", height: h, touchAction: "none", cursor: "grab" }}
+        className="block rounded-md bg-sunken"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          drag.current = { x: e.clientX, y: e.clientY, az, el };
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          setAz(d.az + (e.clientX - d.x) * 0.01);
+          setEl(Math.max(0.15, Math.min(1.45, d.el + (e.clientY - d.y) * 0.006)));
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-ink-3">
+        <button type="button" onClick={() => setAz((a) => a - 0.3)} className="h-8 rounded-md border border-line-2 px-2.5 text-ink-2 hover:text-ink" aria-label="Rotate left">
+          ⟲ Rotate
+        </button>
+        <button type="button" onClick={() => setAz((a) => a + 0.3)} className="h-8 rounded-md border border-line-2 px-2.5 text-ink-2 hover:text-ink" aria-label="Rotate right">
+          Rotate ⟳
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAz(0.6);
+            setEl(0.95);
+          }}
+          className="h-8 rounded-md px-2.5 hover:text-ink"
+        >
+          Reset
+        </button>
+        {footer}
+      </div>
     </div>
+  );
+}
+
+export function StlViewer({ url, label }: { url: string | null; label: string }) {
+  const load = useStl(url);
+  if (load.state === "ok")
+    return <MeshCanvas mesh={load.mesh} label={label} footer={<span className="num ml-auto">{load.mesh.count.toLocaleString("en-US")} triangles · z exaggerated 6×</span>} />;
+  return (
+    <p className="grid min-h-[140px] place-items-center rounded-md bg-sunken px-4 py-6 text-center text-[13px] leading-snug text-ink-3" role="status">
+      {load.state === "loading"
+        ? "Loading the geometry…"
+        : load.state === "bad"
+          ? `The geometry file could not be read (${load.why}).`
+          : "No geometry file is shipped with this replay for this candidate, so there is nothing to draw. The event log records the file's hash, not its contents."}
+    </p>
   );
 }

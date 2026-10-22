@@ -3,13 +3,13 @@
 import type { EvidenceMetric } from "@/lib/evidence";
 
 /** The workstation's signature: a calibration-sticker tag on a number. It opens the evidence drawer for that number. */
-export function EvidenceChip({ metric, label, onOpen }: { metric: EvidenceMetric; label: string; onOpen: (metric: EvidenceMetric) => void }) {
+export function EvidenceTag({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
-      onClick={() => onOpen(metric)}
+      onClick={onClick}
       aria-label={`Evidence for ${label}`}
-      title={`Evidence for ${label}: tool, run, node, command`}
+      title={`Evidence for ${label}: tool, source, detail`}
       className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[3px] border border-line-2 bg-sunken px-1.5 font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-ink-3 transition-colors duration-150 hover:border-signal-line hover:text-signal-ink"
     >
       <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
@@ -18,4 +18,9 @@ export function EvidenceChip({ metric, label, onOpen }: { metric: EvidenceMetric
       ev
     </button>
   );
+}
+
+/** A tag for a silicon metric of a scored node. */
+export function EvidenceChip({ metric, label, onOpen }: { metric: EvidenceMetric; label: string; onOpen: (metric: EvidenceMetric) => void }) {
+  return <EvidenceTag label={label} onClick={() => onOpen(metric)} />;
 }

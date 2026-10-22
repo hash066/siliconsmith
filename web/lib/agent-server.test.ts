@@ -19,8 +19,8 @@ const collect = async (it: AsyncGenerator<AgentEvent>) => {
 };
 
 describe("agent tools (real replays)", () => {
-  it("library.search finds verified nodes and returns evidence ids", async () => {
-    const r = await runTool("library.search", { query: "dot4" }, loader);
+  it("library_search finds verified nodes and returns evidence ids", async () => {
+    const r = await runTool("library_search", { query: "dot4" }, loader);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.evidence.length).toBeGreaterThan(0);
@@ -28,24 +28,24 @@ describe("agent tools (real replays)", () => {
     }
   });
 
-  it("evidence.get returns the figure, its tool and an evidence id; refuses a node that is not scored", async () => {
-    const ok = await runTool("evidence.get", { run_id: "r_w1_contree3", node_id: "n1.2.1", metric: "wall_speedup" }, loader);
+  it("evidence_get returns the figure, its tool and an evidence id; refuses a node that is not scored", async () => {
+    const ok = await runTool("evidence_get", { run_id: "r_w1_contree3", node_id: "n1.2.1", metric: "wall_speedup" }, loader);
     expect(ok.ok && ok.evidence).toEqual(["run:r_w1_contree3/n1.2.1#wall_speedup"]);
-    const no = await runTool("evidence.get", { run_id: "r_w1_contree3", node_id: "root", metric: "area" }, loader);
+    const no = await runTool("evidence_get", { run_id: "r_w1_contree3", node_id: "root", metric: "area" }, loader);
     expect(no.ok).toBe(false);
   });
 
-  it("run.explain_failure reports the prune reason of a pruned node", async () => {
-    const r = await runTool("run.explain_failure", { run_id: "r_w1_contree3", node_id: "n2.2.4" }, loader);
+  it("run_explain_failure reports the prune reason of a pruned node", async () => {
+    const r = await runTool("run_explain_failure", { run_id: "r_w1_contree3", node_id: "n2.2.4" }, loader);
     expect(r.ok && r.summary).toMatch(/pruned/);
   });
 
   it("rejects bad arguments: unknown keys, wrong types, path-like ids, unknown tools", () => {
-    expect(validateArgs("evidence.get", { run_id: "../etc/passwd", node_id: "n1", metric: "area" }).ok).toBe(false);
-    expect(validateArgs("evidence.get", { run_id: "r", node_id: "n1", metric: "bogus" }).ok).toBe(false);
-    expect(validateArgs("library.search", { query: 5 }).ok).toBe(false);
-    expect(validateArgs("library.search", { query: "x", extra: 1 }).ok).toBe(false);
-    expect(validateArgs("run.start", {}).ok).toBe(false);
+    expect(validateArgs("evidence_get", { run_id: "../etc/passwd", node_id: "n1", metric: "area" }).ok).toBe(false);
+    expect(validateArgs("evidence_get", { run_id: "r", node_id: "n1", metric: "bogus" }).ok).toBe(false);
+    expect(validateArgs("library_search", { query: 5 }).ok).toBe(false);
+    expect(validateArgs("library_search", { query: "x", extra: 1 }).ok).toBe(false);
+    expect(validateArgs("run_start", {}).ok).toBe(false);
   });
 });
 
@@ -81,7 +81,7 @@ describe("agent server", () => {
       n++;
       if (n === 1)
         return sse(
-          { choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "evidence.get", arguments: '{"run_id":"r_w1_contree3",' } }] } }] },
+          { choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "evidence_get", arguments: '{"run_id":"r_w1_contree3",' } }] } }] },
           { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"node_id":"n1.2.1","metric":"wall_speedup"}' } }] }, finish_reason: "tool_calls" }] },
         );
       return sse({ choices: [{ delta: { content: "The log records run:r_w1_contree3/n1.2.1#wall_speedup. " } }] }, { choices: [{ delta: { content: "Also run:r_made_up/n9. Again run:r_w1_contree3/n1.2.1." }, finish_reason: "stop" }], usage: { completion_tokens: 40 } });
@@ -102,7 +102,7 @@ describe("agent server", () => {
     let n = 0;
     const fetchImpl = (async () => {
       n++;
-      return n === 1 ? sse({ choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "run.start", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }) : sse({ choices: [{ delta: { content: "I cannot start runs." }, finish_reason: "stop" }] });
+      return n === 1 ? sse({ choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", function: { name: "run_start", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }) : sse({ choices: [{ delta: { content: "I cannot start runs." }, finish_reason: "stop" }] });
     }) as unknown as typeof fetch;
     const events = await collect(runAgentTurn({ text: "start a run", cfg, loader, turnId: "t2", fetchImpl }));
     expect(events.find((e) => e.type === "tool.result")).toMatchObject({ ok: false });

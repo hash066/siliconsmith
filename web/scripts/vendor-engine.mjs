@@ -30,3 +30,15 @@ for (const pkg of ["board", "matter"]) {
 
 const size = (d) => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(join(d, e.name)) : statSync(join(d, e.name)).size), 0);
 console.log(`[vendor-engine] copied board + matter to api/_vendor (${(size(join(web, "api", "_vendor")) / 1024).toFixed(0)} KB)`);
+
+// The evidence library (repo-root evidence/: manifests and artifacts built from real passing runs) is served read-only
+// as /library/* and read by the agent tools. Copied here so it ships with the app; never edited by the web build.
+const evidence = resolve(web, "..", "evidence");
+const libDest = join(web, "public", "library");
+rmSync(libDest, { recursive: true, force: true });
+if (existsSync(evidence)) {
+  cpSync(evidence, libDest, { recursive: true });
+  console.log(`[vendor-engine] copied evidence library to public/library (${(size(libDest) / 1024).toFixed(0)} KB)`);
+} else {
+  console.warn("[vendor-engine] evidence/ not found: the Library will show no stored entries in this build.");
+}

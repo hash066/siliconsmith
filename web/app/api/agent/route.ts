@@ -2,11 +2,13 @@ import { join } from "node:path";
 import type { NextRequest } from "next/server";
 import { configFromEnv, DailyLimiter, publicStatus, runAgentTurn, type AgentConfig } from "@/lib/agent-server";
 import { fsReplayLoader } from "@/lib/agent-tools";
+import { fsManifestStore } from "@/lib/manifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const loader = fsReplayLoader(join(process.cwd(), "public", "replays"));
+const manifests = fsManifestStore(join(process.cwd(), "public", "library"));
 let limiter: { key: string; l: DailyLimiter } | null = null;
 const limiterFor = (cfg: AgentConfig) => {
   const key = `${cfg.visitorTurnsPerDay}/${cfg.globalTurnsPerDay}`;
@@ -50,7 +52,11 @@ export async function POST(req: NextRequest) {
   }
 
   const turnId = `a${Date.now().toString(36)}`;
-  const events = runAgentTurn({ text, model: typeof body.model === "string" ? body.model : undefined, runId: typeof body.run_id === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(body.run_id) ? body.run_id : undefined, cfg, loader, signal: req.signal, turnId });
+  // The hosted Board and Matter functions live on this same deployment; the agent calls them like any visitor (they are rate limited too).
+  const origin = new URL(req.url).origin;
+  const hosted = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), "x-forwarded-for": visitor }, signal: req.signal });
+  const events = runAgentTurn({
+    tools: { manifests, hosted }, text, model: typeof body.model === "string" ? body.model : undefined, runId: typeof body.run_id === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(body.run_id) ? body.run_id : undefined, cfg, loader, signal: req.signal, turnId });
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async pull(ctl) {

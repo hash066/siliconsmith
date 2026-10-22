@@ -2,7 +2,7 @@
 //   npm run prebuild && node scripts/e2e-hosted.mjs        (PYTHON=/path/to/python overrides the interpreter)
 // It starts scripts/serve_api_local.py, which mounts the very `handler` classes api/board.py and api/matter.py export.
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -73,12 +73,17 @@ try {
   check("GET /api/matter/simulate is 405", (await call("GET", "/api/matter/simulate")).status === 405);
   check("POST /api/matter/run is not served", (await call("POST", "/api/matter/run", {})).status === 404);
 
+  // The agent's read-only tools against the real handlers (same tests as the unit run, which uses a scripted stand-in).
+  const vt = spawnSync("npx", ["vitest", "run", "lib/agent-tools-v2.test.ts"], { cwd: join(here, ".."), env: { ...process.env, HOSTED_API_URL: base }, shell: true, encoding: "utf8" });
+  check("agent tools board_check, matter_simulate and library lookups pass against the real handlers", vt.status === 0, (vt.stdout ?? "").split("\n").find((l) => l.includes("Tests")) ?? "");
+
   let limited = null;
   for (let i = 0; i < 130 && !limited; i++) {
     const r = await call("POST", "/api/board/check", { design: clean.json.design });
     if (r.status === 429) limited = r;
   }
   check("the in-memory limiter answers 429 with Retry-After", !!limited && !!limited.headers.get("retry-after"));
+
 } catch (e) {
   console.error(e);
   failed++;

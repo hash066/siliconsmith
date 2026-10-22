@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { EvidenceRef, RungEvidenceRef } from "@/lib/evidence";
+import type { EvidenceRef, FactEvidenceRef, RungEvidenceRef } from "@/lib/evidence";
 import type { ArtifactRecord } from "@/lib/run-state";
 
 function Row({ k, children, wide = false }: { k: string; children: React.ReactNode; wide?: boolean }) {
@@ -49,11 +49,17 @@ function RungDetails({ ev, onClear, compact }: { ev: RungEvidenceRef; onClear: (
         <Row k="Result">{STATUS_WORD[ev.status]}</Row>
         <Row k="Tool">{ev.tool}</Row>
         <Row k="Claim">{ev.claim ?? <span className="text-ink-3">None: the rung did not pass, so its label is not shown as a claim</span>}</Row>
-        <Row k="Run">
-          <span className="num">{ev.runId}</span> · {ev.domain}
+        <Row k="Source">
+          {ev.runId ? (
+            <>
+              <span className="num">{ev.runId}</span> · {ev.domain}
+            </>
+          ) : (
+            <span>{ev.origin ?? "A live call, not a recorded run"}</span>
+          )}
         </Row>
         <Row k="Event seq">{ev.seq === null ? <span className="text-ink-3">not recorded</span> : <span className="num">{ev.seq}</span>}</Row>
-        <Row k="Record">{ev.replayPath ? <span className="num break-all">{ev.replayPath}</span> : <span className="text-ink-3">Live run: no replay file</span>}</Row>
+        <Row k="Record">{ev.replayPath ? <span className="num break-all">{ev.replayPath}</span> : <span className="text-ink-3">{ev.runId ? "Live run: no replay file" : "Not recorded: re-run the same input to repeat it"}</span>}</Row>
         <Row k="Detail" wide={!compact}>
           {ev.detail ?? <span className="text-ink-3">The log carries no detail for this rung</span>}
         </Row>
@@ -78,12 +84,47 @@ function RungDetails({ ev, onClear, compact }: { ev: RungEvidenceRef; onClear: (
   );
 }
 
+function FactDetails({ ev, onClear, compact }: { ev: FactEvidenceRef; onClear: () => void; compact: boolean }) {
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="min-w-0 text-[13px] text-ink-2">
+          Fact <span className="num break-all text-[14px] text-ink">{ev.id}</span>
+        </h3>
+        <button type="button" onClick={onClear} className="h-7 rounded-md px-2 text-[12px] text-ink-3 hover:text-ink">
+          Clear
+        </button>
+      </div>
+      <dl className={`mt-1 grid grid-cols-[minmax(0,1fr)] gap-x-6 ${compact ? "" : "lg:grid-cols-2"}`}>
+        <Row k="Statement" wide={!compact}>
+          {ev.text}
+        </Row>
+        <Row k="Part">
+          <span className="num">{ev.part}</span> · {ev.origin.replace(/_/g, " ")}
+        </Row>
+        <Row k="Used by">{ev.usedByRung ?? "not stated"}</Row>
+        <Row k="Source">{ev.source ? (ev.url ? <a href={ev.url} className="text-signal-ink underline-offset-2 hover:underline" rel="noreferrer">{ev.source}</a> : ev.source) : <span className="text-ink-3">not recorded</span>}</Row>
+        <Row k="Section">{ev.section ?? <span className="text-ink-3">not recorded</span>}</Row>
+        <Row k="Checked" wide={!compact}>
+          {ev.citationChecked ? (
+            <span>An author matched this fact to the cited document. It is still author-curated, not independently reviewed.</span>
+          ) : (
+            <span className="text-amber">Author-curated, not independently verified: the citation has not been checked against the document.</span>
+          )}
+        </Row>
+      </dl>
+    </>
+  );
+}
+
 /** `compact` is for a narrow host (a side card): one column, no artifacts column. */
-export function EvidencePanel({ evidence, artifacts, onClear, compact = false }: { evidence: EvidenceRef | RungEvidenceRef | null; artifacts: ArtifactRecord[]; onClear: () => void; compact?: boolean }) {
+export function EvidencePanel({ evidence, artifacts, onClear, compact = false }: { evidence: EvidenceRef | RungEvidenceRef | FactEvidenceRef | null; artifacts: ArtifactRecord[]; onClear: () => void; compact?: boolean }) {
   return (
     <div className={`grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 px-4 py-3 ${compact ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]"}`}>
       <div className="min-w-0">
-        {evidence && "kind" in evidence ? (
+        {evidence && "kind" in evidence && evidence.kind === "fact" ? (
+          <FactDetails ev={evidence} onClear={onClear} compact={compact} />
+        ) : evidence && "kind" in evidence ? (
           <RungDetails ev={evidence} onClear={onClear} compact={compact} />
         ) : evidence ? (
           <>

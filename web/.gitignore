@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 !.env.example
 /api/_vendor/
 __pycache__/
+/public/library/

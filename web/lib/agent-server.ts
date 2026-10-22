@@ -2,7 +2,7 @@
 // The API key is read from the server environment and never leaves it. Nothing here runs in the browser.
 
 import type { AgentEvent, AgentModel } from "./agent";
-import { runTool, TOOL_DEFS, type ReplayLoader } from "./agent-tools";
+import { runTool, TOOL_DEFS, type ReplayLoader, type ToolContext } from "./agent-tools";
 
 export interface AgentConfig {
   apiKey: string;
@@ -79,9 +79,11 @@ export function pickModel(text: string, override?: string): AgentModel {
 
 const SYSTEM = `You are the assistant inside SiliconSmith Workstation, a tool where Nemotron agents design custom RISC-V instructions that deterministic verifiers then check.
 Rules:
-- You can only use the tools provided. They read recorded runs. You cannot start runs or change anything.
+- You can only use the tools provided. They read recorded runs and the evidence library, run the free deterministic Board checker and Matter simulator, and nothing else. You cannot start agent runs or change anything.
+- Library entries come with a reproduce command (siliconsmith verify-entry <id>). You may show it, and you must say it was NOT run by you.
 - State only what tool results say. If a tool returns nothing or an error, say so plainly. Never invent numbers, nodes, runs or tool versions.
-- You cannot declare anything verified or proven. Only the verifiers can. You may report that a run's event log records a node as scored, and you must cite the evidence id the tool returned (for example run:r_w1_contree3/n1.2.1 or run:r_w1_contree3/n1.2.1#wall_speedup).
+- You cannot declare anything verified or proven. Only the verifiers can. You may report what a tool result says (a run's event log, a rung status from the checker, a stored manifest) and you must cite the evidence id the tool returned (for example run:r_w1_contree3/n1.2.1#wall_speedup, board:clean_sensor#B4, matter:rect_fins#M5, library:dot4-tinymaix, part:esp32.gpio12.strapping).
+- Board facts are author-curated, not independently verified; never say a board will work. Matter is a 2D steady-state model, not validated on a printed part.
 - Every sentence that says something passed, was verified or proven must include such an evidence id.
 - Be brief: a few sentences. Use the run id and node id exactly as given.`;
 
@@ -116,6 +118,8 @@ export interface TurnInput {
   model?: string;
   /** The run the user is looking at (already validated as an id). */
   runId?: string;
+  /** Hosted Board/Matter calls and the evidence library, supplied by the route. */
+  tools?: ToolContext;
   cfg: AgentConfig;
   loader: ReplayLoader;
   signal?: AbortSignal;
@@ -123,7 +127,7 @@ export interface TurnInput {
   fetchImpl?: typeof fetch;
 }
 
-const EVIDENCE_ID = /run:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.]+(?:#[a-z_]+)?/g;
+const EVIDENCE_ID = /(?:run:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.]+(?:#[a-z_]+)?|(?:board|matter):[a-z0-9_]+#[A-Z][0-9]|library:[A-Za-z0-9_.-]+|part:[a-z0-9_]+\.[a-z0-9_.]+)/g;
 
 /** One user turn: up to `maxToolRounds` model calls with read-only tool calls in between, yielding the panel's AgentEvents. */
 export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent> {
@@ -217,7 +221,7 @@ The user is currently viewing run ${input.runId}.` : SYSTEM },
           parseError = "arguments were not valid JSON";
         }
         yield { type: "tool.call", id: turnId, call: { id: callId, name: c.name, args: typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {} } };
-        const result = parseError ? ({ ok: false, error: parseError } as const) : await runTool(c.name, parsed, loader);
+        const result = parseError ? ({ ok: false, error: parseError } as const) : await runTool(c.name, parsed, loader, input.tools);
         if (result.ok) for (const e of result.evidence) known.add(e);
         yield { type: "tool.result", id: turnId, callId, ok: result.ok, summary: result.ok ? result.summary : result.error };
         made.push({ id: callId, type: "function", function: { name: c.name, arguments: c.args || "{}" } });

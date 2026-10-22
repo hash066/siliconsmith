@@ -17,17 +17,19 @@ import { CostPanel } from "../run/CostPanel";
 import { EventTicker } from "../run/EventTicker";
 import { RunCanvas, useRunFocus } from "../run/RunConsole";
 import { ThemeToggle, Wordmark } from "../site/Brand";
-import { NotBuilt, type Workbench } from "./NotBuilt";
+import { BoardCheckPanel, type DrawerRef } from "../domain/BoardCheckPanel";
+import { MatterSimulatePanel } from "../domain/MatterSimulatePanel";
+import type { Workbench } from "./NotBuilt";
 import { ProjectRail, type RunIndexEntry } from "./ProjectRail";
 
 const DEFAULT_RUN = "r_w1_contree3";
-const WORKBENCHES: Array<{ id: Workbench; label: string; built: boolean }> = [
-  { id: "silicon", label: "Silicon", built: true },
-  { id: "board", label: "Board", built: false },
-  { id: "matter", label: "Matter", built: false },
+const WORKBENCHES: Array<{ id: Workbench; label: string }> = [
+  { id: "silicon", label: "Silicon" },
+  { id: "board", label: "Board" },
+  { id: "matter", label: "Matter" },
 ];
 type MobileTab = "canvas" | "agent" | "project" | "drawer";
-type Sel = { kind: "metric"; metric: EvidenceMetric; nodeId: string } | { kind: "rung"; nodeId: string; rung: string };
+type Sel = { kind: "metric"; metric: EvidenceMetric; nodeId: string } | { kind: "rung"; nodeId: string; rung: string } | { kind: "direct"; ref: DrawerRef };
 type DrawerTab = "events" | "evidence" | "cost";
 
 const EMPTY = initialRunState();
@@ -54,6 +56,8 @@ function Skeleton() {
 export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const [runId, setRunId] = useState(DEFAULT_RUN);
   const [wb, setWb] = useState<Workbench>("silicon");
+  // Board and Matter each have a live tool (hosted, deterministic) and, when a replay of that domain is installed, a recorded run.
+  const [view, setView] = useState<"tool" | "run">("tool");
   const [mobileTab, setMobileTab] = useState<MobileTab>("canvas");
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("events");
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -78,6 +82,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
 
   const evidence = useMemo(() => {
     if (!sel) return null;
+    if (sel.kind === "direct") return sel.ref;
     const mode = snap?.mode ?? "replay";
     return sel.kind === "metric" ? buildEvidence(s, sel.nodeId, sel.metric, mode) : buildRungEvidence(s, sel.nodeId, sel.rung, mode);
   }, [s, sel, snap?.mode]);
@@ -89,6 +94,10 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const openEvidence = (metric: EvidenceMetric) => {
     if (!s.best) return;
     setSel({ kind: "metric", metric, nodeId: s.best });
+    reveal();
+  };
+  const openDirect = (ref: DrawerRef) => {
+    setSel({ kind: "direct", ref });
     reveal();
   };
   const openRung = (r: RungSelection) => {
@@ -103,12 +112,15 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
     setSel(null);
     const d = domainOf(id);
     setWb(d === "board" || d === "matter" ? d : "silicon");
+    setView("run");
     setMobileTab("canvas");
   };
   pickRunRef.current = pickRun;
-  // A workbench tab shows a real run of that domain if the replays hold one; otherwise the honest "not built yet" state.
+  // A workbench tab opens that workbench's live tool; a recorded run of the domain is one click away when the replays hold one.
   const chooseWb = (w: Workbench) => {
     setWb(w);
+    setView("tool");
+    setSel(null);
     const first = runs.find((r) => r.domain === w);
     if (first && domainOf(runId) !== w) {
       setRunId(first.id);
@@ -151,12 +163,11 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
                 type="button"
                 role="tab"
                 aria-selected={wb === w.id}
-                aria-label={wbHasRun(w.id) ? w.label : `${w.label} (roadmap, not built yet)`}
+                aria-label={w.label}
                 onClick={() => chooseWb(w.id)}
                 className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] transition-colors duration-150 lg:flex-none ${wb === w.id ? "bg-raised text-ink" : "text-ink-3 hover:text-ink"}`}
               >
                 {w.label}
-                {!wbHasRun(w.id) && <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 sm:inline">roadmap</span>}
               </button>
             ))}
           </div>
@@ -197,8 +208,43 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
         </aside>
 
         <main id="main" className={`scroll-quiet min-h-0 flex-col px-4 py-4 lg:overflow-y-auto lg:px-5 ${show("canvas")}`}>
-          {wb !== "silicon" && !wbHasRun(wb) ? (
-            <NotBuilt workbench={wb} />
+          {wb !== "silicon" && (
+            <div role="tablist" aria-label={`${wb} views`} className="mb-3 flex h-9 w-fit rounded-lg border border-line bg-panel p-0.5">
+              {(
+                [
+                  ["tool", wb === "board" ? "Check your design" : "Simulate"],
+                  ["run", "Recorded run"],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === k}
+                  onClick={() => {
+                    setView(k);
+                    setSel(null);
+                    if (k === "run") {
+                      const first = runs.find((r) => r.domain === wb);
+                      if (first && domainOf(runId) !== wb) setRunId(first.id);
+                    }
+                  }}
+                  className={`rounded-md px-3 text-[13px] transition-colors duration-150 ${view === k ? "bg-raised text-ink" : "text-ink-3 hover:text-ink"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {wb === "board" && view === "tool" ? (
+            <BoardCheckPanel onEvidence={openDirect} />
+          ) : wb === "matter" && view === "tool" ? (
+            <MatterSimulatePanel onEvidence={openDirect} />
+          ) : wb !== "silicon" && !wbHasRun(wb) ? (
+            <section className="max-w-md" role="status">
+              <h2 className="text-[16px] font-semibold text-ink">No recorded {wb === "board" ? "Board" : "Matter"} run is installed</h2>
+              <p className="mt-1.5 text-[13px] leading-snug text-ink-3">Recorded agent runs appear here when a replay of this workbench is added to the deployment. The live tool in the other tab works without one.</p>
+            </section>
           ) : src.status === "loading" ? (
             <Skeleton />
           ) : src.status === "not-found" ? (

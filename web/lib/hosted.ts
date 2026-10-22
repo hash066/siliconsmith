@@ -139,7 +139,7 @@ export type MatterGenerator = keyof typeof MATTER_GENERATORS;
 
 export const MATTER_SPREADER = [
   { key: "Q", label: "Chip power", min: 0.1, max: 100, step: 0.1, def: 2, unit: "W" },
-  { key: "budget_fraction", label: "Material budget", min: 0.05, max: 0.9, step: 0.05, def: 0.4, unit: "of the plate" },
+  { key: "budget_fraction", label: "Material limit", min: 0.05, max: 0.9, step: 0.05, def: 0.4, unit: "" },
   { key: "h", label: "Convection h", min: 2, max: 500, step: 1, def: 15, unit: "W/m²K" },
   { key: "k", label: "Conductivity k", min: 5, max: 500, step: 5, def: 200, unit: "W/mK" },
 ] as const;
