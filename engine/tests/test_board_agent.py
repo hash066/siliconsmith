@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from siliconsmith.board.agent import Brief, library_brief, propose_design, repair_design
+from siliconsmith.board.agent import Brief, DesignDraft, draft_from_design, library_brief, propose_design, repair_design
 from siliconsmith.board.faults import FAULTS, STRUCTURAL_FAULTS, inject_fault, reference_design
 from siliconsmith.board.parts import load_library
 from siliconsmith.board.run import run_board, template_brief
@@ -173,3 +173,17 @@ def test_run_board_fault_repair_and_failure_paths(tmp_path):
     assert not r.passed and bus.of("run.failed") and not bus.of("artifact.created") and not (tmp_path / "fail").exists()
     with pytest.raises(ValueError):
         run_board(Scripted(), Bus(), template_brief(), LIB, mode="repair", out_dir=tmp_path)
+
+
+def test_draft_round_trips_to_the_same_netlist_and_a_pin_cannot_sit_on_two_nets():
+    d = reference_design()
+    back = draft_from_design(d).to_design()
+    assert {n.name: sorted(n.pins) for n in back.nets} == {n.name: sorted(n.pins) for n in d.nets}
+    assert propose_design(Scripted(DesignDraft.model_validate(draft_from_design(d).model_dump())), BRIEF, LIB).passed
+    data = draft_from_design(d).model_dump()
+    assert len(data["connections"]) == sum(len(n.pins) for n in d.nets)  # one record per pin, none lost
+
+
+def test_model_json_with_connections_validates_without_a_name():
+    raw = draft_from_design(reference_design()).model_dump(exclude={"name"})
+    assert DesignDraft.model_validate(raw).to_design().name == ""

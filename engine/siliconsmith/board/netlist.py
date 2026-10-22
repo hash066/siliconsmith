@@ -56,7 +56,7 @@ class FirmwarePin(BaseModel):
 
 
 class Design(BaseModel):
-    name: str
+    name: str = ""  # models often omit it; the agent fills it from the brief
     template: str | None = None
     mcu_ref: str | None = None
     # design assumptions the checks need but the netlist cannot state, e.g. i2c_mode, i2c_cb_pf; never part facts

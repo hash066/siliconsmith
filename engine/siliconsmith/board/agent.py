@@ -17,25 +17,56 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import BaseModel
+
 from .checks import IMPLEMENTED_RUNGS, RUNG_LABELS, CheckResult, run_ladder
 from .export import firmware_header
-from .netlist import Design
+from .netlist import Design, FirmwarePin, Instance, McuAssignment, Net
 from .parts import Part, resolve_fact
 
 SYSTEM = (
-    "You are a board-level co-design assistant. You output ONE JSON object that is a complete design: instances "
-    "(ref, part, params), nets (name, pins as REF.PIN), mcu_ref, mcu_assignments (function, pin, use, net) and "
-    "firmware_pins (function, pin, use). Rules: use ONLY the parts and pin names in the library below; never invent "
-    "pins or parts; every pin name is exact. Pin 'use' is input, output or bidir. Function names are lower-case "
-    "snake_case. The firmware pin table must equal the netlist's assignments. Avoid flash pins, strapping pins and "
-    "input-only pins used as outputs. Every pin marked * (required) must be connected. Every power input must sit on a "
-    "net driven by a power output. Resistor values go in params.ohms. Do not include an 'assumptions' field. "
-    "Reply with the JSON object only."
+    "You are a board-level co-design assistant. You output ONE JSON object describing a complete design with these keys: "
+    "instances (list of {ref, part, params}), connections (an object mapping each connected pin 'REF.PIN' to the NAME "
+    "of the net it sits on), mcu_ref, mcu_assignments (list of {function, pin, use, net}) and firmware_pins (list of "
+    "{function, pin, use}). Rules: use ONLY the parts and pin names in the library below; never invent pins or parts; "
+    "every pin name is exact. 'use' is input, output or bidir. Function names are lower-case snake_case. The firmware "
+    "pin table must equal the netlist's assignments. Avoid flash pins, strapping pins and input-only pins used as "
+    "outputs. Every pin marked * (required) must appear in connections. Every power input must sit on a net that a "
+    "power output drives. Every resistor MUST state its value in params.ohms (a number). Pins that share a net use the "
+    "same net name; a pin has exactly one net. Example of the format only (not part of the answer): a 1 kohm resistor "
+    "between rail RAIL and signal SIG: instances [{\"ref\":\"R9\",\"part\":\"res\",\"params\":{\"ohms\":1000}}], "
+    "connections {\"R9.1\":\"RAIL\",\"R9.2\":\"SIG\"}. Do not include an 'assumptions' field. "
+    "Reply with the JSON object only, with no text before or after it."
 )
 
 RUNG_TOOL = {"B1": "board.checks.run_b1", "B2": "board.checks.run_b2", "B3": "board.checks.run_b3",
              "B4": "board.checks.run_b4", "B5": "board.checks.run_b5"}
 LADDER_EVENT = [{"id": r, "label": RUNG_LABELS[r], "tool": RUNG_TOOL[r]} for r in IMPLEMENTED_RUNGS]
+
+
+class DesignDraft(BaseModel):
+    """The shape the model writes: one record per pin ("REF.PIN": "NETNAME"), so a pin cannot sit on two nets.
+    Converted to a Design deterministically; the checks judge the Design, never the draft."""
+    name: str = ""
+    mcu_ref: str | None = None
+    instances: list[Instance]
+    connections: dict[str, str]
+    mcu_assignments: list[McuAssignment] = []
+    firmware_pins: list[FirmwarePin] = []
+
+    def to_design(self) -> Design:
+        nets: dict[str, list[str]] = {}
+        for pin, net in self.connections.items():
+            nets.setdefault(net, []).append(pin)
+        return Design(name=self.name, mcu_ref=self.mcu_ref, instances=self.instances,
+                      nets=[Net(name=n, pins=p) for n, p in nets.items()],
+                      mcu_assignments=self.mcu_assignments, firmware_pins=self.firmware_pins)
+
+
+def draft_from_design(design: Design) -> DesignDraft:
+    return DesignDraft(name=design.name, mcu_ref=design.mcu_ref, instances=design.instances,
+                       connections={p: n.name for n in design.nets for p in n.pins},
+                       mcu_assignments=design.mcu_assignments, firmware_pins=design.firmware_pins)
 
 
 @dataclass
@@ -166,7 +197,9 @@ def _loop(llm: Any, messages: list[dict], brief: Brief, library: dict[str, Part]
         if design is None:
             tier, role = ("ultra", "architect") if rnd == 0 else ("super", "repair")
             try:
-                proposed, _ = llm.json(tier, role, messages, Design, think=think_first and rnd == 0, node_id=node_id)
+                proposed, _ = llm.json(tier, role, messages, DesignDraft, think=think_first and rnd == 0, node_id=node_id)
+                if isinstance(proposed, DesignDraft):
+                    proposed = proposed.to_design()
             except Exception as e:  # LLMError, BudgetExceeded, network: report, do not hide
                 _emit(bus, "log", level="error", msg=f"{role} call failed: {type(e).__name__}: {e}"[:400], node_id=parent)
                 return AgentResult(False, attempts[-1].design if attempts else None, attempts,
@@ -185,7 +218,7 @@ def _loop(llm: Any, messages: list[dict], brief: Brief, library: dict[str, Part]
         _emit(bus, "node.pruned", node_id=node_id, reason=("; ".join(failed) + ": " + attempt.results[
             next(i for i, r in enumerate(attempt.results) if r.status != "pass")].detail)[:300])
         messages = messages + [
-            {"role": "assistant", "content": design.model_dump_json()},
+            {"role": "assistant", "content": draft_from_design(design).model_dump_json(exclude_defaults=True)},
             {"role": "user", "content": "The deterministic checks rejected this design:\n"
              + _feedback(attempt.results, library) + "\nReply with the corrected complete design JSON only."},
         ]
