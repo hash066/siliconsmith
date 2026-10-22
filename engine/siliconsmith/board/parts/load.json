@@ -1,0 +1,33 @@
+{
+  "id": "load",
+  "name": "External load (placeholder)",
+  "package": "abstract",
+  "kind": "placeholder",
+  "origin": "author_defined",
+  "description": "Abstract load; the instance parameter peak_ma is its current draw.",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "VCC",
+      "number": "1",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true
+    },
+    {
+      "name": "GND",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    }
+  ]
+}

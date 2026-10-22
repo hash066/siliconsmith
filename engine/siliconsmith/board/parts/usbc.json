@@ -1,0 +1,66 @@
+{
+  "id": "usbc",
+  "name": "USB-C receptacle, power only (placeholder)",
+  "package": "abstract",
+  "kind": "connector",
+  "origin": "author_defined",
+  "description": "Only the pins this template uses. Not a specific connector.",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "VBUS",
+      "number": "1",
+      "direction": "power_out",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "domain_v": 5.0
+    },
+    {
+      "name": "GND",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "CC1",
+      "number": "3",
+      "direction": "passive",
+      "capabilities": [
+        "usb_cc"
+      ],
+      "required": true
+    },
+    {
+      "name": "CC2",
+      "number": "4",
+      "direction": "passive",
+      "capabilities": [
+        "usb_cc"
+      ],
+      "required": true
+    }
+  ],
+  "facts": [
+    {
+      "key": "sink_rd_ohm",
+      "kind": "recommended",
+      "value": 5100,
+      "unit": "ohm",
+      "text": "A sink presents a 5.1 kOhm pull-down (Rd) from each of CC1 and CC2 to ground.",
+      "provenance": {
+        "source": "USB Type-C Cable and Connector Specification (USB-IF)",
+        "section": "Sink CC termination (Rd)",
+        "citation_checked": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,505 @@
+{
+  "id": "esp32",
+  "name": "ESP32-WROOM-32-class module",
+  "package": "38-pad SMD module",
+  "kind": "module",
+  "origin": "datasheet",
+  "description": "Pin names are GPIO numbers; pad numbers follow the 38-pad module layout as recalled by the author (unchecked). Ground pads are named GND1..GND4 so every pin name is unique.",
+  "pin_table_provenance": {
+    "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+    "section": "Pin Description",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "GND1",
+      "number": "1",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "number": "2",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "domain_v": 3.3,
+      "v_abs_max": 3.6,
+      "v_rec_min": 3.0,
+      "v_rec_max": 3.6,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Electrical Characteristics",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "EN",
+      "number": "3",
+      "direction": "input",
+      "capabilities": [
+        "enable"
+      ],
+      "required": true,
+      "note": "chip enable, active high"
+    },
+    {
+      "name": "GPIO36",
+      "number": "4",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SENSOR_VP"
+    },
+    {
+      "name": "GPIO39",
+      "number": "5",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SENSOR_VN"
+    },
+    {
+      "name": "GPIO34",
+      "number": "6",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO35",
+      "number": "7",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO32",
+      "number": "8",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO33",
+      "number": "9",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO25",
+      "number": "10",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO26",
+      "number": "11",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO27",
+      "number": "12",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO14",
+      "number": "13",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO12",
+      "number": "14",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Strapping Pins",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GND2",
+      "number": "15",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ]
+    },
+    {
+      "name": "GPIO13",
+      "number": "16",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO9",
+      "number": "17",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD2",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO10",
+      "number": "18",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD3",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO11",
+      "number": "19",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label CMD",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO6",
+      "number": "20",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label CLK",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO7",
+      "number": "21",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD0",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO8",
+      "number": "22",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD1",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO15",
+      "number": "23",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Strapping Pins",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO2",
+      "number": "24",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Strapping Pins",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO0",
+      "number": "25",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Strapping Pins",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO4",
+      "number": "26",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO16",
+      "number": "27",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO17",
+      "number": "28",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO5",
+      "number": "29",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Strapping Pins",
+        "citation_checked": false
+      }
+    },
+    {
+      "name": "GPIO18",
+      "number": "30",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO19",
+      "number": "31",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO21",
+      "number": "33",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO3",
+      "number": "34",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label RXD0"
+    },
+    {
+      "name": "GPIO1",
+      "number": "35",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label TXD0"
+    },
+    {
+      "name": "GPIO22",
+      "number": "36",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO23",
+      "number": "37",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GND3",
+      "number": "38",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ]
+    },
+    {
+      "name": "GND4",
+      "number": "39",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "key": "supply_current_min_ma",
+      "kind": "recommended",
+      "value": 500,
+      "unit": "mA",
+      "text": "The supply should be able to deliver at least 500 mA to the module.",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Power Supply / Electrical Characteristics",
+        "citation_checked": false
+      }
+    },
+    {
+      "key": "io_domain",
+      "kind": "property",
+      "value": "3.3 V",
+      "text": "Signal pins are in the 3.3 V domain.",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet (Espressif Systems)",
+        "section": "Pin Description",
+        "citation_checked": false
+      }
+    }
+  ]
+}

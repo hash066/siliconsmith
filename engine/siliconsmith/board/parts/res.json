@@ -1,0 +1,26 @@
+{
+  "id": "res",
+  "name": "Resistor (placeholder)",
+  "package": "2-terminal",
+  "kind": "passive",
+  "origin": "author_defined",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "1",
+      "number": "1",
+      "direction": "passive",
+      "required": true
+    },
+    {
+      "name": "2",
+      "number": "2",
+      "direction": "passive",
+      "required": true
+    }
+  ]
+}
