@@ -6,8 +6,8 @@ export type AgentModel = "ultra" | "super" | "nano";
 export const AGENT_MODELS: readonly AgentModel[] = ["ultra", "super", "nano"];
 
 /** Read-only tools run automatically; actions need a click and show a cost estimate first (plan section 8). */
-export const READ_TOOLS = ["library.search", "evidence.get", "run.explain_failure", "board.check", "matter.simulate_preview"] as const;
-export const ACTION_TOOLS = ["run.start", "verify.run", "artifact.export"] as const;
+export const READ_TOOLS = ["library_search", "library_lookup", "evidence_get", "run_explain_failure", "board_check", "matter_simulate"] as const;
+export const ACTION_TOOLS = ["run_start", "verify_run", "artifact_export"] as const;
 export type ToolName = (typeof READ_TOOLS)[number] | (typeof ACTION_TOOLS)[number];
 
 export const isActionTool = (name: string): boolean => (ACTION_TOOLS as readonly string[]).includes(name);

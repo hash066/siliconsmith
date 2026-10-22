@@ -16,8 +16,8 @@ describe("agent panel protocol", () => {
     const s = run([
       { type: "turn.started", id: "a1", model: "ultra" },
       { type: "text.delta", id: "a1", text: "n3 failed " },
-      { type: "tool.call", id: "a1", call: { id: "c1", name: "run.explain_failure", args: { node: "n3" } } },
-      { type: "tool.call", id: "a1", call: { id: "c1", name: "run.explain_failure", args: { node: "n3" } } },
+      { type: "tool.call", id: "a1", call: { id: "c1", name: "run_explain_failure", args: { node: "n3" } } },
+      { type: "tool.call", id: "a1", call: { id: "c1", name: "run_explain_failure", args: { node: "n3" } } },
       { type: "tool.result", id: "a1", callId: "c1", ok: true, summary: "prove failed at attempt 0" },
       { type: "text.delta", id: "a1", text: "the proof." },
       { type: "evidence", id: "a1", ids: ["run:r/n3", "run:r/n3"] },
@@ -25,7 +25,7 @@ describe("agent panel protocol", () => {
     ]);
     const a = s.messages[1];
     expect(a.text).toBe("n3 failed the proof.");
-    expect(a.toolCalls).toEqual([{ id: "c1", name: "run.explain_failure", args: { node: "n3" }, status: "ok", result: "prove failed at attempt 0", error: undefined }]);
+    expect(a.toolCalls).toEqual([{ id: "c1", name: "run_explain_failure", args: { node: "n3" }, status: "ok", result: "prove failed at attempt 0", error: undefined }]);
     expect(a.evidence).toEqual(["run:r/n3"]);
     expect(a.streaming).toBe(false);
   });
@@ -34,7 +34,7 @@ describe("agent panel protocol", () => {
     const s = run([
       { type: "turn.started", id: "a1", model: "nano" },
       { type: "text.delta", id: "a1", text: "partial" },
-      { type: "tool.call", id: "a1", call: { id: "c1", name: "evidence.get", args: {} } },
+      { type: "tool.call", id: "a1", call: { id: "c1", name: "evidence_get", args: {} } },
       { type: "tool.result", id: "a1", callId: "c1", ok: false, summary: "not found" },
       { type: "turn.error", id: "a1", message: "stream dropped" },
     ]);
@@ -46,8 +46,8 @@ describe("agent panel protocol", () => {
   });
 
   it("holds a proposed action until it is dismissed, and ignores events for unknown turns", () => {
-    const s = run([{ type: "action.proposed", action: { id: "p1", tool: "run.start", summary: "Start W2", costEstimateUsd: null } }, { type: "text.delta", id: "ghost", text: "x" }]);
-    expect(s.pending?.tool).toBe("run.start");
+    const s = run([{ type: "action.proposed", action: { id: "p1", tool: "run_start", summary: "Start W2", costEstimateUsd: null } }, { type: "text.delta", id: "ghost", text: "x" }]);
+    expect(s.pending?.tool).toBe("run_start");
     expect(s.messages).toHaveLength(1);
     expect(dismissPending(s).pending).toBeNull();
   });
@@ -59,8 +59,8 @@ describe("agent panel protocol", () => {
   });
 
   it("separates actions from read-only tools and words the cost estimate honestly", () => {
-    expect(isActionTool("run.start")).toBe(true);
-    expect(isActionTool("evidence.get")).toBe(false);
+    expect(isActionTool("run_start")).toBe(true);
+    expect(isActionTool("evidence_get")).toBe(false);
     expect(formatCostEstimate(null)).toBe("No estimate available");
     expect(formatCostEstimate(0.0042)).toBe("Estimated cost $0.0042");
     expect(formatCostEstimate(0.21)).toBe("Estimated cost $0.21");

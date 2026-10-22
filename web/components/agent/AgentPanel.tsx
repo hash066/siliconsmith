@@ -19,6 +19,8 @@ import {
   type ToolCall,
 } from "@/lib/agent";
 
+const STARTERS = ["Check the board template fault_gpio12_vs_gpio14 and tell me which rung fails and why.", "Which instructions are in the evidence library, and how do I reproduce dot4-tinymaix?", "Simulate a rect_fins plate with 8 fins. Does it beat the baselines?"];
+
 const MODEL_LABEL: Record<AgentModel, string> = { ultra: "Ultra", super: "Super", nano: "Nano" };
 const MODEL_TITLE: Record<AgentModel, string> = {
   ultra: "Nemotron Ultra: planning and diagnosis",
@@ -164,6 +166,20 @@ export function AgentPanelView({ state, connected, busy, context, limitsNote, er
               Nemotron on Nebius Token Factory will answer here. Until the endpoint exists, nothing in this panel is a model response, and no model is active.
             </p>
             <p className="mt-2 text-[13px] leading-snug text-ink-3">Replays, the evidence drawer and every number on the canvas work without it.</p>
+          </div>
+        ) : state.messages.length === 0 ? (
+          <div role="status">
+            <h3 className="text-[14px] font-medium text-ink">Ask about what is on this site</h3>
+            <p className="mt-1 text-[13px] leading-snug text-ink-3">Answers come from tools that read recorded runs, the evidence library and the free Board and Matter checkers. The agent cannot declare anything proven; only the verifiers can.</p>
+            <ul className="mt-3 flex flex-col gap-2">
+              {STARTERS.map((q) => (
+                <li key={q}>
+                  <button type="button" onClick={() => onSend(q)} disabled={busy} className="w-full rounded-md border border-line px-3 py-2 text-left text-[13px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
+                    {q}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : (
           <ol className="flex min-w-0 flex-col gap-4" aria-label="Conversation" aria-live="polite">

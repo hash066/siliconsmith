@@ -26,37 +26,58 @@ const evalJson = (fn) => {
   return v;
 };
 const wait = (ms) => cli("eval", `() => new Promise(r => setTimeout(r, ${ms}))`);
-const click = (label) =>
-  evalJson(`() => { const el = [...document.querySelectorAll('button, a')].find(b => (b.getAttribute('aria-label') || b.textContent || '').trim().startsWith(${JSON.stringify(label)})); if (!el) return JSON.stringify({ok:false}); el.click(); return JSON.stringify({ok:true}); }`);
+const click = (label) => {
+  if (label.startsWith("wait:")) {
+    wait(Number(label.slice(5)));
+    return { ok: true };
+  }
+  if (label.startsWith("eval:")) {
+    cli("eval", flat(label.slice(5)));
+    return { ok: true };
+  }
+  const last = label.startsWith("last:");
+  const text = last ? label.slice(5) : label;
+  return evalJson(`() => { const all = [...document.querySelectorAll('button, a')].filter(b => (b.getAttribute('aria-label') || b.textContent || '').trim().startsWith(${JSON.stringify(text)})); const el = ${last ? "all.at(-1)" : "all[0]"}; if (!el) return JSON.stringify({ok:false}); el.click(); return JSON.stringify({ok:true}); }`);
+};
 const measure = () =>
   evalJson(`() => JSON.stringify({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders: [...document.querySelectorAll('body *')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 1 && getComputedStyle(e).position !== 'fixed' && !e.closest('[class*="overflow-x-auto"], [class*="overflow-auto"], [class*="overflow-y-auto"]'); }).slice(0, 5).map(e => e.tagName + '.' + String(e.className).slice(0, 60)) })`);
 
 const WORKSTATION = "/workstation?t=end";
 // Each view: a path, then clicks (aria-label or text prefixes) in order.
 const wide = (w) => w >= 1024;
+// A step is a click on the first button or link whose label starts with the text; "last:" picks the last match;
+// "eval:" runs JavaScript in the page; "wait:" waits N ms. `widths` limits a view to some viewport widths.
+const SET_INVALID_JSON = "eval:() => { const t = document.getElementById('board-design'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, '{ \"name\": '); t.dispatchEvent(new Event('input', { bubbles: true })); return 1 }";
+const SATURATE = "eval:() => Promise.all(Array.from({ length: 130 }, () => fetch('/api/board/check', { method: 'POST', body: JSON.stringify({ design: { instances: [], nets: [] } }) }))).then(() => 1)";
 const views = (w) => [
   { name: "default", path: WORKSTATION, steps: [] },
   { name: "evidence-open", path: WORKSTATION, steps: ["Evidence for best wall-clock speedup"] },
-  ...(wide(w)
-    ? [
-        { name: "board", path: WORKSTATION, steps: ["Board"] },
-        { name: "board-rung", path: WORKSTATION, steps: ["Board", "n1 B4"] },
-        { name: "board-repair", path: WORKSTATION, steps: ["board-repair-pin_mismatch-1", "n1 B4"] },
-        { name: "matter", path: WORKSTATION, steps: ["Matter"] },
-        { name: "matter-rung", path: WORKSTATION, steps: ["Matter", "n1 M3"] },
-      ]
-    : [
-        { name: "agent", path: WORKSTATION, steps: ["Agent"] },
-        { name: "project", path: WORKSTATION, steps: ["Project"] },
-        { name: "evidence-tab", path: WORKSTATION, steps: ["Evidence"] },
-        { name: "board", path: WORKSTATION, steps: ["Board"] },
-        { name: "board-rung", path: WORKSTATION, steps: ["Board", "n1 B4"] },
-        { name: "matter", path: WORKSTATION, steps: ["Matter"] },
-      ]),
-  { name: "library", path: "/workstation/library", steps: [] },
-  { name: "library-evidence", path: "/workstation/library", steps: ["Evidence for Wall-clock"] },
+  ...(wide(w) ? [] : [
+    { name: "agent", path: WORKSTATION, steps: ["Agent"] },
+    { name: "project", path: WORKSTATION, steps: ["Project"] },
+    { name: "evidence-tab", path: WORKSTATION, steps: ["Evidence"] },
+  ]),
+  // Board: the live check
+  { name: "board-empty", path: WORKSTATION, steps: ["Board"] },
+  { name: "board-check", path: WORKSTATION, steps: ["Board", "wait:600", "Check design"] },
+  { name: "board-fault", path: WORKSTATION, steps: ["Board", "wait:600", "Fault: firmware GPIO12", "wait:500", "Check design", "Evidence for rung B4"] },
+  { name: "board-fact", path: WORKSTATION, steps: ["Board", "wait:600", "Fault: firmware GPIO12", "wait:500", "Check design", "part:esp32.gpio12.strapping"], widths: [390, 1440] },
+  { name: "board-422", path: WORKSTATION, steps: ["Board", "wait:600", SET_INVALID_JSON, "Check design"], widths: [390, 1440] },
+  { name: "board-429", path: WORKSTATION, steps: ["Board", "wait:600", SATURATE, "Check design"], widths: [390, 1440] },
+  { name: "board-run-empty", path: WORKSTATION, steps: ["Board", "Recorded run"], widths: [390, 1440] },
+  // Matter: the live simulation
+  { name: "matter-empty", path: WORKSTATION, steps: ["Matter"] },
+  { name: "matter-sim", path: WORKSTATION, steps: ["Matter", "last:Simulate", "wait:2500"] },
+  { name: "matter-sim-radial", path: WORKSTATION, steps: ["Matter", "eval:() => { const s = document.getElementById('mat-gen'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'radial_spokes'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1 }", "last:Simulate", "wait:2500", "Evidence for peak temperature"], widths: [390, 1440] },
+  { name: "matter-local-error", path: WORKSTATION, steps: ["Matter", "eval:() => { const i = document.getElementById('gp-spine'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '99'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1 }", "last:Simulate"], widths: [390, 1440] },
+  { name: "matter-run-empty", path: WORKSTATION, steps: ["Matter", "Recorded run"], widths: [390, 1440] },
+  // Library and the rest
+  { name: "library", path: "/workstation/library", steps: ["wait:800"] },
+  { name: "library-stored-open", path: "/workstation/library", steps: ["wait:800", "dot4"] },
   { name: "templates", path: "/workstation/templates", steps: [] },
-];
+  { name: "try", path: "/try", steps: [] },
+  { name: "home", path: "/", steps: [] },
+].filter((v) => !v.widths || v.widths.includes(w));
 
 const WIDTHS = [
   [360, 780],

@@ -1,0 +1,5 @@
+# Hosted Python functions (api/board.py, api/matter.py): deterministic endpoints only, no model client.
+# The agent run routes would additionally need openai (Board) and are disabled in this build.
+pydantic>=2.6
+numpy>=1.26
+scipy>=1.11
