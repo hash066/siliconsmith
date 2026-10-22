@@ -30,6 +30,7 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
 | `parts.py`, `parts/*.json` | Part, Pin, Fact, Provenance schema (pydantic) and the library |
 | `netlist.py`, `designs/*.json` | Design model, JSON load/dump, the clean reference design |
 | `checks.py` | The ladder: rungs B1 to B5 are implemented (`run_b1` .. `run_b5`, `run_ladder`) |
+| `agent.py` | Agent loop: Nemotron (via `llm.Nemotron.json`) proposes or repairs a design; the ladder judges; failures are fed back; user assumptions are enforced |
 | `export.py` | Firmware pin header (C), BOM, KiCad `.net` netlist; no footprints, no layout |
 | `faults.py` | 8-fault catalogue as data, 3 structural faults, `inject_fault` |
 | `run_tests.sh` | Runs the tests in the WSL venv |
@@ -77,6 +78,14 @@ assumptions or a load with only a peak current make B5 unknown. It is a model; n
 B1 checks: every connected pin exists in its part's pin table; required pins are connected; a pin is on
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the
 rung, otherwise an unknown finding (part not in the library, driver direction unknown) makes it unknown.
+
+## Agent loop status
+
+`agent.propose_design` and `agent.repair_design` are implemented and tested **only with a scripted stand-in for the
+model**: the tests prove the loop, the feedback, the honest failure reporting and that the model cannot change the user's
+assumptions. **No live Nemotron run has been made**, so there is no measured agent pass rate or cost; the plan's
+agent evals (pass@3 over 5 runs, repair >= 75%, cost < $0.05 per session) are not yet run and must be reported as
+whatever they turn out to be. Events (`on_event`) are a plain callback; wiring into the event contract v2 is not done.
 
 ## Fault detection status
 
