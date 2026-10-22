@@ -133,6 +133,32 @@ a per-pin `connections` draft format, a net named like a pin means "wired to tha
 notes in the library brief, B5 accepting `params.sleep_ma` on a load, B2 feedback naming the headroom and the nets that
 have a source, a clearer SDO-strap message.
 
+### Improving the two weak repairs: held-out protocol (2026-10-22, afternoon)
+
+Protocol: (1) wrote 6 NEW held-out scenarios (`heldout.py`: 3 regulator-overload and 3 I2C-collision variants with different
+refs, load values, strap choices and pull-up values); (2) recorded the BEFORE score without reading any held-out failure log;
+(3) diagnosed only on the old catalogue faults, then changed only the model-facing layer; (4) measured AFTER on both sets.
+No check was loosened; the suggested values are verified by tests to satisfy the unchanged checks. 3 sessions per scenario,
+fresh budget-capped client each, same code path (`python -m siliconsmith.board.evals heldout --trials 3`).
+
+What changed: B2 overload feedback now gives a concrete fitting value strictly below the headroom (or says to remove the
+load); B3 collision feedback names the free address and the existing net to put the strap in (or says to remove the device
+when both addresses are taken); the floating-strap message forbids pin-named nets and names the real nets; two prompt rules
+(numeric limits must be satisfied strictly; never name a net after a pin).
+
+| Set | Before | After | Cost before / after |
+|---|---|---|---|
+| Held-out, 18 sessions | 11/18 (collision 3/9, overload 8/9) | **18/18** (collision 9/9, overload 9/9) | $0.0626 / $0.0397 |
+| Old 8 catalogue faults, 3 trials each (24) | 19/24 (the weak two 1/6) | **23/24** (the weak two 6/6; one `overvoltage_3v3_pin` miss) | $0.0683 / $0.0610 |
+| Template-to-design, A/B of the two prompt sentences, 10 sessions per arm, interleaved | 5/10 | 9/10 | $0.102 / $0.086 |
+| Standard live batch 5 (`board-live-20261022-155112`), after the change | | fault detection PASS; template-to-design **FAIL 3/5 = 60%**; repair PASS 8/8; cost PASS ($0.0050 mean) | |
+
+Caveats, stated plainly: the held-out scenarios share fault families and parts with the tuned ones, and the hints were
+written from the old-set failure messages, so a large part of the gain is the hints doing what they were designed to do;
+18 sessions per set is small. The template-to-design rate is noisy: 3/5 in batch 5 versus 9/10 with the same prompt in the
+A/B, and 4/5, 4/5, 5/5, 3/5 earlier. Do not read any single batch of 5 as the true rate. The target of 80% is met in
+three of five batches and missed in two; that variance is the honest picture.
+
 ## Fault detection status
 
 A fault is detected only by its own rung. Faults whose rung does not exist yet are pending; the tests assert that
