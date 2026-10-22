@@ -10,3 +10,5 @@ tsconfig.tsbuildinfo
 .vercel
 .env*
 !.env.example
+/api/_vendor/
+__pycache__/
