@@ -1,0 +1,230 @@
+{
+  "ok": true,
+  "best_node_id": "n1.1",
+  "all_rungs_passed": true,
+  "baseline_peak_c": 72.82004535448596,
+  "baseline": {
+    "spine": 6,
+    "spine_len": 60,
+    "n_fins": 15,
+    "fin_w": 4,
+    "fin_len": 9,
+    "cells": 1440
+  },
+  "pareto": [
+    "n1.1",
+    "n2",
+    "n2.1",
+    "n3"
+  ],
+  "nodes": {
+    "n1": {
+      "generator": "tapered_cardinal_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 10 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 1155.6036292557108,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.01638888888888889
+    },
+    "n2": {
+      "generator": "staggered_tapered_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 230.01 C vs baseline 229.14 C using <= 329 cells (4 fins 3x9): does not beat baseline (-0.87 K)",
+      "peak_c": 230.00666982136664,
+      "equal_material_baseline_c": 229.14107217129825,
+      "delta_vs_equal_material_k": -0.8655976500683948,
+      "material_fraction": 0.0913888888888889
+    },
+    "n3": {
+      "generator": "radial_spiral",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "fail"
+      },
+      "reason": "M5: candidate peak 1876.85 C vs baseline 1876.85 C using <= 36 cells (0 fins 0x0): does not beat baseline (0.00 K)",
+      "peak_c": 1876.8518518491908,
+      "equal_material_baseline_c": 1876.8518518491908,
+      "delta_vs_equal_material_k": 0.0,
+      "material_fraction": 0.01
+    },
+    "n1.1": {
+      "generator": "tapered_cross_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 100.13 C vs baseline 100.24 C using <= 904 cells (9 fins 3x12): beats baseline by 0.11 K",
+      "peak_c": 100.1286226295701,
+      "equal_material_baseline_c": 100.23953127023397,
+      "delta_vs_equal_material_k": 0.1109086406638653,
+      "material_fraction": 0.2511111111111111
+    },
+    "n2.1": {
+      "generator": "quadrant_binary_tree",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "pass",
+        "M4": "pass",
+        "M5": "pass"
+      },
+      "reason": "M5: candidate peak 168.33 C vs baseline 168.40 C using <= 469 cells (7 fins 3x8): beats baseline by 0.07 K",
+      "peak_c": 168.32699914327404,
+      "equal_material_baseline_c": 168.39962152870493,
+      "delta_vs_equal_material_k": 0.07262238543088984,
+      "material_fraction": 0.13027777777777777
+    },
+    "n2.2": {
+      "generator": "spine_branching_fins",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: generator never produced a mask: rejected: generator source too long (15110 > 12000 chars)",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    },
+    "n1.1.1": {
+      "generator": "multi_level_cross_fins",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: param_space must have 1..8 parameters",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    },
+    "n2.1.1": {
+      "generator": "annular_radial_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 4 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 97.81632236714505,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.25916666666666666
+    },
+    "n2.3": {
+      "generator": "space_filling_serpentine",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "fail",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M2: material is not all connected to the chip (islands present)",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.050555555555555555
+    },
+    "n2.1.1.1": {
+      "generator": "fixed_annular_radial_fins",
+      "status": "scored",
+      "ladder": {
+        "M1": "pass",
+        "M2": "pass",
+        "M3": "fail",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "M3: 4 cells belong to features thinner than 2 cells (2 mm)",
+      "peak_c": 85.21864577908443,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": 0.3136111111111111
+    },
+    "n1.1.2": {
+      "generator": "eight_arm_tapered_fins",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: param_space must have 1..8 parameters",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    },
+    "n2.1.2": {
+      "generator": "branching_radial_fins",
+      "status": "pruned",
+      "ladder": {
+        "M1": "pass",
+        "M2": "skipped",
+        "M3": "skipped",
+        "M4": "skipped",
+        "M5": "skipped"
+      },
+      "reason": "implement: param_space must have 1..8 parameters",
+      "peak_c": null,
+      "equal_material_baseline_c": null,
+      "delta_vs_equal_material_k": null,
+      "material_fraction": null
+    }
+  },
+  "stopped": null,
+  "cost_usd": 0.07503,
+  "tokens": 57454,
+  "wall_s": 131.4,
+  "spreader": {
+    "n": 60,
+    "dx": 0.001,
+    "t": 0.002,
+    "k": 200.0,
+    "h": 15.0,
+    "T_inf": 25.0,
+    "Q": 2.0,
+    "chip": 6,
+    "budget_fraction": 0.4,
+    "min_feature": 2
+  }
+}

@@ -325,6 +325,9 @@ class MatterRun:
                 self.artifact(nid, "code", p, s)
                 p, s = export.write_artifact(d / "plate.stl", export.mask_to_stl(n["mask"], sp))
                 self.artifact(nid, "stl", p, s)
+                p, s = export.write_results_json(d / "field.json", export.field_payload(
+                    force_chip(n["mask"], sp), solve_mask(force_chip(n["mask"], sp), sp).T, sp))
+                self.artifact(nid, "field", p, s)
                 p, s = export.write_results_json(d / "result.json", dict(
                     node=nid, generator=n["idea"].name, params=b["params"], metrics=metrics, ladder=L,
                     m4=n.get("m4"), m5=n.get("m5"), spreader=sp.as_dict(), samples=n["rows"]))

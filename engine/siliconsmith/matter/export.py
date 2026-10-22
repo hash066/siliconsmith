@@ -80,3 +80,11 @@ def write_artifact(path: Path, data: bytes | str) -> tuple[str, str]:
 
 def write_results_json(path: Path, payload: dict) -> tuple[str, str]:
     return write_artifact(path, json.dumps(payload, indent=2, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
+
+
+def field_payload(mask: np.ndarray, T: np.ndarray, sp: Spreader) -> dict:
+    """Temperature field for the viewer (Three.js colouring): null where there is no material."""
+    return dict(n=int(mask.shape[0]), dx_mm=sp.dx * 1e3, thickness_mm=sp.t * 1e3, T_inf=sp.T_inf,
+                chip=list(sp.chip_cells), units="degC",
+                T=[[None if np.isnan(x) else round(float(x), 3) for x in row] for row in T],
+                peak=float(np.nanmax(T)))

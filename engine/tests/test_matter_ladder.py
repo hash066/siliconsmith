@@ -110,3 +110,15 @@ def test_stl_is_closed_and_volume_matches():
     print(f"\nSTL {st}, expected volume {expect:.1f} mm3")
     assert st["unmatched_edges"] == 0
     assert abs(st["volume_mm3"] - expect) / expect < 1e-6
+
+
+def test_pluggable_runner_receives_the_worker_protocol():
+    seen = {}
+
+    def fake_runner(req, timeout):  # what a sandbox backend would do: run _genworker.py with req on stdin
+        seen["req"] = req
+        return generators.local_runner(req, timeout)
+
+    out = generators.run_generator(ref.RECT_FINS["source"], [{"spine": 8, "n_fins": 4, "fin_w": 3, "fin_len": 10}],
+                                   SP.n, SP.chip_cells, runner=fake_runner)
+    assert out[0].ok and '"samples"' in seen["req"]

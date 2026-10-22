@@ -23,6 +23,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -71,6 +72,14 @@ def screen_source(code: str) -> None:
         raise GeneratorRejected("no `def generate(params, n, chip)` found")
 
 
+def local_runner(request_json: str, timeout_s: float) -> tuple[str, str, int]:
+    """Default runner: the worker script in a local subprocess. A Token Factory Sandbox runner plugs in here:
+    it must execute `_genworker.py` with `request_json` on stdin (networking off) and return (stdout, stderr, exit code)."""
+    p = subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("_genworker.py"))], input=request_json,
+                       capture_output=True, text=True, timeout=timeout_s)
+    return p.stdout, p.stderr, p.returncode
+
+
 @dataclass
 class GenOutcome:
     ok: bool
@@ -87,6 +96,7 @@ def run_generator(
     timeout_s: float = 60.0,
     mem_mb: int = 1024,
     per_call_s: float = 5.0,
+    runner: "Callable[[str, float], tuple[str, str, int]] | None" = None,
 ) -> list[GenOutcome]:
     """Run `generate` once per parameter sample in a limited subprocess. Never raises for generator faults."""
     try:
@@ -96,14 +106,13 @@ def run_generator(
     req = json.dumps({"code": code, "samples": samples, "n": n, "chip": list(chip), "mem_mb": mem_mb,
                       "cpu_s": int(timeout_s), "per_call_s": per_call_s})
     try:
-        p = subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("_genworker.py"))], input=req,
-                           capture_output=True, text=True, timeout=timeout_s)
+        stdout, stderr, rc = (runner or local_runner)(req, timeout_s)
     except subprocess.TimeoutExpired:
         return [GenOutcome(False, None, f"TimeoutError: generator exceeded {timeout_s:.0f}s") for _ in samples]
-    line = next((ln for ln in p.stdout.splitlines() if ln.startswith(TAG)), None)
+    line = next((ln for ln in stdout.splitlines() if ln.startswith(TAG)), None)
     if line is None:
-        tail = (p.stderr or p.stdout)[-300:].strip().replace("\n", " ")
-        return [GenOutcome(False, None, f"generator process died (exit {p.returncode}): {tail}") for _ in samples]
+        tail = (stderr or stdout)[-300:].strip().replace(chr(10), " ")
+        return [GenOutcome(False, None, f"generator process died (exit {rc}): {tail}") for _ in samples]
     out = []
     for r in json.loads(line[len(TAG):])["results"]:
         if r["ok"]:
