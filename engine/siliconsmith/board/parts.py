@@ -85,11 +85,11 @@ class Part(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9_]+$")
     name: str
     package: str
-    kind: Literal["module", "ic", "passive", "connector", "placeholder"]
+    kind: Literal["module", "ic", "passive", "connector", "placeholder", "standard"]
     origin: Literal["datasheet", "author_defined"]
     description: str = ""
     pin_table_provenance: Provenance
-    pins: list[Pin]
+    pins: list[Pin] = []
     facts: list[Fact] = []
 
     @model_validator(mode="after")

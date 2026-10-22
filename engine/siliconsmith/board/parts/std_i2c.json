@@ -1,0 +1,94 @@
+{
+  "id": "std_i2c",
+  "name": "I2C bus rules (standard, via secondary source)",
+  "package": "n/a",
+  "kind": "standard",
+  "origin": "datasheet",
+  "description": "Secondary source: a TI application note restating the I2C specification limits; the I2C specification itself (NXP UM10204) was not read.",
+  "pin_table_provenance": {
+    "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+    "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+    "citation_checked": true,
+    "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "pins": [],
+  "facts": [
+    {
+      "key": "tr_max_standard_ns",
+      "kind": "abs_max",
+      "value": 1000,
+      "unit": "ns",
+      "text": "Maximum rise time of SDA and SCL, standard mode.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    },
+    {
+      "key": "tr_max_fast_ns",
+      "kind": "abs_max",
+      "value": 300,
+      "unit": "ns",
+      "text": "Maximum rise time of SDA and SCL, fast mode.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    },
+    {
+      "key": "cb_max_pf",
+      "kind": "abs_max",
+      "value": 400,
+      "unit": "pF",
+      "text": "Maximum capacitive load per bus line, standard and fast mode.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    },
+    {
+      "key": "rise_time_k",
+      "kind": "property",
+      "value": 0.8473,
+      "text": "Rise time between 30% and 70% of VCC: tr = 0.8473 x Rp x Cb.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    },
+    {
+      "key": "vol_max_v",
+      "kind": "property",
+      "value": 0.4,
+      "unit": "V",
+      "text": "Maximum low-level output voltage at a 3 mA sink current (VCC above 2 V); used for the minimum pull-up Rp(min) = (VCC - VOL) / IOL.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    },
+    {
+      "key": "iol_ma",
+      "kind": "property",
+      "value": 3,
+      "unit": "mA",
+      "text": "Sink current at which VOL(max) applies.",
+      "provenance": {
+        "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+        "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+        "citation_checked": true,
+        "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+      }
+    }
+  ]
+}

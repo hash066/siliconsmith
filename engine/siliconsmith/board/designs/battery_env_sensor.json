@@ -2,6 +2,10 @@
   "name": "Battery environmental sensor (reference, clean)",
   "template": "battery_env_sensor",
   "mcu_ref": "U1",
+  "assumptions": {
+    "i2c_mode": "standard",
+    "i2c_cb_pf": 100
+  },
   "instances": [
     {
       "ref": "U1",

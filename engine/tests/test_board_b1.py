@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from siliconsmith.board.checks import RUNG_LABELS, CheckResult, run_b1, run_ladder
+from siliconsmith.board.checks import IMPLEMENTED_RUNGS, RUNG_LABELS, CheckResult, run_b1, run_ladder
 from siliconsmith.board.faults import FAULTS, STRUCTURAL_FAULTS, inject_fault, reference_design
 from siliconsmith.board.netlist import Design, dump_design, load_design
 from siliconsmith.board.parts import Fact, Part, Provenance, load_library, resolve_fact
@@ -51,8 +51,8 @@ def test_checked_citations_carry_a_url_and_only_datasheet_parts_are_checked():
     for part in LIB.values():
         for fid, prov in part.fact_provenance().items():
             if prov.citation_checked:
-                assert prov.url and part.id in ("esp32", "bme280"), fid
-            elif part.id in ("esp32", "bme280"):
+                assert prov.url and part.id in ("esp32", "bme280", "std_i2c"), fid
+            elif part.id in ("esp32", "bme280", "std_i2c"):
                 raise AssertionError(f"{fid} should be checked")
         if part.origin == "author_defined":
             assert "author-defined" in part.pin_table_provenance.source or part.id == "usbc"
@@ -120,7 +120,7 @@ def test_clean_design_passes_b1_with_label_and_evidence():
     assert r.rung == "B1" and r.label == "Netlist is well formed"
     assert r.evidence and all(resolve_fact(LIB, e) for e in r.evidence)
     assert all(f.status == "pass" for f in r.findings)
-    assert [x.model_dump()["rung"] for x in run_ladder(reference_design(), LIB)] == ["B1", "B2"]
+    assert [x.model_dump()["rung"] for x in run_ladder(reference_design(), LIB)] == list(IMPLEMENTED_RUNGS)
 
 
 def test_result_has_the_documented_shape():

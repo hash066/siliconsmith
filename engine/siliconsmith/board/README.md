@@ -41,7 +41,7 @@ Evidence ids look like `part:esp32.gpio12.strapping` and resolve through `parts.
 |---|---|---|
 | B1 | Netlist is well formed | implemented |
 | B2 | Electrical limits respected (curated facts) | implemented |
-| B3 | Bus and connector rules satisfied (curated facts) | pending |
+| B3 | Bus and connector rules satisfied (curated facts) | implemented |
 | B4 | Firmware matches the netlist | pending |
 | B5 | Battery estimate meets target (model, not measured) | pending |
 
@@ -50,6 +50,14 @@ absolute-max and recommended range; signal pins within domain + 0.3 V; regulator
 vs the regulator's `iout_max_ma`, arithmetic shown. A load's budget is its instance `peak_ma`, else the part's
 peak fact, else the datasheet's stated supply requirement (the ESP32 module's 0.5 A supply, an upper bound, not a
 measured peak). The charger-input-vs-USB check needs a charger part and is not implemented.
+
+B3 checks: I2C pull-ups (parallel Rp per bus line, rise time 0.8473 x Rp x Cb against the mode limit, Rp above
+(VCC - 0.4 V) / 3 mA); I2C addresses from each sensor's SDO strap, duplicates on one bus fail, a floating strap is
+unknown; USB-C sink CC pins each need a resistor within 5% of 5.1 kOhm to a ground net (the 5% is the author's
+tolerance; the USB-IF tolerance was not read). Bus capacitance and mode are **design assumptions** in
+`Design.assumptions` (`i2c_mode`, `i2c_cb_pf`; the reference design assumes standard mode and 100 pF, not measured);
+without them the rise-time check is unknown. The I2C limits come from TI app note SLVA689A (read in full, it quotes
+the I2C spec; the spec itself was not read).
 
 B1 checks: every connected pin exists in its part's pin table; required pins are connected; a pin is on
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the
@@ -65,11 +73,11 @@ implemented rungs stay silent on faults they do not own.
 | pin_mismatch | B4 | pending |
 | strapping_pin_misuse | B4 | pending |
 | input_only_output | B4 | pending |
-| i2c_pullup_too_large | B3 | pending |
-| missing_cc_resistors | B3 | pending |
+| i2c_pullup_too_large | B3 | detected |
+| missing_cc_resistors | B3 | detected |
 | regulator_overload | B2 | detected |
 | overvoltage_3v3_pin | B2 | detected |
-| i2c_address_collision | B3 | pending |
+| i2c_address_collision | B3 | detected |
 
 Three structural faults (outside the 8) exercise B1 and are detected: `floating_required_pin`,
 `two_output_drivers`, `nonexistent_pin`. The clean reference design passes B1 with no false positives.

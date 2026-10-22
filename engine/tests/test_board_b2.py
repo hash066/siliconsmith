@@ -74,7 +74,7 @@ def test_b2_stays_silent_on_faults_owned_by_other_rungs():
 
 def test_ladder_skips_b2_when_b1_fails():
     out = run_ladder(inject_fault(reference_design(), "floating_required_pin"), LIB)
-    assert [r.rung for r in out] == ["B1", "B2"]
+    assert [r.rung for r in out] == list(IMPLEMENTED_RUNGS)
     assert out[0].status == "fail" and out[1].status == "unknown" and "B1" in out[1].detail
 
 

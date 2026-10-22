@@ -59,6 +59,8 @@ class Design(BaseModel):
     name: str
     template: str | None = None
     mcu_ref: str | None = None
+    # design assumptions the checks need but the netlist cannot state, e.g. i2c_mode, i2c_cb_pf; never part facts
+    assumptions: dict[str, float | int | str] = {}
     instances: list[Instance]
     nets: list[Net]
     mcu_assignments: list[McuAssignment] = []
@@ -86,6 +88,9 @@ class Design(BaseModel):
             for p in n.pins:
                 ref, pin = split_pin(p)
                 yield n.name, ref, pin
+
+    def pins_on(self, net: str) -> list[tuple[str, str]]:
+        return [(r, p) for n, r, p in self.connections() if n == net]
 
     def nets_of(self, ref: str, pin: str) -> list[str]:
         return [n for n, r, p in self.connections() if (r, p) == (ref, pin)]
