@@ -43,17 +43,17 @@ Every surface defines these. Trigger, visible feedback, safe next action; "Built
 | Success | cites evidence ids; offers export | all required checks green + "author-curated facts" notice | winner + second-solver agreement | reproduce passed with timestamp | best node + bundle link |
 | Permission / limit | "daily budget used: replays and Verify still work" | n/a | n/a | n/a | live run capped: replay offered |
 
-### What the shell shows today (Oct 22)
+### What the shell shows today (Oct 22, after the Board, Matter, agent and Library work)
 
 | Surface | Shown now | Not built yet (label) |
 |---|---|---|
-| Agent panel | Components for streaming text, tool-call cards, evidence citations, confirm-before-action with a cost-estimate slot, model badge (Ultra/Super/Nano). With no endpoint: "Agent endpoint not connected yet", composer disabled, no model answers. The components are verified by unit tests and server-render tests, not by a live conversation | `/api/agent` route, starter prompts (they need a live endpoint), budget-limit state |
-| Board checks | "Not built yet" empty state with the roadmap label | everything else |
-| Matter viewer | "Not built yet" empty state with the roadmap label | everything else |
-| Library | Empty state that states the evidence rule | entries, reproduce status |
-| Templates | Empty state | templates |
-| Run canvas | Loading (tree grows from events as the replay plays), partial (replay in progress), success (best node), error (pruned nodes with reasons, failed runs), replay not found. Real replay `r_w1_contree3` and the other recorded replays | live-run labelling and the live-run cap (no engine is connected to this deployment) |
-| Evidence drawer | Selected number with tool, version if the stream records one, run, node, event seq, command; empty state when nothing is selected | artifact hashes appear when a stream carries `artifact.created` (no current replay does) |
+| Agent panel | Streaming text, tool-call cards, evidence citations, confirm-before-action with a cost-estimate slot, model badge. `/api/agent` calls Nemotron on Token Factory with native tools, read-only tools only (library search, evidence lookup, explain a failed node), a per-turn token cap and in-memory daily limits (counted per server instance, and the UI says so). Without `NEBIUS_API_KEY` on the server it stays "Agent endpoint not connected yet" with a disabled composer. Answers that say verified, proven or passes without citing an evidence id are flagged | Action tools (start a run, verify, export: need a click and a cost estimate, not wired), Nano summaries of project state, shared (cross-instance) limits |
+| Board canvas | Check matrix B1..B5 by design (unknown never counts as pass), per-rung evidence in the drawer with the cited fact ids, design chain, connection graph when a `design.json` is shipped with the replay, artifacts with SHA-256, the honest-limits notice. Appears only when a replay with `domain: board` exists; otherwise "not built yet" with a Roadmap label | A laid-out schematic (the graph is a connection graph), reading part facts live (the log carries fact ids only) |
+| Matter viewer | Candidate gallery, Pareto of peak temperature against material, extruded plate drawn from the run's STL (shaded for form), figures, M1..M5 matrix. Appears only when a `domain: matter` replay exists; otherwise "not built yet" | A temperature-coloured plate: the event log has no temperature field, so none is shown |
+| Library | `/workstation/library`: every instruction that passed L1..L5 in a recorded run, derived from the replays, with evidence chips, the C spec, the RTL text hash (computed in the browser) and every run that proved it | A curated manifest, reproduce status (`verify-entry`), L6 |
+| Templates | `/workstation/templates`: reads `/templates.json` (provisional format), lists a template as usable only when its run is recorded, marks others broken; empty state when no manifest is installed | The manifest itself |
+| Run canvas | Loading, partial, success, error as before | Live-run labelling and cap |
+| Evidence drawer | Metric evidence (tool, version if recorded, run, node, seq, command) and rung evidence (status, claim only if passed, detail, fact ids); artifacts with hashes | Tool versions (no stream records them yet) |
 
 ## Evidence chip
 

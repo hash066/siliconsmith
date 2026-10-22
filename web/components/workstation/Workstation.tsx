@@ -2,13 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReplayOptions } from "@/lib/controller";
-import { buildEvidence, type EvidenceMetric } from "@/lib/evidence";
+import { allPass, rungsOf } from "@/lib/domain";
+import { buildEvidence, buildRungEvidence, type EvidenceMetric } from "@/lib/evidence";
 import { usd } from "@/lib/format";
 import { useMediaQuery, useRunSource, useSnapshot } from "@/lib/hooks";
 import { initialRunState } from "@/lib/run-state";
 import { fetchAgentStatus, httpAgentTransport, type AgentStatus } from "@/lib/agent-client";
 import { AgentPanel } from "../agent/AgentPanel";
 import { EvidencePanel } from "../evidence/EvidencePanel";
+import { BoardCanvas } from "../domain/BoardCanvas";
+import { MatterCanvas } from "../domain/MatterCanvas";
+import type { RungSelection } from "../domain/RungMatrix";
 import { CostPanel } from "../run/CostPanel";
 import { EventTicker } from "../run/EventTicker";
 import { RunCanvas, useRunFocus } from "../run/RunConsole";
@@ -23,6 +27,7 @@ const WORKBENCHES: Array<{ id: Workbench; label: string; built: boolean }> = [
   { id: "matter", label: "Matter", built: false },
 ];
 type MobileTab = "canvas" | "agent" | "project" | "drawer";
+type Sel = { kind: "metric"; metric: EvidenceMetric; nodeId: string } | { kind: "rung"; nodeId: string; rung: string };
 type DrawerTab = "events" | "evidence" | "cost";
 
 const EMPTY = initialRunState();
@@ -52,7 +57,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>("canvas");
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("events");
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const [sel, setSel] = useState<{ metric: EvidenceMetric; nodeId: string } | null>(null);
+  const [sel, setSel] = useState<Sel | null>(null);
   const [opts] = useState(replayOptions);
   const [agent, setAgent] = useState<AgentStatus>({ connected: false });
   useEffect(() => {
@@ -71,25 +76,57 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const lg = useMediaQuery("(min-width: 1024px)");
   const focus = useRunFocus(s, { wide: lg, initialNode: null, syncUrl: false });
 
-  const evidence = useMemo(() => (sel ? buildEvidence(s, sel.nodeId, sel.metric, snap?.mode ?? "replay") : null), [s, sel, snap?.mode]);
-  const openEvidence = (metric: EvidenceMetric) => {
-    if (!s.best) return;
-    setSel({ metric, nodeId: s.best });
+  const evidence = useMemo(() => {
+    if (!sel) return null;
+    const mode = snap?.mode ?? "replay";
+    return sel.kind === "metric" ? buildEvidence(s, sel.nodeId, sel.metric, mode) : buildRungEvidence(s, sel.nodeId, sel.rung, mode);
+  }, [s, sel, snap?.mode]);
+  const reveal = () => {
     setDrawerTab("evidence");
     setDrawerOpen(true);
     setMobileTab("drawer");
   };
+  const openEvidence = (metric: EvidenceMetric) => {
+    if (!s.best) return;
+    setSel({ kind: "metric", metric, nodeId: s.best });
+    reveal();
+  };
+  const openRung = (r: RungSelection) => {
+    setSel({ kind: "rung", ...r });
+    reveal();
+  };
+  const pickRunRef = useRef<(id: string) => void>(() => {});
+  const domainOf = (id: string) => runs.find((r) => r.id === id)?.domain ?? "silicon";
   const pickRun = (id: string) => {
     if (id === runId) return;
     setRunId(id);
     setSel(null);
-    setWb("silicon");
+    const d = domainOf(id);
+    setWb(d === "board" || d === "matter" ? d : "silicon");
     setMobileTab("canvas");
   };
+  pickRunRef.current = pickRun;
+  // A workbench tab shows a real run of that domain if the replays hold one; otherwise the honest "not built yet" state.
+  const chooseWb = (w: Workbench) => {
+    setWb(w);
+    const first = runs.find((r) => r.domain === w);
+    if (first && domainOf(runId) !== w) {
+      setRunId(first.id);
+      setSel(null);
+    }
+  };
+  // `?run=<id>` opens that recorded run (used by the templates page); applied after mount so the markup matches the server's.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("run");
+    if (id && runs.some((r) => r.id === id)) pickRunRef.current(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const wbHasRun = (w: Workbench) => runs.some((r) => r.domain === w);
 
   const status = !snap ? "Loading" : snap.mode === "live" ? "Live" : s.status === "completed" ? "Replay · completed" : s.status === "failed" ? "Replay · failed" : "Replay · playing";
   const projectName = s.workload?.title ?? (src.status === "not-found" ? "Run not available" : "Loading…");
-  const verified = Object.values(s.nodes).filter((n) => n.parentId !== null && n.score?.feasible).length;
+  const rungList = rungsOf(s);
+  const verified = Object.values(s.nodes).filter((n) => n.parentId !== null && (s.domain === "silicon" ? n.score?.feasible : allPass(n, rungList))).length;
 
   const show = (t: MobileTab) => (mobileTab === t ? "flex" : "hidden lg:flex");
   const drawerTabs: Array<[DrawerTab, string]> = [
@@ -114,12 +151,12 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
                 type="button"
                 role="tab"
                 aria-selected={wb === w.id}
-                aria-label={w.built ? w.label : `${w.label} (roadmap, not built yet)`}
-                onClick={() => setWb(w.id)}
+                aria-label={wbHasRun(w.id) ? w.label : `${w.label} (roadmap, not built yet)`}
+                onClick={() => chooseWb(w.id)}
                 className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] transition-colors duration-150 lg:flex-none ${wb === w.id ? "bg-raised text-ink" : "text-ink-3 hover:text-ink"}`}
               >
                 {w.label}
-                {!w.built && <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 sm:inline">roadmap</span>}
+                {!wbHasRun(w.id) && <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 sm:inline">roadmap</span>}
               </button>
             ))}
           </div>
@@ -160,7 +197,7 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
         </aside>
 
         <main id="main" className={`scroll-quiet min-h-0 flex-col px-4 py-4 lg:overflow-y-auto lg:px-5 ${show("canvas")}`}>
-          {wb !== "silicon" ? (
+          {wb !== "silicon" && !wbHasRun(wb) ? (
             <NotBuilt workbench={wb} />
           ) : src.status === "loading" ? (
             <Skeleton />
@@ -173,7 +210,15 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
               </button>
             </section>
           ) : (
-            snap && controller && <RunCanvas embedded c={controller} snap={snap} focus={focus} reportHref={`/runs/${runId}/report`} onEvidence={openEvidence} />
+            snap &&
+            controller &&
+            (s.domain === "board" ? (
+              <BoardCanvas c={controller} snap={snap} sel={sel?.kind === "rung" ? sel : null} onSelect={openRung} />
+            ) : s.domain === "matter" ? (
+              <MatterCanvas c={controller} snap={snap} sel={sel?.kind === "rung" ? sel : null} onSelect={openRung} />
+            ) : (
+              <RunCanvas embedded c={controller} snap={snap} focus={focus} reportHref={`/runs/${runId}/report`} onEvidence={openEvidence} />
+            ))
           )}
         </main>
 

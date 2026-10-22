@@ -5,6 +5,7 @@
 import type { NodeId } from "./events";
 import { int, mhz, pct, times } from "./format";
 import { RUNG_TOOL } from "./labels";
+import { rungCell, rungsOf } from "./domain";
 import { wallOf, type RunState } from "./run-state";
 
 export type EvidenceMetric = "wall_speedup" | "cycles" | "area" | "fmax";
@@ -124,5 +125,47 @@ export function buildEvidence(s: RunState, nodeId: NodeId, metric: EvidenceMetri
     command: reproduceCommand(s),
     replayPath: source === "replay" ? `web/public/replays/${runId}.ndjson` : null,
     runHref: `/runs/${runId}?node=${nodeId}`,
+  };
+}
+
+/** Evidence behind one rung result of a Board or Matter node (v2 domains). */
+export interface RungEvidenceRef {
+  kind: "rung";
+  rung: string;
+  /** Neutral name for the row ("B4 · board.checks.run_b4"); the claim label is only in `claim`. */
+  tool: string;
+  status: "pass" | "fail" | "unknown" | "running" | "pending";
+  detail: string | null;
+  /** The ladder's claim, only when the rung passed. */
+  claim: string | null;
+  /** Fact ids the check cited (for example "part:esp32.gpio12.strapping"). */
+  facts: string[];
+  runId: string;
+  nodeId: string;
+  seq: number | null;
+  domain: string;
+  runHref: string;
+  replayPath: string | null;
+}
+
+export function buildRungEvidence(s: RunState, nodeId: string, rungId: string, source: "replay" | "live" = "replay"): RungEvidenceRef | null {
+  const n = s.nodes[nodeId];
+  const rung = rungsOf(s).find((r) => r.id === rungId);
+  if (!n || !rung || !s.runId) return null;
+  const c = rungCell(n, rung);
+  return {
+    kind: "rung",
+    rung: rung.id,
+    tool: rung.tool ?? "not recorded",
+    status: c.status,
+    detail: c.detail ?? null,
+    claim: c.claim ?? null,
+    facts: c.evidence,
+    runId: s.runId,
+    nodeId,
+    seq: c.seq ?? null,
+    domain: s.domain,
+    runHref: `/workstation?run=${s.runId}&node=${nodeId}`,
+    replayPath: source === "replay" ? `web/public/replays/${s.runId}.ndjson` : null,
   };
 }

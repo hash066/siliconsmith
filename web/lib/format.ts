@@ -37,3 +37,4 @@ export function duration(seconds: number): string {
   const s = Math.round(seconds % 60);
   return s ? `${m} min ${s} s` : `${m} min`;
 }
+export const sha8 = (s: string) => s.slice(0, 12);

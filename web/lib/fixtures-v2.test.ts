@@ -13,7 +13,7 @@ const load = (f: string) => {
 };
 
 describe("v2 fixtures (real Board and Matter runs)", () => {
-  for (const f of ["m_eval_1.ndjson", "m_eval_2.ndjson", "m_eval_3.ndjson"]) {
+  for (const f of ["m_eval_1.ndjson", "m_eval_2.ndjson", "m_eval_3.ndjson", "board-repair-pin_mismatch-2.ndjson"]) {
     it(`${f} validates with no contract errors`, () => {
       expect(validateStream(load(f)).filter((i) => i.level === "error")).toEqual([]);
     });

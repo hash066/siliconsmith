@@ -38,6 +38,8 @@ export interface StageRecord {
   evidence?: string[];
   label?: string;
   t: number;
+  /** Sequence number of the event that set this record. */
+  seq?: number;
 }
 
 export interface AttemptRecord {
@@ -450,7 +452,7 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           n.attempts.push(att);
           n.attempts.sort((a, b) => a.attempt - b.attempt);
         }
-        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t, ...(e.evidence ? { evidence: e.evidence } : {}), ...(e.label ? { label: e.label } : {}) };
+        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t, seq: e.seq, ...(e.evidence ? { evidence: e.evidence } : {}), ...(e.label ? { label: e.label } : {}) };
         att.stages[stage] = rec;
         n.stages[stage] = rec;
         if (stage === "implement" && e.status === "running" && e.attempt > 0) {

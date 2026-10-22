@@ -27,6 +27,8 @@ describe("event contract v2 (additive)", () => {
     for (const f of files) {
       const { events, errors } = parseNdjson(readFileSync(resolve(dir, f), "utf8"));
       expect(errors).toEqual([]);
+      // v1 streams only: a replay that declares a domain is a v2 stream (dev fixtures may be installed next to the real ones).
+      if ((events[0] as { domain?: string }).domain !== undefined) continue;
       expect(validateStream(events).filter((i) => i.level === "error")).toEqual([]);
       const s = reduceAll(events);
       expect(s.domain).toBe("silicon");

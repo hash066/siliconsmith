@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import type { RunState } from "@/lib/run-state";
 
 export interface RunIndexEntry {
   id: string;
   title: string;
   backend: string;
+  /** From the replay's own run.started (absent = silicon). */
+  domain: string;
 }
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
@@ -40,7 +43,7 @@ export function ProjectRail({ runs, runId, onPickRun, state }: { runs: RunIndexE
                 <dd className="num break-all text-[12px] text-ink-3">{[repo, w.source_path].filter(Boolean).join(" · ")}</dd>
               </>
             )}
-            {hot && (
+            {state?.domain === "silicon" && hot && (
               <>
                 <dt className="sr-only">Hot spot</dt>
                 <dd className="text-[12px] text-ink-3">
@@ -48,7 +51,7 @@ export function ProjectRail({ runs, runId, onPickRun, state }: { runs: RunIndexE
                 </dd>
               </>
             )}
-            {state?.config && (
+            {state?.domain === "silicon" && state?.config && (
               <>
                 <dt className="sr-only">Budget</dt>
                 <dd className="text-[12px] text-ink-3">Area budget {state.config.area_budget_pct.toFixed(1)}% LUT-eq</dd>
@@ -72,7 +75,7 @@ export function ProjectRail({ runs, runId, onPickRun, state }: { runs: RunIndexE
               >
                 <span className="num block truncate text-[12.5px]">{r.id}</span>
                 <span className="block truncate text-[12px] text-ink-3">
-                  {r.title} · {r.backend}
+                  {r.domain} · {r.title} · {r.backend}
                 </span>
               </button>
             </li>
@@ -81,14 +84,18 @@ export function ProjectRail({ runs, runId, onPickRun, state }: { runs: RunIndexE
         <p className="mt-2 text-[12px] leading-snug text-ink-3">Recorded replays of real engine runs.</p>
       </Section>
 
-      <Section title="Library" aside={<Roadmap />}>
-        <p className="text-[13px] font-medium text-ink">No entries yet</p>
-        <p className="mt-1 text-[12.5px] leading-snug text-ink-3">The library will hold only instructions that passed the whole verification ladder, each with its evidence manifest. Nothing is listed until that is true.</p>
+      <Section title="Library">
+        <Link href="/workstation/library" className="text-[13px] text-signal-ink underline-offset-2 hover:underline">
+          Verified instructions
+        </Link>
+        <p className="mt-1 text-[12.5px] leading-snug text-ink-3">Every instruction that passed the whole ladder in a recorded run, with its evidence.</p>
       </Section>
 
-      <Section title="Templates" aside={<Roadmap />}>
-        <p className="text-[13px] font-medium text-ink">No templates yet</p>
-        <p className="mt-1 text-[12.5px] leading-snug text-ink-3">A template will appear only when it links to a real, recorded run.</p>
+      <Section title="Templates">
+        <Link href="/workstation/templates" className="text-[13px] text-signal-ink underline-offset-2 hover:underline">
+          Templates
+        </Link>
+        <p className="mt-1 text-[12.5px] leading-snug text-ink-3">Starting points that link to a recorded run.</p>
       </Section>
     </nav>
   );

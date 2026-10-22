@@ -1,4 +1,5 @@
 export type Workbench = "silicon" | "board" | "matter";
+export const WORKBENCH_DOMAINS: readonly string[] = ["silicon", "board", "matter"];
 
 const COPY: Record<Exclude<Workbench, "silicon">, { name: string; scope: string; limits: string }> = {
   board: {
