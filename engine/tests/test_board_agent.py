@@ -187,3 +187,24 @@ def test_draft_round_trips_to_the_same_netlist_and_a_pin_cannot_sit_on_two_nets(
 def test_model_json_with_connections_validates_without_a_name():
     raw = draft_from_design(reference_design()).model_dump(exclude={"name"})
     assert DesignDraft.model_validate(raw).to_design().name == ""
+
+
+def test_net_named_as_a_pin_means_wired_to_that_pin():
+    d = reference_design()
+    draft = draft_from_design(d).model_dump()
+    conn = draft["connections"]
+    conn["R4.2"] = "D1.A"   # the model's habit: name the net after the pin it wants to reach
+    del conn["D1.A"]
+    back = DesignDraft.model_validate(draft).to_design()
+    assert back.net("D1.A") is not None and set(back.net("D1.A").pins) == {"R4.2", "D1.A"}
+    assert propose_design(Scripted(DesignDraft.model_validate(draft)), BRIEF, LIB).passed
+
+
+def test_library_brief_lists_safe_gpio_without_flash_strapping_or_input_only_pins():
+    text = library_brief(LIB)
+    safe = next(l for l in text.splitlines() if "usable for outputs" in l)
+    names = safe.split(":", 1)[1].split(",")
+    names = [n.strip() for n in names]
+    assert "GPIO21" in names and "GPIO4" in names
+    assert not {"GPIO0", "GPIO2", "GPIO5", "GPIO12", "GPIO15", "GPIO6", "GPIO11", "GPIO34", "GPIO39"} & set(names)
+    assert "params.peak_ma" in text or "peak_ma" in text  # the load part's note

@@ -71,3 +71,10 @@ def test_b5_stays_silent_on_every_catalogue_fault_except_the_one_adding_an_unmod
 def test_full_ladder_on_the_clean_design():
     assert [(r.rung, r.status) for r in run_ladder(reference_design(), LIB)] == [(x, "pass") for x in IMPLEMENTED_RUNGS]
     assert IMPLEMENTED_RUNGS == ("B1", "B2", "B3", "B4", "B5")
+
+
+def test_load_with_peak_and_sleep_currents_enters_the_model():
+    d = reference_design()
+    d.instances.append(Instance(ref="LOAD1", part="load", params={"peak_ma": 20, "sleep_ma": 0.01}))
+    r = run_b5(d, LIB)
+    assert r.status == "pass" and "LOAD1 20" in r.detail

@@ -16,12 +16,12 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
   reviewed. Everything else is unchecked and the UI must say "author-curated, not independently verified".
   Only document and section names are cited; no page numbers are recorded.
 * The USB-C sink Rd (5.1 kOhm on CC1 and CC2) fact is **unchecked**: the USB-IF specification itself was not read.
-* Of the 9 library parts, only 2 cite a public datasheet (`esp32`, `bme280`). The other 7 are
+* Of the 10 library parts, only 3 cite a public datasheet (`esp32`, `bme280`, `mcp73831`; `std_i2c` is a rules record from a TI app note). The other 7 are
   `origin: author_defined`: `ldo33` is a **generic LDO with values chosen for the template**, not a
   datasheet part (the day-1 brief asked for an LDO; no specific product is named), and `res`, `led`,
   `btn`, `load`, `batt`, `usbc` are placeholders. `usbc` cites the USB Type-C Rd rule as a fact.
-* The reference design is partial: no Li-ion charger IC exists in the library yet, so the USB-C VBUS net
-  ends at the connector.
+* The reference design now includes a charger (`mcp73831`, datasheet read in full); the charge-current resistor value is not
+  modelled and the charger's own battery drain with USB absent is not in the B5 model.
 
 ## Layout
 
@@ -51,7 +51,7 @@ B2 checks (net voltage = what the net's `power_out` pins declare; passives are n
 absolute-max and recommended range; signal pins within domain + 0.3 V; regulator rail current = sum of load budgets
 vs the regulator's `iout_max_ma`, arithmetic shown. A load's budget is its instance `peak_ma`, else the part's
 peak fact, else the datasheet's stated supply requirement (the ESP32 module's 0.5 A supply, an upper bound, not a
-measured peak). The charger-input-vs-USB check needs a charger part and is not implemented.
+measured peak). The charger input against the USB 5 V net is the same supply-pin check (charger `VDD`: 3.75 to 6 V, absolute max 7 V).
 
 B3 checks: I2C pull-ups (parallel Rp per bus line, rise time 0.8473 x Rp x Cb against the mode limit, Rp above
 (VCC - 0.4 V) / 3 mA); I2C addresses from each sensor's SDO strap, duplicates on one bus fail, a floating strap is

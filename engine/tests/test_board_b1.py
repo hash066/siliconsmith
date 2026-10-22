@@ -51,8 +51,8 @@ def test_checked_citations_carry_a_url_and_only_datasheet_parts_are_checked():
     for part in LIB.values():
         for fid, prov in part.fact_provenance().items():
             if prov.citation_checked:
-                assert prov.url and part.id in ("esp32", "bme280", "std_i2c"), fid
-            elif part.id in ("esp32", "bme280", "std_i2c"):
+                assert prov.url and part.id in ("esp32", "bme280", "std_i2c", "mcp73831"), fid
+            elif part.id in ("esp32", "bme280", "std_i2c", "mcp73831"):
                 raise AssertionError(f"{fid} should be checked")
         if part.origin == "author_defined":
             assert "author-defined" in part.pin_table_provenance.source or part.id == "usbc"

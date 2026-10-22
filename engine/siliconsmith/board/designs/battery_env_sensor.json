@@ -88,6 +88,18 @@
       "ref": "D1",
       "part": "led",
       "params": {}
+    },
+    {
+      "ref": "U5",
+      "part": "mcp73831",
+      "params": {}
+    },
+    {
+      "ref": "R7",
+      "part": "res",
+      "params": {
+        "ohms": 2000
+      }
     }
   ],
   "nets": [
@@ -95,7 +107,8 @@
       "name": "VBAT",
       "pins": [
         "J2.BAT_P",
-        "U2.VIN"
+        "U2.VIN",
+        "U5.VBAT"
       ]
     },
     {
@@ -106,6 +119,8 @@
         "U1.GND1",
         "U1.GND2",
         "U1.GND3",
+        "U5.VSS",
+        "R7.2",
         "U3.GND1",
         "U3.GND2",
         "U3.SDO",
@@ -132,7 +147,15 @@
     {
       "name": "VBUS",
       "pins": [
-        "J1.VBUS"
+        "J1.VBUS",
+        "U5.VDD"
+      ]
+    },
+    {
+      "name": "PROG",
+      "pins": [
+        "U5.PROG",
+        "R7.1"
       ]
     },
     {

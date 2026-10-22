@@ -289,7 +289,8 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
                         loads_ev.append(load[1])
             fid = f"part:{part.id}.iout_max_ma"
             if missing:
-                unknowns.append(f"{inst.ref} rail {nets[0]}: no current fact for {', '.join(missing)}")
+                unknowns.append(f"{inst.ref} rail {nets[0]}: no current fact for {', '.join(missing)} "
+                                "(a load states its current as instance params.peak_ma, a number in mA)")
                 ev_fail.append(fid)
                 continue
             line = f"{inst.ref} rail {nets[0]}: " + (" + ".join(terms) or "0") + f" = {total:g} mA vs limit {limit.value:g} mA"
@@ -604,7 +605,12 @@ def run_b5(design: Design, library: dict[str, Part]) -> CheckResult:
         if part is None:
             continue
         if "peak_ma" in inst.params:
-            unknowns.append(f"{inst.ref}: only a peak current is stated, no sleep current")
+            slp = inst.params.get("sleep_ma")
+            if not isinstance(slp, (int, float)) or not isinstance(inst.params["peak_ma"], (int, float)):
+                unknowns.append(f"{inst.ref}: only a peak current is stated; add a numeric params.sleep_ma (mA) for the sleep current")
+                continue
+            active.append((inst.ref, float(inst.params["peak_ma"])))
+            sleep.append((inst.ref, float(slp)))
             continue
         pairs = []
         for act_key, slp_key, scale in (("wifi_tx_typ_ma", "deep_sleep_ua", 1), ("iddp_ma", "sleep_ua", 1), (None, "iq_ua", 1)):

@@ -35,7 +35,9 @@ SYSTEM = (
     "power output drives. Every resistor MUST state its value in params.ohms (a number). Pins that share a net use the "
     "same net name; a pin has exactly one net. Example of the format only (not part of the answer): a 1 kohm resistor "
     "between rail RAIL and signal SIG: instances [{\"ref\":\"R9\",\"part\":\"res\",\"params\":{\"ohms\":1000}}], "
-    "connections {\"R9.1\":\"RAIL\",\"R9.2\":\"SIG\"}. Do not include an 'assumptions' field. "
+    "connections {\"R9.1\":\"RAIL\",\"R9.2\":\"SIG\"}. A net name may also be a pin, written REF.PIN, meaning the pin is wired directly to that pin. To tie a pin to ground "
+    "or to a rail, give it the SAME net name as that ground or rail (never invent a separate net for it). "
+    "Do not include an 'assumptions' field. "
     "Reply with the JSON object only, with no text before or after it."
 )
 
@@ -55,9 +57,15 @@ class DesignDraft(BaseModel):
     firmware_pins: list[FirmwarePin] = []
 
     def to_design(self) -> Design:
+        """A net name written as an existing REF.PIN means 'wired directly to that pin': that pin joins the net."""
+        refs = {i.ref for i in self.instances}
         nets: dict[str, list[str]] = {}
         for pin, net in self.connections.items():
             nets.setdefault(net, []).append(pin)
+        for net, pins in list(nets.items()):
+            ref, _, other = net.partition(".")
+            if other and ref in refs and net not in self.connections:
+                pins.append(net)
         return Design(name=self.name, mcu_ref=self.mcu_ref, instances=self.instances,
                       nets=[Net(name=n, pins=p) for n, p in nets.items()],
                       mcu_assignments=self.mcu_assignments, firmware_pins=self.firmware_pins)
@@ -108,6 +116,14 @@ def library_brief(library: dict[str, Part]) -> str:
         if part.kind == "standard":
             continue
         out.append(f"PART {part.id}: {part.name} [{part.origin}]")
+        if part.description:
+            out.append(f"  note: {part.description}")
+        gp = [p for p in part.pins if "gpio" in p.capabilities]
+        if gp:
+            safe = [p.name for p in gp if not {"flash", "strapping", "input_only"} & set(p.capabilities)]
+            only = [p.name for p in gp if "input_only" in p.capabilities]
+            out.append(f"  GPIO usable for outputs/bidir (not flash, not strapping, not input-only): {', '.join(safe)}")
+            out.append(f"  GPIO input-only (use only as input): {', '.join(only)}")
         for p in part.pins:
             caps = ",".join(p.capabilities)
             lim = ""

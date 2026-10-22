@@ -85,3 +85,24 @@ def test_every_fault_with_an_implemented_rung_is_detected_by_exactly_that_rung()
         by_rung = {r.rung: r.status for r in run_ladder(inject_fault(reference_design(), f.id), LIB)}
         assert by_rung[f.expected_rung] == "fail", f.id
     assert all(r.status == "pass" for r in run_ladder(reference_design(), LIB))
+
+
+def test_charger_input_is_checked_against_the_usb_5v_net():
+    d = reference_design()
+    r = run_b2(d, LIB)
+    assert r.status == "pass" and "part:mcp73831.vdd" in r.evidence and "part:usbc.vbus" in r.evidence
+    lib = dict(LIB)
+    lib["usbc"] = LIB["usbc"].model_copy(deep=True)
+    for p in lib["usbc"].pins:
+        if p.name == "VBUS":
+            p.v_out_max = 7.5  # a hypothetical over-voltage source on the USB net
+    bad = run_b2(d, lib)
+    assert bad.status == "fail" and "U5.VDD" in bad.detail and "absolute maximum 7 V" in bad.detail
+
+
+def test_charger_prog_pin_left_floating_fails_b1():
+    from siliconsmith.board.checks import run_b1
+    d = reference_design()
+    d.net("PROG").pins.remove("U5.PROG")
+    r = run_b1(d, LIB)
+    assert r.status == "fail" and "U5.PROG" in r.detail
