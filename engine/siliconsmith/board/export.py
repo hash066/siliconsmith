@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import re
 
-from .netlist import Design
+from .netlist import Design, FirmwarePin
 from .parts import Part
 
 _GPIO_RE = re.compile(r"^GPIO(\d+)$")
+_FUNC_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_DEFINE_RE = re.compile(r"^#define\s+SS_PIN_([A-Z0-9_]+)\s+(\d+)\s*/\*\s*(input|output|bidir)\s*\*/\s*$", re.M)
 
 
 def _macro(function: str) -> str:
@@ -30,12 +32,27 @@ def firmware_header(design: Design) -> str:
         "",
     ]
     for f in design.firmware_pins:
+        if not _FUNC_RE.match(f.function):
+            raise ValueError(f"function name {f.function!r} must be lower-case snake_case to round-trip through the header")
         m = _GPIO_RE.match(f.pin)
         if not m:
             raise ValueError(f"{f.function}: {f.pin!r} is not a GPIO pin name")
         lines.append(f"#define {_macro(f.function)} {int(m.group(1))}  /* {f.use} */")
     lines += ["", "#endif /* SS_BOARD_PINS_H */", ""]
     return "\n".join(lines)
+
+
+def parse_firmware_header(text: str) -> list[FirmwarePin]:
+    """Read back the pin table from a header made by `firmware_header`. Only `#define SS_PIN_<FN> <n>  /* use */`
+    lines are recognised; a header with none, or with a repeated function, raises ValueError."""
+    pins = [FirmwarePin(function=m.group(1).lower(), pin=f"GPIO{int(m.group(2))}", use=m.group(3))
+            for m in _DEFINE_RE.finditer(text)]
+    if not pins:
+        raise ValueError("no SS_PIN_ definitions found in the header")
+    names = [p.function for p in pins]
+    if len(set(names)) != len(names):
+        raise ValueError("a function is defined twice in the header")
+    return pins
 
 
 def _value(inst, part: Part) -> str:

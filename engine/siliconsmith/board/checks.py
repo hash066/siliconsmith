@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, model_validator
 
+from .export import parse_firmware_header
 from .netlist import Design, split_pin
 from .parts import DRIVER_DIRECTIONS, Part
 
@@ -485,10 +486,16 @@ def run_b3(design: Design, library: dict[str, Part]) -> CheckResult:
                              _b3_addresses(design, parts, bus), _b3_usbc(design, parts)])
 
 
-def run_b4(design: Design, library: dict[str, Part]) -> CheckResult:
-    """Firmware pin header against the netlist: same pin and use for every function, the netlist really wires that
+def run_b4(design: Design, library: dict[str, Part], header: str | None = None) -> CheckResult:
+    """Firmware pin header against the netlist (when `header` C text is given it is parsed and replaces
+    `design.firmware_pins`; an unparsable header fails): same pin and use for every function, the netlist really wires that
     pin to the stated net, no input-only pin driven, no flash pin used, no strapping pin used. The strapping rule is
     deliberately conservative (any use fails): it does not analyse the level present at reset."""
+    if header is not None:
+        try:
+            design = design.model_copy(update={"firmware_pins": parse_firmware_header(header)})
+        except ValueError as e:
+            return _summarise("B4", [Finding(check="firmware header parses", status="fail", detail=f"header unreadable: {e}")])
     mcu = design.instance(design.mcu_ref) if design.mcu_ref else None
     part = library.get(mcu.part) if mcu else None
     if mcu is None or part is None:
@@ -623,11 +630,11 @@ def run_b5(design: Design, library: dict[str, Part]) -> CheckResult:
     return _summarise("B5", [Finding(check="battery model", status=status, detail=arith, evidence=_dedupe(ev))])
 
 
-def run_ladder(design: Design, library: dict[str, Part]) -> list[CheckResult]:
+def run_ladder(design: Design, library: dict[str, Part], header: str | None = None) -> list[CheckResult]:
     """Implemented rungs only; later rungs are reported unknown (not run) when B1 did not pass.
     Nothing is reported as passed unless its rung ran and passed."""
     b1 = run_b1(design, library)
     if b1.status != "pass":
         return [b1] + [CheckResult(rung=r, status="unknown", detail="not run: B1 did not pass") for r in ("B2", "B3", "B4", "B5")]
-    return [b1, run_b2(design, library), run_b3(design, library), run_b4(design, library),
+    return [b1, run_b2(design, library), run_b3(design, library), run_b4(design, library, header),
             run_b5(design, library)]

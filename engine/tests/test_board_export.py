@@ -66,3 +66,35 @@ def test_kicad_netlist_has_every_component_and_every_connection():
 def test_kicad_netlist_is_deterministic():
     d = reference_design()
     assert kicad_netlist(d, LIB) == kicad_netlist(d.copy(), LIB)
+
+
+def test_header_round_trips_through_the_parser_and_b4_reads_it():
+    from siliconsmith.board.checks import run_b4
+    from siliconsmith.board.export import parse_firmware_header
+
+    d = reference_design()
+    h = firmware_header(d)
+    assert parse_firmware_header(h) == d.firmware_pins
+    assert run_b4(d, LIB, header=h).status == "pass"
+
+
+def test_b4_judges_the_header_text_not_the_design_firmware_table():
+    from siliconsmith.board.checks import run_b4
+
+    d = reference_design()
+    bad = firmware_header(d).replace("SS_PIN_WAKE_BTN 14", "SS_PIN_WAKE_BTN 12")
+    r = run_b4(d, LIB, header=bad)
+    assert r.status == "fail" and "firmware says GPIO12, netlist wires GPIO14" in r.detail
+
+
+def test_unreadable_header_fails_b4_and_bad_function_names_are_rejected():
+    from siliconsmith.board.checks import run_b4
+    from siliconsmith.board.export import parse_firmware_header
+
+    assert run_b4(reference_design(), LIB, header="int main(void){}").status == "fail"
+    with pytest.raises(ValueError):
+        parse_firmware_header("#define SS_PIN_A 1  /* input */\n#define SS_PIN_A 2  /* input */")
+    d = reference_design()
+    d.firmware_pins[0].function = "I2C-SDA"
+    with pytest.raises(ValueError):
+        firmware_header(d)
