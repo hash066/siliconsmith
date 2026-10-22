@@ -62,6 +62,8 @@ export type AgentEvent =
 /** The seam for `/api/agent`: send the user's text, get events back. */
 export interface AgentTransport {
   send(input: { text: string; signal: AbortSignal }): AsyncIterable<AgentEvent>;
+  /** Run an action the user confirmed. Never called without a click on the confirm button. */
+  confirm?(action: PendingAction, signal: AbortSignal): AsyncIterable<AgentEvent>;
 }
 
 export const initialAgentState = (): AgentState => ({ messages: [], pending: null, activeModel: null });
