@@ -422,7 +422,11 @@ def _b3_addresses(design: Design, parts: dict[str, Part | None], bus: dict[str, 
             continue
         addr = _i2c_address(design, parts, part, ref)
         if addr is None:
-            unknowns.append(f"{ref}: I2C address cannot be determined from its SDO strap")
+            sdo = design.nets_of(ref, "SDO")
+            vio = design.nets_of(ref, "VDDIO")
+            unknowns.append(f"{ref}: I2C address cannot be determined: SDO is on net {sdo[0] if sdo else '(none)'}, which holds no "
+                            f"ground pin and is not the VDDIO net ({vio[0] if vio else '(none)'}); tie SDO to the ground net "
+                            f"for the low address or to the VDDIO net for the high one")
             ev_fail.append(part.pin_fact_id("SDO"))
         elif addr[0] in seen:
             fails.append(f"{ref} and {seen[addr[0]]} are both at I2C address {addr[0]} on net {bus['i2c_sda']}")

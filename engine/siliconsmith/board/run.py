@@ -105,6 +105,11 @@ def run_board(llm: Any, bus: Any, brief: Brief, library: dict[str, Part], *, mod
         if hasattr(bus, "close"):
             bus.close()
         raise
+    # every judged design is kept, failing ones too, so a failed run can be read afterwards (not artifacts of a pass)
+    attempts_dir = out_dir / "attempts"
+    attempts_dir.mkdir(parents=True, exist_ok=True)
+    for att in result.attempts:
+        (attempts_dir / f"{att.node_id}.json").write_text(dump_design(att.design), encoding="utf-8", newline="\n")
     artifacts = write_artifacts(result, library, out_dir, bus)
     if result.passed:
         bus.emit("run.completed", best_node_id=result.final.node_id, pareto=[result.final.node_id],

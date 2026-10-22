@@ -170,7 +170,7 @@ def test_run_board_fault_repair_and_failure_paths(tmp_path):
     bus = Bus()
     bad = inject_fault(reference_design(), "two_output_drivers")
     r = run_board(Scripted(bad, bad, bad), bus, template_brief(), LIB, out_dir=tmp_path / "fail")
-    assert not r.passed and bus.of("run.failed") and not bus.of("artifact.created") and not (tmp_path / "fail").exists()
+    assert not r.passed and bus.of("run.failed") and not bus.of("artifact.created") and not (tmp_path / "fail" / "netlist.net").exists()
     with pytest.raises(ValueError):
         run_board(Scripted(), Bus(), template_brief(), LIB, mode="repair", out_dir=tmp_path)
 
