@@ -74,12 +74,15 @@ def make_router():
         status, payload = handle_request("POST", path, raw, client)
         return JSONResponse(payload, status_code=status)
 
-    @router.post("/simulate")
-    async def simulate(request: Request):
-        return await _go(request, "/simulate")
+    def endpoint(path: str):
+        async def handler(request):
+            return await _go(request, path)
 
-    @router.post("/run")
-    async def run(request: Request):
-        return await _go(request, "/run")
+        # `from __future__ import annotations` turns annotations into strings that FastAPI cannot resolve for a
+        # locally imported class (it then reads `request` as a required query parameter); set the real class instead.
+        handler.__annotations__ = {"request": Request}
+        return handler
 
+    router.add_api_route("/simulate", endpoint("/simulate"), methods=["POST"])
+    router.add_api_route("/run", endpoint("/run"), methods=["POST"])
     return router
