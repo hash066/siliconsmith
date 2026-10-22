@@ -1,95 +1,58 @@
 {
-  "contract": "docs/design/workstation-contract.md (design contract table, content states, target viewports 390x844, 768x1024, 1440x900)",
+  "contract": "docs/design/workstation-contract.md (design contract table, content states, target viewports 390x844, 768x1024, 1440x900; also swept at 360, 705 and 1024)",
   "targetViewports": ["390x844", "768x1024", "1440x900"],
   "accessibility": {
     "status": "pass",
-    "evidence": "Measured with scripts/ws-a11y.mjs on the production build (a11y.json): 26 consecutive Tab presses at 1440x900 each landed on a visible element with a solid focus outline, and the order starts Skip to content, wordmark, workbench tabs, theme toggle, then the rail. Computed text/background contrast over 34-35 text elements per state (dark and light, with and without the evidence drawer open): minimum 5.43:1 dark, 5.25:1 light, zero failures against 4.5:1. Buttons and tabs are 36 px or taller except the evidence chip, which is 24 px (WCAG 2.2 AA minimum). Known limit: the reused event ticker makes every event row a tab stop, so keyboard users tab through up to 60 rows to leave the drawer. NOT exercised: prefers-reduced-motion (the global rule in globals.css is unchanged and was not toggled), screen-reader pass, forced-colors."
+    "evidence": "Measured only on the Silicon workstation view with scripts/ws-a11y.mjs (a11y.json, taken before the Board, Matter, Library and Templates surfaces existed): 26 consecutive Tab presses each landed on a visible element with a solid focus outline, the order starts Skip to content, wordmark, workbench tabs, theme toggle, then the rail; computed text contrast over 34-35 elements per state (dark and light) had a minimum of 5.43:1 dark and 5.25:1 light and no failures. The new surfaces reuse the same tokens, buttons and focus style, and every matrix cell, chip and card is a real button with an aria-label, but keyboard order and contrast were NOT re-measured on Board, Matter, Library or Templates, and the STL canvas has only button-based rotation (no keyboard-driven camera beyond the Rotate buttons). Reduced motion, screen readers and forced colours were not exercised. Known limit: the reused event ticker makes every row a tab stop."
   },
   "responsive": {
     "status": "pass",
-    "evidence": "scripts/ws-gate.mjs (overflow.json): documentElement.scrollWidth equals innerWidth in all 32 captures at 360x780, 390x844, 705x900, 768x1024, 1024x768 and 1440x900, covering Silicon default, Agent, Project, Evidence tab, Board and Matter states and the evidence drawer opened from a chip. No element extends past the viewport outside a scroll container. Layout below 1024 px collapses rails into the Canvas, Agent, Project, Evidence tabs. Long content checked only with the real workload titles and node mnemonics in the replays; no synthetic long-name test was run."
+    "evidence": "scripts/ws-gate.mjs (overflow-fx.json, overflow-partial.json, overflow.json): documentElement.scrollWidth equals innerWidth in every capture at 360x780, 390x844, 705x900, 768x1024, 1024x768 and 1440x900 across the Silicon canvas, evidence drawer, agent, project and evidence tabs, Board (matrix, rung evidence, repaired design), Matter (plate, Pareto, matrix, rung evidence), Library with and without an open evidence panel, and Templates. The matrix scrolls inside its own region; grid tracks are minmax(0,1fr) with min-w-0. One real bug was found and fixed by this sweep (the Library evidence panel collapsed to a few characters wide because wide rows spanned two columns of a one-column grid). Long content was checked only with real mnemonics, titles and the real Matter and Board runs; no synthetic long-name test."
   },
   "contentStates": {
     "loading": {
       "status": "pass",
-      "evidence": "ws-1440x900-loading.png: replay at its first seconds shows the canvas building from events (baseline only, 0 candidates, best speedup shown as a dash, 'Searching…', events list with 2 entries, status 'Replay · playing'). The pre-fetch skeleton component (shown while the replay file downloads) was not captured; the agent streaming skeleton is not built."
+      "evidence": "ws-1440x900-loading.png: Silicon replay near its start (baseline only, dashes for unknown numbers, events list growing). The Library loading skeleton rows and the pre-fetch run skeleton exist but were not captured; the agent streaming state is exercised by the server tests with a scripted upstream and live once via curl, not in the browser."
     },
     "empty": {
       "status": "pass",
-      "evidence": "ws-1440x900-board.png and ws-1440x900-matter.png show the 'not built yet' state with a Roadmap label for Board and Matter (no design, checks or numbers). The rail shows Library 'No entries yet' and Templates 'No templates yet' with Roadmap labels. The agent panel shows 'Agent endpoint not connected yet' with a disabled composer (ws-390x844-agent.png). Starter prompts are not built because they need a live endpoint."
+      "evidence": "ws-1440x900-board.png and ws-1440x900-matter.png (no fixtures installed): Board and Matter show 'not built yet' with a Roadmap label when no replay of that domain exists. ws-1440x900-templates.png: 'No templates yet, no manifest installed'. The Agent panel shows 'Agent endpoint not connected yet' with a disabled composer when the server has no key (ws-390x844-agent.png)."
     },
     "error": {
       "status": "pass",
-      "evidence": "ws-1440x900-partial.png: failed candidates render in the reused tree and event list with the exact reason (for example 'n5 pruned · unit failed after 2 repairs: patched software differs from the original'). Run-failed and replay-not-found canvases, and agent tool-call or stream errors, are covered only by unit tests (server-render tests and reducer tests); they were not rendered in a browser and are UNTESTED visually."
+      "evidence": "Real failure states rendered with real data: ws-1440x900-board-rung-fx.png and ws-1440x900-board-repair-fx.png show a failed B4 (firmware says GPIO12, netlist wires GPIO14) with its detail and cited fact ids in the drawer and no claim label; ws-1440x900-matter-rung-fx.png shows an M3 printability fail and unknown (not pass) M4/M5; ws-1440x900-partial.png shows pruned silicon candidates with reasons. ws-1440x900-templates-fx.png shows a broken template (run not recorded). Not rendered in a browser: agent tool errors and upstream failures (covered by server and reducer tests), a corrupt STL, an unreadable replay in the Library (alert copy exists), run.failed."
     },
     "partial": {
       "status": "pass",
-      "evidence": "ws-1440x900-partial.png and ws-390x844-partial.png: replay at 3:55 of 19:04 (still playing) shows 6 candidates, 1 running, a best-so-far 2.69x, Fmax '— not measured' and the status 'Replay · playing'. Evidence chips open on the best-so-far node with the real event seq numbers."
+      "evidence": "ws-1440x900-partial.png and ws-390x844-partial.png: Silicon replay mid-run (6 candidates, 1 running, best so far, Fmax not measured). Board and Matter canvases were captured only at the end of the replay (t=end); a mid-run Board or Matter state was not captured."
     },
     "success": {
       "status": "pass",
-      "evidence": "ws-1440x900-default.png, ws-768x1024-default.png and ws-390x844-default.png: completed replay r_w1_contree3 shows best dot4.sum at 3.76x wall-clock, +4.83% area, 213,022 cycles, Fmax 66.2 MHz, '5 verified', cost $0.440. ws-1440x900-evidence-open.png and ws-390x844-evidence-open.png show the evidence drawer for the speedup (tool, version 'not recorded', run, node, event seq, reproduce command)."
+      "evidence": "ws-1440x900-default.png, ws-768x1024-default.png, ws-390x844-default.png: completed Silicon replay with evidence chips; ws-1440x900-evidence-open.png: the drawer for the 3.76x speedup. With dev fixtures (real Board and Matter logs, never shipped): ws-1440x900-board-fx.png (all five rungs pass on the repaired design, author-curated notice), ws-1440x900-matter-fx.png (winner n7 with the extruded plate, Pareto, matrix, gallery), ws-1440x900-library-fx.png and ws-1440x900-library-evidence-fx.png (16 verified instructions, evidence panel with tool, run, node, seq and reproduce command)."
     },
     "permission": {
       "status": "not-applicable",
-      "reason": "No permission or limit boundary exists in this build: there is no agent endpoint, no budget cap and no live-run cap, so there is nothing to render. The 'endpoint not connected' state is covered under empty. The daily-budget and live-run-cap states are not built and are untested."
+      "reason": "The per-visitor and daily agent limits exist in /api/agent (HTTP 429 with a plain message, in-memory per instance) and are covered by unit tests, but the limit state was not rendered in the browser because that needs a live key on the served build; it is untested visually. No other surface has an access boundary."
     }
   },
   "renderedEvidence": [
-    {
-      "viewport": "1440x900",
-      "artifact": "ws-1440x900-default.png",
-      "observation": "Top bar (wordmark, project, Silicon | Board | Matter with roadmap tags, status, cost), left rail (Intent, Runs, Library, Templates), run canvas with metrics strip and evidence chips, search tree, inspector, right Agent panel in the not-connected state, bottom Events drawer. No overflow."
-    },
-    {
-      "viewport": "1440x900",
-      "artifact": "ws-1440x900-evidence-open.png",
-      "observation": "Evidence drawer open on 'Wall-clock speedup 3.76x': tool, version not recorded, run r_w1_contree3, node n1.2.1 with event seq 293 and 539, basis, reproduce command with Copy, replay record path. Artifacts column says the stream records none."
-    },
-    {
-      "viewport": "768x1024",
-      "artifact": "ws-768x1024-default.png",
-      "observation": "Rails collapsed into the Canvas, Agent, Project, Evidence tab bar. Metrics strip in three columns with evidence chips, tree/node tabs below, no horizontal scroll."
-    },
-    {
-      "viewport": "768x1024",
-      "artifact": "ws-768x1024-agent.png",
-      "observation": "Agent tab: model badges Ultra, Super, Nano all inactive, 'Agent endpoint not connected yet', disabled composer."
-    },
-    {
-      "viewport": "390x844",
-      "artifact": "ws-390x844-default.png",
-      "observation": "Single column: top bar wraps to two rows (status and cost, then workbench switcher), panel tabs, canvas title, player, metrics in two columns with evidence chips, tree/node tabs. No horizontal scroll."
-    },
-    {
-      "viewport": "390x844",
-      "artifact": "ws-390x844-evidence-open.png",
-      "observation": "Evidence tab after tapping the speedup chip: drawer with the same fields as desktop, stacked in one column."
-    },
-    {
-      "viewport": "1440x900",
-      "artifact": "ws-1440x900-loading.png",
-      "observation": "Replay near its start: baseline only, zero candidates, dashes for unknown numbers, no evidence chips because nothing is scored yet."
-    },
-    {
-      "viewport": "1440x900",
-      "artifact": "ws-1440x900-partial.png",
-      "observation": "Replay mid-run: six candidates, one running, best so far 2.69x, failed candidates with reasons in the events list."
-    },
-    {
-      "viewport": "390x844",
-      "artifact": "ws-390x844-partial.png",
-      "observation": "Mid-run replay at phone width using the outline tree layout."
-    },
-    {
-      "viewport": "1440x900",
-      "artifact": "ws-1440x900-board.png",
-      "observation": "Board workbench not built yet: Roadmap label, scope sentence and limits, and the statement that nothing is shown until a real verified run exists."
-    },
-    {
-      "viewport": "1440x900",
-      "artifact": "regress-run-1440x900.png",
-      "observation": "Regression check: the existing /runs/r_w1_contree3 page still renders its full header, metrics, tree, inspector, cost panel and events after the RunCanvas extraction."
-    }
+    { "viewport": "1440x900", "artifact": "ws-1440x900-default.png", "observation": "Workstation Silicon view: top bar, project rail with Library and Templates links, canvas with evidence chips, Agent panel in the not-connected state, Events drawer." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-evidence-open.png", "observation": "Evidence drawer on the 3.76x speedup: tool, version not recorded, run, node, seq 293 and 539, basis, reproduce command, record path." },
+    { "viewport": "768x1024", "artifact": "ws-768x1024-default.png", "observation": "Rails collapsed into Canvas, Agent, Project, Evidence tabs; metrics in three columns." },
+    { "viewport": "390x844", "artifact": "ws-390x844-default.png", "observation": "Single column Silicon canvas with two-row top bar and evidence chips." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-board.png", "observation": "No Board replay installed: Board 'not built yet' with the Roadmap label." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-board-fx.png", "observation": "Board canvas on a real Board run log (dev fixture): check matrix B1 to B5 by design, finding line, honest-limits notice, events and artifacts with SHA-256." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-board-repair-fx.png", "observation": "Board repair run with B4 selected on the faulty design: the drawer shows Fail, the detail, no claim, and facts part:esp32.gpio12, gpio14 and gpio12.strapping." },
+    { "viewport": "390x844", "artifact": "ws-390x844-board-fx.png", "observation": "Board canvas at phone width; the matrix scrolls inside its own region." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-matter-fx.png", "observation": "Matter viewer on a real Matter run log (dev fixture, STL shipped beside it): extruded plate, Pareto of peak temperature against material, figures, matrix, gallery, artifacts." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-matter-rung-fx.png", "observation": "Matter n1 M3 selected: Fail with the feature-size detail; M4 and M5 shown as unknown, not pass." },
+    { "viewport": "390x844", "artifact": "ws-390x844-matter-fx.png", "observation": "Matter canvas at phone width." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-library-fx.png", "observation": "Library: 16 instructions derived from the five replays, sorted by speedup, rung glyphs L1 to L5." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-library-evidence-fx.png", "observation": "Library detail with the evidence panel open on a wall-clock number (single-column compact layout after the fix)." },
+    { "viewport": "768x1024", "artifact": "ws-768x1024-library-fx.png", "observation": "Library at tablet width." },
+    { "viewport": "390x844", "artifact": "ws-390x844-library-fx.png", "observation": "Library at phone width: list then detail." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-templates-fx.png", "observation": "Templates with a dev-only manifest: one usable template linked to a recorded run and one marked broken." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-templates.png", "observation": "Templates with no manifest installed: the honest empty state." },
+    { "viewport": "1440x900", "artifact": "regress-run-1440x900.png", "observation": "Regression: the existing /runs/r_w1_contree3 page after the RunCanvas extraction." }
   ]
 }

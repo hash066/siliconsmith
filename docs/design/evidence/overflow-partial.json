@@ -1,0 +1,362 @@
+[
+  {
+    "viewport": "360x780",
+    "view": "default",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-default.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "evidence-open",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-evidence-open.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "board",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-board.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "matter",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-matter.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "library",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-library.png"
+  },
+  {
+    "viewport": "360x780",
+    "view": "templates",
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-360x780-templates.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "default",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-default.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "evidence-open",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-evidence-open.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "board",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-board.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "matter",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-matter.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "library",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-library.png"
+  },
+  {
+    "viewport": "390x844",
+    "view": "templates",
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-390x844-templates.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "default",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-default.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "evidence-open",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-evidence-open.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "board",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-board.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "matter",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-matter.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "library",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-library.png"
+  },
+  {
+    "viewport": "705x900",
+    "view": "templates",
+    "scrollWidth": 705,
+    "innerWidth": 705,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-705x900-templates.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "default",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-default.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "evidence-open",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-evidence-open.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "board",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-board.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "matter",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-matter.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "library",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-library.png"
+  },
+  {
+    "viewport": "768x1024",
+    "view": "templates",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-768x1024-templates.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "default",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-default.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "evidence-open",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-evidence-open.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "board",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-board.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "matter",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-matter.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "library",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-library.png"
+  },
+  {
+    "viewport": "1024x768",
+    "view": "templates",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1024x768-templates.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "default",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-default.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "evidence-open",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-evidence-open.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "board",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-board.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "matter",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-matter.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "library",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-library.png"
+  },
+  {
+    "viewport": "1440x900",
+    "view": "templates",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "offenders": [],
+    "clicked": true,
+    "overflow": false,
+    "screenshot": "ws-1440x900-templates.png"
+  }
+]
