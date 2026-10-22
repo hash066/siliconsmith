@@ -210,22 +210,27 @@ def _loop(llm: Any, messages: list[dict], brief: Brief, library: dict[str, Part]
     parent, node_id = "root", "n1"
     _emit(bus, "node.created", node_id="root", parent_id=None, depth=0, proposal=None, instruction_set=[])
     for rnd in range(max_repairs + 1):
+        # a node exists before any event names it (including the llm.call that produces its design)
         if design is None:
             tier, role = ("ultra", "architect") if rnd == 0 else ("super", "repair")
-            try:
-                proposed, _ = llm.json(tier, role, messages, DesignDraft, think=think_first and rnd == 0, node_id=node_id)
-                if isinstance(proposed, DesignDraft):
-                    proposed = proposed.to_design()
-            except Exception as e:  # LLMError, BudgetExceeded, network: report, do not hide
-                _emit(bus, "log", level="error", msg=f"{role} call failed: {type(e).__name__}: {e}"[:400], node_id=parent)
-                return AgentResult(False, attempts[-1].design if attempts else None, attempts,
-                                   error=f"{type(e).__name__}: {e}", cost_usd=cost())
-            design = _apply_brief(proposed, brief)
             title = "Architect proposal" if rnd == 0 else f"Repair {rnd}"
             note = f"{tier} {role} output, judged by deterministic checks"
         else:
             title, note = "Starting design", first_note
         _node_created(bus, node_id, parent, rnd + 1, title, note)
+        if rnd > 0:
+            _emit(bus, "node.expanded", node_id=parent, children=[node_id])
+        if design is None:
+            try:
+                proposed, _ = llm.json(tier, role, messages, DesignDraft, think=think_first and rnd == 0, node_id=node_id)
+                if isinstance(proposed, DesignDraft):
+                    proposed = proposed.to_design()
+            except Exception as e:  # LLMError, BudgetExceeded, network: report, do not hide
+                _emit(bus, "log", level="error", msg=f"{role} call failed: {type(e).__name__}: {e}"[:400], node_id=node_id)
+                _emit(bus, "node.pruned", node_id=node_id, reason=f"{role} call failed: {type(e).__name__}"[:300])
+                return AgentResult(False, attempts[-1].design if attempts else None, attempts,
+                                   error=f"{type(e).__name__}: {e}", cost_usd=cost())
+            design = _apply_brief(proposed, brief)
         attempt = _judge(bus, node_id, rnd, design, library)
         attempts.append(attempt)
         if attempt.passed:
@@ -240,9 +245,7 @@ def _loop(llm: Any, messages: list[dict], brief: Brief, library: dict[str, Part]
         ]
         design = None
         if rnd < max_repairs:
-            child = f"{node_id}.1"
-            _emit(bus, "node.expanded", node_id=node_id, children=[child])
-            parent, node_id = node_id, child
+            parent, node_id = node_id, f"{node_id}.1"
     return AgentResult(False, attempts[-1].design, attempts, cost_usd=cost(),
                        error="repair limit reached with the ladder still failing")
 

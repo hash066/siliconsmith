@@ -208,3 +208,32 @@ def test_library_brief_lists_safe_gpio_without_flash_strapping_or_input_only_pin
     assert "GPIO21" in names and "GPIO4" in names
     assert not {"GPIO0", "GPIO2", "GPIO5", "GPIO12", "GPIO15", "GPIO6", "GPIO11", "GPIO34", "GPIO39"} & set(names)
     assert "params.peak_ma" in text or "peak_ma" in text  # the load part's note
+
+
+def test_every_event_naming_a_node_comes_after_that_nodes_creation():
+    bus = Bus()
+
+    class Chatty(Scripted):  # like Nemotron with a bus: emits llm.call naming the node while the call runs
+        def json(self, tier, role, messages, schema, *, think, node_id=None):
+            bus.emit("llm.call", node_id=node_id, model="nemotron-" + tier, role=role)
+            return super().json(tier, role, messages, schema, think=think, node_id=node_id)
+
+    bad = inject_fault(reference_design(), "two_output_drivers")
+    propose_design(Chatty(bad, bad, reference_design()), BRIEF, LIB, bus=bus)
+    created: set = set()
+    for e in bus.events:
+        if e["type"] == "node.created":
+            created.add(e["node_id"])
+            continue
+        for key in ("node_id",):
+            if e.get(key):
+                assert e[key] in created, (e["type"], e[key])
+        for child in e.get("children", []):
+            assert child in created, e
+    assert {"root", "n1", "n1.1", "n1.1.1"} <= created
+
+
+def test_llm_failure_after_node_creation_prunes_that_node():
+    bus = Bus()
+    propose_design(Scripted(LLMError("boom")), BRIEF, LIB, bus=bus)
+    assert bus.of("node.created")[1]["node_id"] == "n1" and bus.of("node.pruned")[0]["node_id"] == "n1"
