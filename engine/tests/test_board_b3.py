@@ -2,7 +2,7 @@
 
 import pytest
 
-from siliconsmith.board.checks import run_b3, run_ladder
+from siliconsmith.board.checks import IMPLEMENTED_RUNGS, run_b3, run_ladder
 from siliconsmith.board.faults import FAULTS, STRUCTURAL_FAULTS, inject_fault, reference_design
 from siliconsmith.board.parts import load_library, resolve_fact
 
@@ -100,6 +100,6 @@ def test_b3_stays_silent_on_faults_owned_by_other_rungs():
 
 def test_ladder_includes_b3_and_skips_it_when_b1_fails():
     clean = {r.rung: r.status for r in run_ladder(reference_design(), LIB)}
-    assert clean == {"B1": "pass", "B2": "pass", "B3": "pass", "B4": "pass"}
+    assert clean == {r: "pass" for r in IMPLEMENTED_RUNGS}
     broken = {r.rung: r.status for r in run_ladder(inject_fault(reference_design(), "nonexistent_pin"), LIB)}
-    assert broken == {"B1": "fail", "B2": "unknown", "B3": "unknown", "B4": "unknown"}
+    assert broken == {"B1": "fail", **{r: "unknown" for r in IMPLEMENTED_RUNGS[1:]}}

@@ -80,6 +80,18 @@
         "section": "ratings",
         "citation_checked": false
       }
+    },
+    {
+      "key": "iq_ua",
+      "kind": "typical_current",
+      "value": 50,
+      "unit": "uA",
+      "text": "Quiescent current, a generic-class value chosen by the author for the template, not from a datasheet.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "ratings",
+        "citation_checked": false
+      }
     }
   ]
 }

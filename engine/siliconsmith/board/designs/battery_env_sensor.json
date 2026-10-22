@@ -4,7 +4,12 @@
   "mcu_ref": "U1",
   "assumptions": {
     "i2c_mode": "standard",
-    "i2c_cb_pf": 100
+    "i2c_cb_pf": 100,
+    "battery_capacity_mah": 2000,
+    "battery_usable_fraction": 0.8,
+    "target_hours": 48,
+    "active_s": 5,
+    "period_s": 600
   },
   "instances": [
     {

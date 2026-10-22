@@ -29,7 +29,7 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
 |---|---|
 | `parts.py`, `parts/*.json` | Part, Pin, Fact, Provenance schema (pydantic) and the library |
 | `netlist.py`, `designs/*.json` | Design model, JSON load/dump, the clean reference design |
-| `checks.py` | The ladder; rung B1 is implemented |
+| `checks.py` | The ladder: rungs B1 to B5 are implemented (`run_b1` .. `run_b5`, `run_ladder`) |
 | `faults.py` | 8-fault catalogue as data, 3 structural faults, `inject_fault` |
 | `run_tests.sh` | Runs the tests in the WSL venv |
 
@@ -43,7 +43,7 @@ Evidence ids look like `part:esp32.gpio12.strapping` and resolve through `parts.
 | B2 | Electrical limits respected (curated facts) | implemented |
 | B3 | Bus and connector rules satisfied (curated facts) | implemented |
 | B4 | Firmware matches the netlist | implemented |
-| B5 | Battery estimate meets target (model, not measured) | pending |
+| B5 | Battery estimate meets target (model, not measured) | implemented |
 
 B2 checks (net voltage = what the net's `power_out` pins declare; passives are not traced): supply pins within
 absolute-max and recommended range; signal pins within domain + 0.3 V; regulator rail current = sum of load budgets
@@ -63,6 +63,15 @@ B4 checks: for every function the firmware header and the netlist agree on pin a
 assigned net; no input-only pin is driven; no flash pin and no strapping pin is used (conservative: any use of a
 strapping pin fails, the level at reset is not analysed); no pin serves two functions. The `pin_mismatch` demo fault is
 flagged twice, for the mismatch and because GPIO12 is a strapping pin.
+
+B5 model: two states per period. Active window `active_s` is charged at the stated Wi-Fi transmit figure (typical, 50%
+transmit duty basis in the datasheet, so not a peak) plus the sensor's measurement current plus regulator quiescent; the rest
+at the stated deep-sleep and sleep currents. A linear regulator passes load current through. Average current, life =
+capacity x usable fraction / average, and the arithmetic is shown in the result. Inputs that are not part facts are
+**design assumptions** (`battery_capacity_mah`, `battery_usable_fraction`, `target_hours`, `active_s`, `period_s`); the
+reference design assumes 2000 mAh, 0.8, 48 h, 5 s every 600 s. The LDO quiescent current (50 uA) is an author-chosen
+generic value. The ESP32 deep-sleep figure is the chip's from the series datasheet, not a module measurement. Missing
+assumptions or a load with only a peak current make B5 unknown. It is a model; nothing is measured.
 
 B1 checks: every connected pin exists in its part's pin table; required pins are connected; a pin is on
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the

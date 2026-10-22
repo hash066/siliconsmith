@@ -1,4 +1,4 @@
-"""Board ladder, deterministic code only (no LLM). Implemented: B1 to B4.
+"""Board ladder, deterministic code only (no LLM). Implemented: B1 to B5.
 
 B1 "Netlist is well formed": every connected pin exists in its part's pin table; required pins are
 connected; no pin sits on two nets; no net has two output drivers. Status rules: any failed
@@ -24,7 +24,7 @@ RUNG_LABELS = {
     "B4": "Firmware matches the netlist",
     "B5": "Battery estimate meets target (model, not measured)",
 }
-IMPLEMENTED_RUNGS = ("B1", "B2", "B3", "B4")
+IMPLEMENTED_RUNGS = ("B1", "B2", "B3", "B4", "B5")
 
 
 class Finding(BaseModel):
@@ -63,7 +63,7 @@ def _worst(statuses: list[Status]) -> Status:
 def _summarise(rung: str, findings: list[Finding]) -> CheckResult:
     status = _worst([f.status for f in findings])
     if status == "pass":
-        detail = "; ".join(f"{f.check}: ok" for f in findings)
+        detail = "; ".join(f"{f.check}: {f.detail}" for f in findings)
     else:
         detail = "; ".join(f.detail for f in findings if f.status == status)
     return CheckResult(
@@ -565,10 +565,69 @@ def run_b4(design: Design, library: dict[str, Part]) -> CheckResult:
     return _summarise("B4", [agree, wired, hazards])
 
 
+B5_ASSUMPTIONS = ("battery_capacity_mah", "battery_usable_fraction", "target_hours", "active_s", "period_s")
+
+
+def run_b5(design: Design, library: dict[str, Part]) -> CheckResult:
+    """Battery life from a two-state duty-cycle model, arithmetic in the detail. A MODEL, not a measurement:
+    the active window is charged at the stated Wi-Fi transmit figure plus every other stated active current, the rest
+    of the period at the stated sleep currents, and a linear regulator passes load current through unchanged (battery
+    current = load current + regulator quiescent). No temperature, ageing, self-discharge or converter efficiency."""
+    parts: dict[str, Part | None] = {i.ref: library.get(i.part) for i in design.instances}
+    missing = [k for k in B5_ASSUMPTIONS if not isinstance(design.assumptions.get(k), (int, float))]
+    if missing:
+        return _summarise("B5", [Finding(check="battery model", status="unknown",
+                                         detail="design assumptions missing: " + ", ".join(missing))])
+    cap = float(design.assumptions["battery_capacity_mah"])
+    usable = float(design.assumptions["battery_usable_fraction"])
+    target = float(design.assumptions["target_hours"])
+    t_act = float(design.assumptions["active_s"])
+    period = float(design.assumptions["period_s"])
+    if not (0 < usable <= 1 and cap > 0 and target > 0 and 0 < t_act <= period):
+        return _summarise("B5", [Finding(check="battery model", status="fail",
+                                         detail="assumptions are not physical (need 0 < usable <= 1, capacity and target > 0, 0 < active_s <= period_s)")])
+
+    active, sleep, ev, unknowns = [], [], [], []
+    for inst in design.instances:
+        part = parts[inst.ref]
+        if part is None:
+            continue
+        if "peak_ma" in inst.params:
+            unknowns.append(f"{inst.ref}: only a peak current is stated, no sleep current")
+            continue
+        pairs = []
+        for act_key, slp_key, scale in (("wifi_tx_typ_ma", "deep_sleep_ua", 1), ("iddp_ma", "sleep_ua", 1), (None, "iq_ua", 1)):
+            slp = part.fact(slp_key)
+            act = part.fact(act_key) if act_key else None
+            if slp is not None and isinstance(slp.value, (int, float)):
+                a_ma = float(act.value) if act is not None else float(slp.value) / 1000.0  # iq has no separate active figure
+                pairs.append((f"{inst.ref} {part.id}", a_ma, float(slp.value) / 1000.0,
+                              [f"part:{part.id}.{k}" for k in (act_key, slp_key) if k]))
+        for name, a_ma, s_ma, facts in pairs:
+            active.append((name, a_ma))
+            sleep.append((name, s_ma))
+            ev += facts
+    if unknowns:
+        return _summarise("B5", [Finding(check="battery model", status="unknown", detail="; ".join(unknowns), evidence=_dedupe(ev))])
+    if not active:
+        return _summarise("B5", [Finding(check="battery model", status="unknown", detail="no part states a current", evidence=[])])
+
+    i_act = sum(a for _, a in active)
+    i_slp = sum(s for _, s in sleep)
+    i_avg = (i_act * t_act + i_slp * (period - t_act)) / period
+    life_h = cap * usable / i_avg
+    arith = (f"active {i_act:.3f} mA for {t_act:g} s ({' + '.join(f'{n} {a:g}' for n, a in active)}), "
+             f"sleep {i_slp:.4f} mA for {period - t_act:g} s; average {i_avg:.3f} mA; "
+             f"life = {cap:g} mAh x {usable:g} / {i_avg:.3f} mA = {life_h:.0f} h vs target {target:g} h (model, not measured)")
+    status: Status = "pass" if life_h >= target else "fail"
+    return _summarise("B5", [Finding(check="battery model", status=status, detail=arith, evidence=_dedupe(ev))])
+
+
 def run_ladder(design: Design, library: dict[str, Part]) -> list[CheckResult]:
     """Implemented rungs only; later rungs are reported unknown (not run) when B1 did not pass.
-    B5 is not run and is not reported as passed."""
+    Nothing is reported as passed unless its rung ran and passed."""
     b1 = run_b1(design, library)
     if b1.status != "pass":
-        return [b1] + [CheckResult(rung=r, status="unknown", detail="not run: B1 did not pass") for r in ("B2", "B3", "B4")]
-    return [b1, run_b2(design, library), run_b3(design, library), run_b4(design, library)]
+        return [b1] + [CheckResult(rung=r, status="unknown", detail="not run: B1 did not pass") for r in ("B2", "B3", "B4", "B5")]
+    return [b1, run_b2(design, library), run_b3(design, library), run_b4(design, library),
+            run_b5(design, library)]
