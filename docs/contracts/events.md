@@ -171,3 +171,24 @@ Rules:
 - `artifact.created.sha256` must be 64 lowercase hex characters; a `node_id`, if given, must already exist. The UI shows the hash in the evidence drawer and never computes or invents one.
 - `tool_versions` is optional and not emitted by the engine today; the UI shows "version not recorded in this run's event log" when it is absent. It never guesses a version.
 - Not yet specified for non-silicon domains: a domain-specific replacement for `node.scored` (the v1 `ladder: L1..L6` map). Until it exists, the validator still requires the v1 fields on `node.scored`.
+
+### v2 additions for Board and Matter (node.scored, stage extras)
+
+```ts
+interface NodeScoredV2 {          // non-silicon domains
+  node_id: NodeId;
+  ladder: Record<string, "pass" | "fail" | "skipped">;   // keyed by the rung ids of run.started.ladder (B1..B5, M1..M5); unknown is "skipped", never "pass"
+  metrics?: Record<string, number | string | null>;      // generic figures, also allowed on silicon scored events
+  feasible?: boolean; on_pareto?: boolean;
+  params?: Record<string, number | string>;              // matter: generator parameters
+  samples?: Array<Record<string, number | string | boolean | null>>;
+  // the silicon numeric fields (cycles, luts, ...) are omitted, not invented
+}
+interface NodeStage { evidence?: string[]; label?: string }  // fact ids a check cited (e.g. "part:esp32.gpio12.strapping"); label only on pass
+```
+
+- For `silicon` the full v1 `node.scored` field set is still required. For other domains only `node_id` and `ladder` are.
+- A node's `ladder` values are validated; `metrics` values must be number, string or null.
+- The reducer keeps a non-silicon score in `NodeState.domainScore`; `NodeState.score` stays silicon-only.
+- Replay files for non-silicon runs may ship sibling files that the viewers fetch by convention: `public/replays/<run_id>/nodes/<node_id>/<basename of artifact path>` (for example `plate.stl`, `design.json`). A missing file is shown as "not shipped with this replay".
+- Ordering: a node must be created before any event that names it, including `llm.call` and a parent's `node.expanded`. (Current Board logs emit the repair's `llm.call` and `node.expanded` before the child's `node.created`; the validator reports it.)

@@ -147,6 +147,10 @@ export interface NodeStage extends EventBase {
   status: StageStatus;
   attempt: number;
   detail?: string;
+  /** v2 (board): ids of the facts the check used, e.g. "part:esp32.gpio12.strapping". */
+  evidence?: string[];
+  /** v2: the rung's label, only on pass. */
+  label?: string;
   artifacts?: StageArtifacts;
 }
 
@@ -163,7 +167,26 @@ export interface NodeScored extends EventBase {
   wall_speedup: number;
   feasible: boolean;
   on_pareto: boolean;
-  ladder: Record<Rung, RungResult>;
+  /** Silicon uses L1..L6; v2 domains use their own rung ids (B1..B5, M1..M5). */
+  ladder: Record<string, RungResult>;
+  /** v2: generic figures, number | string. */
+  metrics?: Record<string, number | string | null>;
+}
+
+/**
+ * v2: `node.scored` from a non-silicon domain. It carries the domain's ladder and metrics and omits the silicon numeric fields
+ * (cycles, luts, ...) rather than inventing them.
+ */
+export interface DomainScored extends EventBase {
+  type: "node.scored";
+  node_id: NodeId;
+  metrics?: Record<string, number | string | null>;
+  ladder: Record<string, RungResult>;
+  feasible?: boolean;
+  on_pareto?: boolean;
+  /** Generator parameters (matter). */
+  params?: Record<string, number | string>;
+  samples?: Array<Record<string, number | string | boolean | null>>;
 }
 
 export interface NodePruned extends EventBase {
@@ -248,6 +271,7 @@ export type RunEvent =
   | NodeCreated
   | NodeStage
   | NodeScored
+  | DomainScored
   | NodePruned
   | NodeExpanded
   | NodeTiming

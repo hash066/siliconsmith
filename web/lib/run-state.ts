@@ -9,6 +9,7 @@ import {
   STAGES,
   STAGE_RUNG,
   type Counterexample,
+  type DomainScored,
   type ArtifactCreated,
   type Hotspot,
   type LadderRung,
@@ -33,6 +34,9 @@ export interface StageRecord {
   status: StageStatus;
   attempt: number;
   detail?: string;
+  /** v2: fact ids the check cited, and the rung label (pass only). */
+  evidence?: string[];
+  label?: string;
   t: number;
 }
 
@@ -92,6 +96,8 @@ export interface NodeState {
   artifactsByAttempt: Record<number, StageArtifacts>;
   evidence: Evidence[];
   score: NodeScored | null;
+  /** v2: the scored result of a non-silicon domain (ladder by rung id, metrics). Silicon nodes use `score`. */
+  domainScore: DomainScored | null;
   /** v1.3: median-of-seeds Fmax for final nodes; also folded into `score` so every view shows wall-clock. */
   timing: NodeTiming | null;
   pruned: { reason: string; t: number; kind: PruneKind } | null;
@@ -228,6 +234,7 @@ function newNode(id: NodeId, t: number): NodeState {
     artifactsByAttempt: {},
     evidence: [],
     score: null,
+    domainScore: null,
     timing: null,
     pruned: null,
     expanded: false,
@@ -443,7 +450,7 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           n.attempts.push(att);
           n.attempts.sort((a, b) => a.attempt - b.attempt);
         }
-        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t };
+        const rec: StageRecord = { status: e.status, attempt: e.attempt, detail: e.detail, t: e.t, ...(e.evidence ? { evidence: e.evidence } : {}), ...(e.label ? { label: e.label } : {}) };
         att.stages[stage] = rec;
         n.stages[stage] = rec;
         if (stage === "implement" && e.status === "running" && e.attempt > 0) {
@@ -488,9 +495,20 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
           warn(`score for unknown node ${e.node_id}`);
           break;
         }
-        n.score = e;
         n.activeStage = null;
         n.lastT = e.t;
+        if (s.domain !== DEFAULT_DOMAIN || !("cycles" in e)) {
+          n.domainScore = e as DomainScored;
+          if (e.on_pareto && !s.pareto.includes(e.node_id)) s.pareto.push(e.node_id);
+          tick(s, e, {
+            nodeId: e.node_id,
+            tone: e.feasible ? "signal" : "warn",
+            kind: "scored",
+            text: `${e.node_id} scored · ${Object.entries(e.ladder).map(([k, v]) => `${k} ${v}`).join(" ")}`,
+          });
+          break;
+        }
+        n.score = e;
         if (e.on_pareto && !s.pareto.includes(e.node_id)) s.pareto.push(e.node_id);
         recomputeBest(s);
         tick(s, e, {
@@ -601,7 +619,8 @@ export function applyEvents(prev: RunState, events: readonly RunEvent[]): RunSta
         s.completed = e;
         if (e.pareto?.length) s.pareto = e.pareto.filter((id) => s.nodes[id]);
         const declared = e.best_node_id;
-        if (declared && declared !== s.rootId && s.nodes[declared]?.score) s.best = declared;
+        if (declared && declared !== s.rootId && s.nodes[declared]?.domainScore) s.best = declared;
+        else if (declared && declared !== s.rootId && s.nodes[declared]?.score) s.best = declared;
         else if (declared === s.rootId) s.best = s.best && s.nodes[s.best]?.score?.feasible ? s.best : null;
         tick(s, e, {
           nodeId: s.best,
@@ -634,6 +653,7 @@ export const reduceAll = (events: readonly RunEvent[]) => applyEvents(initialRun
 export function nodeStatus(n: NodeState, s: RunState): NodeStatus {
   if (n.parentId === null) return s.baseline ? "baseline" : "running";
   if (n.pruned) return "pruned";
+  if (n.domainScore) return n.domainScore.feasible === false ? "unproven" : "scored";
   if (n.score) return n.score.feasible ? "scored" : "unproven";
   if (n.activeStage) return n.attempt > 0 ? "repairing" : "running";
   const anyRun = Object.keys(n.stages).length > 0;

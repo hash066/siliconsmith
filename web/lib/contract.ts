@@ -11,6 +11,7 @@ export interface Issue {
   message: string;
 }
 
+const SILICON_SCORED = ["cycles", "speedup", "luts", "ffs", "area_delta_pct", "fmax_mhz", "wall_speedup", "feasible", "on_pareto"];
 const SHA256 = /^[0-9a-f]{64}$/;
 const STATUSES = ["queued", "running", "pass", "fail", "skipped"];
 const REQUIRED: Record<string, string[]> = {
@@ -20,7 +21,7 @@ const REQUIRED: Record<string, string[]> = {
   "run.failed": ["error"],
   "node.created": ["node_id", "parent_id", "depth", "proposal", "instruction_set"],
   "node.stage": ["node_id", "stage", "status", "attempt"],
-  "node.scored": ["node_id", "cycles", "speedup", "luts", "ffs", "area_delta_pct", "fmax_mhz", "wall_speedup", "feasible", "on_pareto", "ladder"],
+  "node.scored": ["node_id", "ladder"],
   "node.pruned": ["node_id", "reason"],
   "node.expanded": ["node_id", "children"],
   "node.timing": ["node_id", "fmax_mhz", "wall_speedup", "seeds"],
@@ -60,6 +61,10 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
       return;
     }
     for (const k of req) if (!(k in e)) err(e, "fields", `${e.type} missing ${k}`);
+    // v2: silicon keeps the full node.scored field set; other domains may omit the numeric silicon fields.
+    if (e.type === "node.scored" && silicon) for (const k of SILICON_SCORED) if (!(k in e)) err(e, "fields", `node.scored missing ${k}`);
+    if (e.type === "node.scored" && (typeof e.ladder !== "object" || e.ladder === null || Object.values(e.ladder).some((v) => !["pass", "fail", "skipped"].includes(v as string)))) err(e, "ladder", "ladder must map rung id -> pass | fail | skipped");
+    if (e.type === "node.scored" && e.metrics !== undefined && (typeof e.metrics !== "object" || e.metrics === null || Object.values(e.metrics).some((v) => v !== null && typeof v !== "number" && typeof v !== "string"))) err(e, "metrics", "metrics must be a record of number | string");
 
     const nodeId = (e as { node_id?: string | null }).node_id;
     if (e.type !== "node.created" && nodeId && !created.has(nodeId)) err(e, "node-order", `${e.type} for ${nodeId} before node.created`);
@@ -131,7 +136,7 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
       case "node.scored": {
         const p = progress.get(e.node_id);
         if (silicon && p && !p.synthPassed) err(e, "scored", `${e.node_id} scored before synth passed`);
-        if (e.fmax_mhz === null && Math.abs(e.wall_speedup - e.speedup) > 1e-9) err(e, "fmax", `${e.node_id}: fmax null but wall_speedup != speedup`);
+        if (silicon && "fmax_mhz" in e && e.fmax_mhz === null && Math.abs(e.wall_speedup - e.speedup) > 1e-9) err(e, "fmax", `${e.node_id}: fmax null but wall_speedup != speedup`);
         break;
       }
       case "node.pruned": {
