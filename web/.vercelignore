@@ -1,0 +1,13 @@
+# Upload rules for `vercel deploy` from web/ (this file replaces .gitignore for uploads).
+# api/_vendor (the engine copied by scripts/vendor-engine.mjs) and public/library MUST be uploaded: ../engine is not.
+node_modules
+.next
+.vercel
+.playwright-cli
+.taste-skill
+qa
+*.tsbuildinfo
+.env
+.env.*
+**/__pycache__
+**/*.pyc
