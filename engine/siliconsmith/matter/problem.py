@@ -107,14 +107,17 @@ def check_printable(mask: np.ndarray, sp: Spreader) -> tuple[bool, str]:
 # ------------------------------------------------------------------ baseline
 
 
-def rect_fin_mask(sp: Spreader, spine: int, n_fins: int, fin_w: int, fin_len: int) -> np.ndarray:
-    """Horizontal spine through the chip, n_fins plain rectangular fins up and down, evenly spread."""
+def rect_fin_mask(sp: Spreader, spine: int, n_fins: int, fin_w: int, fin_len: int, spine_len: int | None = None) -> np.ndarray:
+    """Horizontal spine through the chip (width `spine`, length `spine_len`, default full plate), n_fins plain
+    rectangular fins up and down, evenly spread along the spine."""
     n = sp.n
+    L = n if spine_len is None else min(spine_len, n)
+    x0 = (n - L) // 2
     m = np.zeros((n, n), bool)
     c0 = (n - spine) // 2
-    m[c0 : c0 + spine, :] = True
-    if n_fins > 0 and fin_len > 0:
-        pos = np.linspace(0, n - fin_w, n_fins).round().astype(int)
+    m[c0 : c0 + spine, x0 : x0 + L] = True
+    if n_fins > 0 and fin_len > 0 and L >= fin_w:
+        pos = x0 + np.linspace(0, L - fin_w, n_fins).round().astype(int)
         for p in pos:
             m[max(c0 - fin_len, 0) : c0, p : p + fin_w] = True
             m[c0 + spine : min(c0 + spine + fin_len, n), p : p + fin_w] = True
@@ -124,26 +127,30 @@ def rect_fin_mask(sp: Spreader, spine: int, n_fins: int, fin_w: int, fin_len: in
 @lru_cache(maxsize=256)
 def _baseline_cached(sp: Spreader, cells: int) -> tuple[float, dict]:
     best: tuple[float, dict] | None = None
-    for spine in (6, 8, 10, 12):
-        for fin_w in (2, 3, 4):
-            for n_fins in range(2, 16):
-                free = cells - spine * sp.n
-                if free < 0:
-                    continue
-                max_len = (sp.n - spine) // 2
-                length = min(free // (2 * n_fins * fin_w), max_len)
-                if length < 1:
-                    continue
-                m = rect_fin_mask(sp, spine, n_fins, fin_w, length)
-                if int(m.sum()) > cells or not check_valid(m, sp)[0] or not check_printable(m, sp)[0]:
-                    continue
-                peak = solve_mask(m, sp).peak
-                if best is None or peak < best[0]:
-                    best = (peak, dict(spine=spine, n_fins=n_fins, fin_w=fin_w, fin_len=int(length), cells=int(m.sum())))
+    for spine_len in (sp.n, 44, 32, 22, 14):
+        for spine in (6, 8):
+            for fin_w in (2, 3, 4):
+                for n_fins in range(2, 16):
+                    if n_fins * fin_w > spine_len + fin_w:
+                        continue
+                    free = cells - spine * spine_len
+                    if free < 0:
+                        continue
+                    max_len = (sp.n - spine) // 2
+                    length = min(free // (2 * n_fins * fin_w), max_len)
+                    if length < 1:
+                        continue
+                    m = rect_fin_mask(sp, spine, n_fins, fin_w, length, spine_len)
+                    if int(m.sum()) > cells or not check_valid(m, sp)[0] or not check_printable(m, sp)[0]:
+                        continue
+                    peak = solve_mask(m, sp).peak
+                    if best is None or peak < best[0]:
+                        best = (peak, dict(spine=spine, spine_len=spine_len, n_fins=n_fins, fin_w=fin_w,
+                                           fin_len=int(length), cells=int(m.sum())))
     if best is None:
-        # not even a spine fits in this much material: baseline is the chip pad alone
+        # not even a short spine fits in this much material: baseline is the chip pad alone
         m = force_chip(np.zeros((sp.n, sp.n), bool), sp)
-        best = (solve_mask(m, sp).peak, dict(spine=0, n_fins=0, fin_w=0, fin_len=0, cells=int(m.sum())))
+        best = (solve_mask(m, sp).peak, dict(spine=0, spine_len=0, n_fins=0, fin_w=0, fin_len=0, cells=int(m.sum())))
     return best
 
 

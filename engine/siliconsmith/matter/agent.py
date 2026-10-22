@@ -79,8 +79,10 @@ def architect_messages(sp: Spreader, n_ideas: int, history: str, base_peak: floa
         f"{problem_text(sp)}\n\n{CONTRACT}\n\nExample generator (plain rectangular fins; param_space "
         f"{ex['param_space']}):\n```python{ex['source']}```\n"
         f"The best plain rectangular-fin plate within the same material budget reaches {base_peak:.1f} C peak. "
-        f"Beat it with a different structure (think about how heat should spread from the chip and where "
-        f"the convecting area should be).\n\nPrevious results (measured by the grader):\n{history or '(none yet: first round)'}\n\n"
+        f"The real target is to get BELOW {base_peak:.1f} C using the whole budget; a design that uses far less "
+        f"material is only useful if it is also cooler per cell. Heat leaves only through the plate surface, so "
+        f"convecting area matters, but conduction paths from the chip must stay thick enough to carry the heat. "
+        f"Think about where the heat flux is highest (near the chip) and taper accordingly.\n\nPrevious results (measured by the grader):\n{history or '(none yet: first round)'}\n\n"
         f"Names already used (do not reuse): {taken or 'none'}.\n"
         f"Propose {n_ideas} NEW distinct generator ideas as JSON: "
         '{"ideas":[{"name":"snake_case","title":"...","rationale":"1-3 sentences, cite the measured results you learn from",'
@@ -167,7 +169,8 @@ def pareto_front(points: list[tuple[float, float, str]]) -> set[str]:
 class MatterRun:
     def __init__(self, sp: Spreader, llm, bus: EventBus, outdir: Path, *, rounds: int = 3, ideas_per_round: int = 3,
                  samples: int = 12, seed: int = 0, max_concurrency: int = 3, max_repairs: int = 1,
-                 gen_timeout_s: float = 60.0):
+                 gen_timeout_s: float = 60.0, refine_samples: int = 12):
+        self.refine_samples = refine_samples
         self.sp, self.llm, self.bus, self.out = sp, llm, bus, outdir
         self.rounds, self.k, self.samples, self.seed = rounds, ideas_per_round, samples, seed
         self.conc, self.max_repairs, self.gen_timeout = max_concurrency, max_repairs, gen_timeout_s
@@ -193,7 +196,8 @@ class MatterRun:
                 lines.append(f"- {n['idea'].name} ({nid}): {n['status']}: {n.get('reason', '')}")
                 continue
             peak = f"{b['peak']:.1f} C peak, {b['material_fraction']:.1%} material" if b["peak"] is not None else "no valid sample"
-            lines.append(f"- {n['idea'].name} ({nid}): best sample {peak}; rungs {n.get('ladder')}; {n.get('reason', '')}")
+            lines.append(f"- {n['idea'].name} ({nid}): best sample {peak} at params {b.get('params')}; "
+                         f"rungs {n.get('ladder')}; {n.get('reason', '')}")
         return "\n".join(lines[-14:])
 
     # -- one node
@@ -237,9 +241,30 @@ class MatterRun:
         for r, o, s in zip(rows, outcomes, samples):
             if r is not None:
                 r["params"] = s
-        n["rows"] = [r for r in rows if r]
-        n["masks"] = [o.mask if o.ok else None for o in outcomes]
         bi = pick_best(rows)
+        # parameter refinement (no LLM): re-sample in a box around the best sample, keep any improvement
+        if rows[bi]["m3"] == "pass" and self.refine_samples:
+            lo_hi = {k: idea.param_space[k] for k in rows[bi]["params"]}
+            rng = np.random.default_rng(rng_seed + 1)
+            cand = []
+            for _ in range(self.refine_samples):
+                p = {}
+                for k, v0 in rows[bi]["params"].items():
+                    lo, hi = lo_hi[k]
+                    w = 0.15 * (hi - lo)
+                    x = min(max(v0 + rng.uniform(-w, w), lo), hi)
+                    p[k] = int(round(x)) if float(lo).is_integer() and float(hi).is_integer() else float(x)
+                cand.append(p)
+            extra = generators.run_generator(code, cand, sp.n, sp.chip_cells, timeout_s=self.gen_timeout)
+            for o, p in zip(extra, cand):
+                if o.ok:
+                    r = eval_sample(o.mask, sp)
+                    r["params"] = p
+                    rows.append(r)
+                    outcomes.append(o)
+                    samples.append(p)
+            bi = pick_best(rows)
+        n["rows"] = [r for r in rows if r]
         best, mask = rows[bi], outcomes[bi].mask
         n["best"], n["mask"], n["best_idx"] = best, mask, bi
         L = {"M1": "pass", "M2": best["m2"], "M3": best["m3"], "M4": "skipped", "M5": "skipped"}
