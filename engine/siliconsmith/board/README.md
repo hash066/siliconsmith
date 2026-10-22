@@ -30,6 +30,7 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
 | `parts.py`, `parts/*.json` | Part, Pin, Fact, Provenance schema (pydantic) and the library |
 | `netlist.py`, `designs/*.json` | Design model, JSON load/dump, the clean reference design |
 | `checks.py` | The ladder: rungs B1 to B5 are implemented (`run_b1` .. `run_b5`, `run_ladder`) |
+| `export.py` | Firmware pin header (C), BOM, KiCad `.net` netlist; no footprints, no layout |
 | `faults.py` | 8-fault catalogue as data, 3 structural faults, `inject_fault` |
 | `run_tests.sh` | Runs the tests in the WSL venv |
 
