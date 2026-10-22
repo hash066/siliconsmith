@@ -27,6 +27,7 @@ from .. import paths
 from ..events import EventBus
 from . import export, generators, ladder
 from . import reference_generators as ref
+from .runners import make_runner
 from .problem import Spreader, baseline, force_chip, solve_mask
 
 MAX_PARAMS = 8
@@ -169,7 +170,8 @@ def pareto_front(points: list[tuple[float, float, str]]) -> set[str]:
 class MatterRun:
     def __init__(self, sp: Spreader, llm, bus: EventBus, outdir: Path, *, rounds: int = 3, ideas_per_round: int = 3,
                  samples: int = 12, seed: int = 0, max_concurrency: int = 3, max_repairs: int = 1,
-                 gen_timeout_s: float = 60.0, refine_samples: int = 12):
+                 gen_timeout_s: float = 60.0, refine_samples: int = 12, runner=None):
+        self.runner = runner
         self.refine_samples = refine_samples
         self.sp, self.llm, self.bus, self.out = sp, llm, bus, outdir
         self.rounds, self.k, self.samples, self.seed = rounds, ideas_per_round, samples, seed
@@ -226,7 +228,7 @@ class MatterRun:
             except Exception as e:  # budget or API failure: node cannot proceed
                 return self.prune(nid, "implement", f"model call failed: {type(e).__name__}: {str(e)[:200]}")
             code = extract_code(rep.content)
-            outcomes = generators.run_generator(code, samples, sp.n, sp.chip_cells, timeout_s=self.gen_timeout)
+            outcomes = generators.run_generator(code, samples, sp.n, sp.chip_cells, timeout_s=self.gen_timeout, runner=self.runner)
             n["code"] = code
             if any(o.ok for o in outcomes):
                 break
@@ -255,7 +257,7 @@ class MatterRun:
                     x = min(max(v0 + rng.uniform(-w, w), lo), hi)
                     p[k] = int(round(x)) if float(lo).is_integer() and float(hi).is_integer() else float(x)
                 cand.append(p)
-            extra = generators.run_generator(code, cand, sp.n, sp.chip_cells, timeout_s=self.gen_timeout)
+            extra = generators.run_generator(code, cand, sp.n, sp.chip_cells, timeout_s=self.gen_timeout, runner=self.runner)
             for o, p in zip(extra, cand):
                 if o.ok:
                     r = eval_sample(o.mask, sp)
@@ -475,6 +477,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--samples", type=int, default=12)
     ap.add_argument("--max-usd", type=float, default=1.5)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--runner", choices=["local", "sandbox"], default="local",
+                    help="where generator code runs: local dev fallback or a Token Factory Sandbox (the boundary)")
     ap.add_argument("--run-id", default=None)
     a = ap.parse_args(argv)
     run_id = a.run_id or time.strftime("m_%Y%m%d_%H%M%S")
@@ -484,7 +488,7 @@ def main(argv: list[str] | None = None) -> int:
     llm = Nemotron(st, bus)
     try:
         summary = MatterRun(Spreader(), llm, bus, outdir, rounds=a.rounds, ideas_per_round=a.ideas,
-                            samples=a.samples, seed=a.seed).run()
+                            samples=a.samples, seed=a.seed, runner=make_runner(a.runner)).run()
     except Exception as e:  # noqa: BLE001
         bus.emit("run.failed", error=f"{type(e).__name__}: {str(e)[:300]}")
         raise

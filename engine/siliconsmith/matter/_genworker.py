@@ -27,6 +27,53 @@ SAFE_BUILTINS = [
 ]
 
 
+FORBIDDEN_NAMES = {
+    "exec", "eval", "open", "compile", "__import__", "globals", "locals", "getattr", "setattr", "delattr",
+    "vars", "input", "breakpoint", "memoryview", "type", "super", "classmethod", "staticmethod", "property",
+}
+FORBIDDEN_ATTRS = {
+    "load", "save", "savez", "savez_compressed", "loadtxt", "savetxt", "genfromtxt", "fromfile", "tofile", "memmap",
+    "ctypeslib", "testing", "f2py", "distutils", "lib", "ctypes", "system", "popen", "dump", "dumps", "fromstring",
+    "DataSource", "fromregex", "core", "show_config", "get_include", "info", "source", "lookfor", "who", "os", "sys",
+    "environ", "getenv", "builtins", "modules", "open",
+}
+MAX_CODE_CHARS = 12000
+
+
+class GeneratorRejected(ValueError):
+    pass
+
+
+def screen_source(code: str) -> None:
+    """AST screen; raises GeneratorRejected with a short reason. Best effort, not a sandbox."""
+    import ast
+
+    if len(code) > MAX_CODE_CHARS:
+        raise GeneratorRejected(f"generator source too long ({len(code)} > {MAX_CODE_CHARS} chars)")
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        raise GeneratorRejected(f"SyntaxError: {e.msg} (line {e.lineno})") from e
+    has_generate = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.name.split(".")[0] not in ALLOWED_IMPORTS:
+                    raise GeneratorRejected(f"import {a.name!r} is not allowed (allowed: {sorted(ALLOWED_IMPORTS)})")
+        elif isinstance(node, ast.ImportFrom):
+            if node.level or (node.module or "").split(".")[0] not in ALLOWED_IMPORTS:
+                raise GeneratorRejected(f"import from {node.module!r} is not allowed")
+        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
+            raise GeneratorRejected(f"name {node.id!r} is not allowed")
+        elif isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") or node.attr in FORBIDDEN_ATTRS:
+                raise GeneratorRejected(f"attribute {node.attr!r} is not allowed")
+        elif isinstance(node, ast.FunctionDef) and node.name == "generate":
+            has_generate = True
+    if not has_generate:
+        raise GeneratorRejected("no `def generate(params, n, chip)` found")
+
+
 def _limits(mem_mb: int, cpu_s: int) -> None:
     try:
         import resource
@@ -54,6 +101,12 @@ def main() -> int:
     import numpy as np  # import before the address-space cap tightens and before the import guard
 
     _block_network()
+    for name in ("load", "save", "savez", "savez_compressed", "loadtxt", "savetxt", "genfromtxt", "fromfile", "memmap",
+                 "DataSource", "fromregex", "ctypeslib", "lib", "f2py", "testing", "distutils", "show_config"):
+        try:
+            setattr(np, name, None)  # file / process reaching helpers are removed from the module the generator sees
+        except Exception:  # noqa: BLE001
+            pass
     _limits(int(req.get("mem_mb", 1024)), int(req.get("cpu_s", 60)))
 
     real_import = builtins.__import__
@@ -68,6 +121,7 @@ def main() -> int:
     env: dict = {"__builtins__": safe, "__name__": "generator"}
     results = []
     try:
+        screen_source(req["code"])
         exec(compile(req["code"], "<generator>", "exec"), env)
         gen = env.get("generate")
         if not callable(gen):

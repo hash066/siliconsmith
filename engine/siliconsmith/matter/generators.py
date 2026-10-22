@@ -8,15 +8,14 @@ A generator is Python source that defines
 numpy, math, itertools, functools, collections. It never touches the physics: the solver, the budget and
 the printability rules are applied by us afterwards.
 
-Isolation, stated honestly: local runs use a subprocess with timeout, RLIMIT_AS / RLIMIT_CPU, no file writes,
-sockets disabled, an import allow-list and an AST screen. That is a best-effort guard, not a security
-boundary. The intended boundary for untrusted code is a Token Factory Sandbox with networking off, which
-is NOT wired up yet.
+Isolation, stated honestly (details in runners.py): the AST screen and import allow-list are a best-effort guard;
+the boundary is WHERE the code runs. The default local runner is a development fallback (scrubbed environment,
+empty cwd, rlimits, network namespace when the OS allows it). The Token Factory Sandbox runner is the boundary
+for untrusted code: a microVM that never receives our secrets.
 """
 
 from __future__ import annotations
 
-import ast
 import base64
 import json
 import subprocess
@@ -27,57 +26,11 @@ from typing import Callable
 
 import numpy as np
 
-from ._genworker import ALLOWED_IMPORTS, TAG
+from ._genworker import TAG
+from .runners import local_runner
 
-FORBIDDEN_NAMES = {
-    "exec", "eval", "open", "compile", "__import__", "globals", "locals", "getattr", "setattr", "delattr",
-    "vars", "input", "breakpoint", "memoryview", "type", "super", "classmethod", "staticmethod", "property",
-}
-FORBIDDEN_ATTRS = {
-    "load", "save", "savez", "loadtxt", "savetxt", "genfromtxt", "fromfile", "tofile", "memmap", "ctypeslib",
-    "testing", "f2py", "distutils", "lib", "ctypes", "system", "popen", "dump", "dumps", "fromstring",
-}
-MAX_CODE_CHARS = 12000
-
-
-class GeneratorRejected(ValueError):
-    pass
-
-
-def screen_source(code: str) -> None:
-    """AST screen; raises GeneratorRejected with a short reason. Best effort, not a sandbox."""
-    if len(code) > MAX_CODE_CHARS:
-        raise GeneratorRejected(f"generator source too long ({len(code)} > {MAX_CODE_CHARS} chars)")
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as e:
-        raise GeneratorRejected(f"SyntaxError: {e.msg} (line {e.lineno})") from e
-    has_generate = False
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for a in node.names:
-                if a.name.split(".")[0] not in ALLOWED_IMPORTS:
-                    raise GeneratorRejected(f"import {a.name!r} is not allowed (allowed: {sorted(ALLOWED_IMPORTS)})")
-        elif isinstance(node, ast.ImportFrom):
-            if node.level or (node.module or "").split(".")[0] not in ALLOWED_IMPORTS:
-                raise GeneratorRejected(f"import from {node.module!r} is not allowed")
-        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
-            raise GeneratorRejected(f"name {node.id!r} is not allowed")
-        elif isinstance(node, ast.Attribute):
-            if node.attr.startswith("__") or node.attr in FORBIDDEN_ATTRS:
-                raise GeneratorRejected(f"attribute {node.attr!r} is not allowed")
-        elif isinstance(node, ast.FunctionDef) and node.name == "generate":
-            has_generate = True
-    if not has_generate:
-        raise GeneratorRejected("no `def generate(params, n, chip)` found")
-
-
-def local_runner(request_json: str, timeout_s: float) -> tuple[str, str, int]:
-    """Default runner: the worker script in a local subprocess. A Token Factory Sandbox runner plugs in here:
-    it must execute `_genworker.py` with `request_json` on stdin (networking off) and return (stdout, stderr, exit code)."""
-    p = subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("_genworker.py"))], input=request_json,
-                       capture_output=True, text=True, timeout=timeout_s)
-    return p.stdout, p.stderr, p.returncode
+# The screen lives in _genworker.py (it runs again where the code runs); re-exported for callers and tests.
+from ._genworker import GeneratorRejected, screen_source  # noqa: E402,F401
 
 
 @dataclass
