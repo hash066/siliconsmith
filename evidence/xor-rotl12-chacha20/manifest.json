@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "id": "xor-rotl12-chacha20",
+  "title": "ChaCha Diagonal Round XOR-Rotate-12 (b ^= c; b = rotl12(b))",
+  "rationale": "Fuses XOR and Rotate-12 in Diagonal Round Step 6 (b ^= c; b = rotl(b, 12)). Replaces 1 XOR (1c) + Rotate-12 (3c: slli12/srli20/or) = 4 cycles with 1 cycle. Saves 3 cycles per Diagonal Round Step 6. 4 diags/round * 20 rounds = 80 executions. Saves 240 cycles/block. Highest single-instruction savings.",
+  "instruction": {
+    "name": "chacha_xor_rotl12",
+    "mnemonic": "xor.rotl12",
+    "funct7": 0,
+    "encoding": ".insn r 0x0B, 0, 0, rd, rs1, rs2",
+    "cpu_carries": [
+      "xor.rotl12"
+    ]
+  },
+  "kind": "instruction",
+  "source": {
+    "run_id": "r_w2_final3",
+    "node_id": "n2",
+    "workload": "w2_monocypher_chacha20",
+    "backend": "local",
+    "created": "2026-10-22"
+  },
+  "metrics": {
+    "cycles": 116931,
+    "speedup": 1.1396,
+    "area_delta_pct": 1.71,
+    "luts": 2611,
+    "ffs": 957,
+    "fmax_mhz": 66.46,
+    "wall_speedup": 1.0663,
+    "note": "system-level numbers for the CPU that carries these instructions on this workload"
+  },
+  "ladder": {
+    "L1": "pass",
+    "L2": "pass",
+    "L3": "pass",
+    "L4": "pass",
+    "L5": "pass",
+    "L6": "skipped"
+  },
+  "claims": [
+    "Matches the C reference on the stored random-vector test",
+    "Formally proven equivalent to the stored spec for all 2^64 inputs (Yosys SAT miter)"
+  ],
+  "not_claimed": [
+    "verified on silicon",
+    "equivalence to anything other than the stored spec",
+    "that the spec itself is the intended behaviour beyond its validation against the C reference"
+  ],
+  "tools": {
+    "verilator": "Verilator 5.053 devel rev v5.052-507-g01770671e (mod)",
+    "yosys": "Yosys 0.70+176 (git sha1 365bb887b, Release, Clang /usr/bin/clang++ 21.1.8)",
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+  },
+  "reproduce": "siliconsmith verify-entry xor-rotl12-chacha20",
+  "artifacts": [
+    {
+      "path": "rtl.v",
+      "sha256": "285a1b77ce47f8008e7ba177e5c26e150035ccdfcb75fac7916f1779edfc6e3c",
+      "bytes": 210
+    },
+    {
+      "path": "spec.v",
+      "sha256": "5f56563954c50d825b430d8ab4b7cd9bffeda7034c58113f24e580934a989e3a",
+      "bytes": 242
+    },
+    {
+      "path": "c_ref.c",
+      "sha256": "02611391046d5b61c75c3628dfd77991b954931b488565337871df9bda7fc290",
+      "bytes": 61
+    },
+    {
+      "path": "proof.log",
+      "sha256": "03f63157ec711467d90359e95b89d348207e7f993424955e9326d192da4a93f4",
+      "bytes": 1598
+    }
+  ]
+}

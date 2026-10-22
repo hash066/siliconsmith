@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "id": "dot4-tinymaix",
+  "title": "Area polish: same function, less hardware",
+  "rationale": "Re-implement the verified unit with less hardware; it is re-proven against the same spec.",
+  "instruction": {
+    "name": "dot4",
+    "mnemonic": "dot4",
+    "funct7": 0,
+    "encoding": ".insn r 0x0B, 0, 0, rd, rs1, rs2",
+    "cpu_carries": [
+      "dot4"
+    ]
+  },
+  "kind": "area",
+  "source": {
+    "run_id": "r_w1_final",
+    "node_id": "n1.1",
+    "workload": "w1_tinymaix_fc",
+    "backend": "local",
+    "created": "2026-10-22"
+  },
+  "metrics": {
+    "cycles": 259102,
+    "speedup": 3.322,
+    "area_delta_pct": 3.16,
+    "luts": 2648,
+    "ffs": 943,
+    "fmax_mhz": null,
+    "wall_speedup": null,
+    "note": "system-level numbers for the CPU that carries these instructions on this workload"
+  },
+  "ladder": {
+    "L1": "pass",
+    "L2": "pass",
+    "L3": "pass",
+    "L4": "pass",
+    "L5": "pass",
+    "L6": "skipped"
+  },
+  "claims": [
+    "Matches the C reference on the stored random-vector test",
+    "Formally proven equivalent to the stored spec for all 2^64 inputs (Yosys SAT miter)"
+  ],
+  "not_claimed": [
+    "verified on silicon",
+    "equivalence to anything other than the stored spec",
+    "that the spec itself is the intended behaviour beyond its validation against the C reference"
+  ],
+  "tools": {
+    "verilator": "Verilator 5.053 devel rev v5.052-507-g01770671e (mod)",
+    "yosys": "Yosys 0.70+176 (git sha1 365bb887b, Release, Clang /usr/bin/clang++ 21.1.8)",
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+  },
+  "reproduce": "siliconsmith verify-entry dot4-tinymaix",
+  "artifacts": [
+    {
+      "path": "rtl.v",
+      "sha256": "da2c9e9b6a6db1385b1502ee86d705cbbeec06410080bd3aa86d87365b1a3525",
+      "bytes": 839
+    },
+    {
+      "path": "spec.v",
+      "sha256": "09d99bffb03ecf60a164cc719d3fd45fe135ac9c52cbd3b99f77e95f7509c39e",
+      "bytes": 884
+    },
+    {
+      "path": "c_ref.c",
+      "sha256": "48ded2df03ba52f729954881cdda59efc596d3d118d4d3a5692daad4a51a92d7",
+      "bytes": 319
+    },
+    {
+      "path": "proof.log",
+      "sha256": "4044648bbc87c322038cf785194fd62f3a87bb81e86e4793a2679e2eb502f881",
+      "bytes": 1644
+    }
+  ]
+}

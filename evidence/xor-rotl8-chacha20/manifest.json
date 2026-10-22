@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "id": "xor-rotl8-chacha20",
+  "title": "Area polish: same function, less hardware",
+  "rationale": "Re-implement the verified unit with less hardware; it is re-proven against the same spec.",
+  "instruction": {
+    "name": "chacha_xor_rotl8",
+    "mnemonic": "chacha.xor.rotl8",
+    "funct7": 1,
+    "encoding": ".insn r 0x0B, 0, 1, rd, rs1, rs2",
+    "cpu_carries": [
+      "xor.rotl12",
+      "chacha.xor.rotl8"
+    ]
+  },
+  "kind": "area",
+  "source": {
+    "run_id": "r_w2_final3",
+    "node_id": "n2.4.1",
+    "workload": "w2_monocypher_chacha20",
+    "backend": "local",
+    "created": "2026-10-22"
+  },
+  "metrics": {
+    "cycles": 102851,
+    "speedup": 1.2956,
+    "area_delta_pct": 3.04,
+    "luts": 2645,
+    "ffs": 957,
+    "fmax_mhz": 66.64,
+    "wall_speedup": 1.2155,
+    "note": "system-level numbers for the CPU that carries these instructions on this workload"
+  },
+  "ladder": {
+    "L1": "pass",
+    "L2": "pass",
+    "L3": "pass",
+    "L4": "pass",
+    "L5": "pass",
+    "L6": "skipped"
+  },
+  "claims": [
+    "Matches the C reference on the stored random-vector test",
+    "Formally proven equivalent to the stored spec for all 2^64 inputs (Yosys SAT miter)"
+  ],
+  "not_claimed": [
+    "verified on silicon",
+    "equivalence to anything other than the stored spec",
+    "that the spec itself is the intended behaviour beyond its validation against the C reference"
+  ],
+  "tools": {
+    "verilator": "Verilator 5.053 devel rev v5.052-507-g01770671e (mod)",
+    "yosys": "Yosys 0.70+176 (git sha1 365bb887b, Release, Clang /usr/bin/clang++ 21.1.8)",
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+  },
+  "reproduce": "siliconsmith verify-entry xor-rotl8-chacha20",
+  "artifacts": [
+    {
+      "path": "rtl.v",
+      "sha256": "4abf1b1f9048ddd6af64c1e3d2ca6e3fb3a5455a193116a641ff65a92584dab5",
+      "bytes": 185
+    },
+    {
+      "path": "spec.v",
+      "sha256": "17bb98b374ada3bb5c3edf9ab434541fa158d77e1a404275a307dcb93141a07e",
+      "bytes": 426
+    },
+    {
+      "path": "c_ref.c",
+      "sha256": "b5fce57f6aec80b5d3343a25cdcb3ecd0580419890c3c8082cfc496d1e205003",
+      "bytes": 53
+    },
+    {
+      "path": "proof.log",
+      "sha256": "8f8b8bb5b882d9235fd6b8d8f3dc50df44bb3acd3d4fb84b1527e0cbfe31eb0e",
+      "bytes": 1632
+    }
+  ]
+}

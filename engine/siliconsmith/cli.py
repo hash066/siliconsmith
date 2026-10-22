@@ -140,6 +140,25 @@ def cmd_pr(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_library(args: argparse.Namespace) -> int:
+    """List the evidence library: proven instructions, each reproducible with `verify-entry`."""
+    from . import library
+
+    _emit([{"id": e.id, "mnemonic": e.manifest["instruction"]["mnemonic"], "workload": e.manifest["source"]["workload"],
+            "speedup": e.manifest["metrics"]["speedup"], "area_delta_pct": e.manifest["metrics"]["area_delta_pct"],
+            "run": e.manifest["source"]["run_id"]} for e in library.list_entries()])
+    return 0
+
+
+def cmd_verify_entry(args: argparse.Namespace) -> int:
+    """Re-run lint, the unit vectors and the formal proof on a library entry (no LLM). Exit 0 only if all pass."""
+    from . import library
+
+    res = library.verify_entry(library.load_entry(args.id), vectors=args.vectors)
+    _emit(res)
+    return 0 if res["reproduced"] else 3
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="siliconsmith",
@@ -170,6 +189,10 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--run-id")
         if name == "accelerate":
             p.add_argument("--out", default="siliconsmith-out", help="bundle directory")
+    sub.add_parser("library", help="list the evidence library of proven instructions")
+    p = sub.add_parser("verify-entry", help="re-run lint, vectors and the formal proof on a library entry (no LLM)")
+    p.add_argument("id")
+    p.add_argument("--vectors", type=int, default=1_000_000)
     p = sub.add_parser("pr", help="turn a bundle into a branch (and with --push --open, a PR) on a TinyMaix checkout")
     p.add_argument("bundle")
     p.add_argument("--repo", required=True, help="path to a TinyMaix clone (must be clean)")
@@ -182,7 +205,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     try:
         return {"hello": cmd_hello, "bench": cmd_bench, "golden": cmd_golden, "run": cmd_run,
-                "accelerate": cmd_accelerate, "pr": cmd_pr}[args.cmd](args)
+                "accelerate": cmd_accelerate, "pr": cmd_pr,
+                "library": cmd_library, "verify-entry": cmd_verify_entry}[args.cmd](args)
     except ToolError as e:
         _emit({"ok": False, "stage": e.stage, "error": e.message, "log": e.log})
         return 2
