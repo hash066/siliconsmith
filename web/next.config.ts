@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // /api/agent reads the recorded replays from disk; make sure they ship with the function.
+  outputFileTracingIncludes: { "/api/agent": ["./public/replays/**"] },
   async headers() {
     return [
       {

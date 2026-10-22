@@ -121,6 +121,8 @@ export interface AgentPanelViewProps {
   busy: boolean;
   /** One line of real project context shown above the composer (never model output). */
   context?: string;
+  /** Plain-language limits shown under the composer when connected. */
+  limitsNote?: string;
   /** A failure before any turn started (for example the request could not be sent). */
   error?: string | null;
   onSend: (text: string) => void;
@@ -130,7 +132,7 @@ export interface AgentPanelViewProps {
 }
 
 /** Presentational panel. `connected=false` is the honest state: nothing here looks like a model answer. */
-export function AgentPanelView({ state, connected, busy, context, error, onSend, onStop, onConfirm, onCancel }: AgentPanelViewProps) {
+export function AgentPanelView({ state, connected, busy, context, limitsNote, error, onSend, onStop, onConfirm, onCancel }: AgentPanelViewProps) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -184,6 +186,7 @@ export function AgentPanelView({ state, connected, busy, context, error, onSend,
 
       <div className="shrink-0 border-t border-line p-3">
         {context && <p className="num mb-2 truncate text-[11.5px] text-ink-3" title={context}>Context: {context}</p>}
+        {connected && limitsNote && <p className="mb-2 text-[11.5px] leading-snug text-ink-3">{limitsNote}</p>}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -228,7 +231,7 @@ let nextId = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(nextId++).toString(36)}`;
 
 /** Stateful panel. Pass a transport to connect it; with none (today) it stays in the "not connected" state. */
-export function AgentPanel({ transport, context }: { transport?: AgentTransport | null; context?: string }) {
+export function AgentPanel({ transport, context, limitsNote }: { transport?: AgentTransport | null; context?: string; limitsNote?: string }) {
   const [state, setState] = useState<AgentState>(initialAgentState);
   const [busy, setBusy] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -281,6 +284,7 @@ export function AgentPanel({ transport, context }: { transport?: AgentTransport 
       connected={!!transport}
       busy={busy}
       context={context}
+      limitsNote={limitsNote}
       error={connError}
       onSend={onSend}
       onStop={() => abort.current?.abort()}

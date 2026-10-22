@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReplayOptions } from "@/lib/controller";
 import { buildEvidence, type EvidenceMetric } from "@/lib/evidence";
 import { usd } from "@/lib/format";
 import { useMediaQuery, useRunSource, useSnapshot } from "@/lib/hooks";
 import { initialRunState } from "@/lib/run-state";
+import { fetchAgentStatus, httpAgentTransport, type AgentStatus } from "@/lib/agent-client";
 import { AgentPanel } from "../agent/AgentPanel";
 import { EvidencePanel } from "../evidence/EvidencePanel";
 import { CostPanel } from "../run/CostPanel";
@@ -53,7 +54,16 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [sel, setSel] = useState<{ metric: EvidenceMetric; nodeId: string } | null>(null);
   const [opts] = useState(replayOptions);
+  const [agent, setAgent] = useState<AgentStatus>({ connected: false });
+  useEffect(() => {
+    const ctl = new AbortController();
+    void fetchAgentStatus(ctl.signal).then(setAgent);
+    return () => ctl.abort();
+  }, []);
 
+  const runRef = useRef(runId);
+  runRef.current = runId;
+  const transport = useMemo(() => (agent.connected ? httpAgentTransport(() => runRef.current) : null), [agent.connected]);
   const src = useRunSource(runId, opts);
   const controller = src.status === "ready" ? src.controller : null;
   const snap = useSnapshot(controller);
@@ -168,7 +178,10 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
         </main>
 
         <aside className={`min-h-[70dvh] flex-col border-line bg-panel lg:min-h-0 lg:border-l ${show("agent")}`}>
-          <AgentPanel transport={null} context={snap ? `${runId} · ${s.eventCount} events received` : undefined} />
+          <AgentPanel
+            transport={transport}
+            limitsNote={agent.limits ? `Read-only: it looks up recorded runs. Up to ${agent.limits.visitorTurnsPerDay} turns per visitor per day and ${agent.limits.maxInputChars} characters per message. Limits are counted in server memory (per instance), so they reset on restart.` : undefined}
+            context={snap ? `${runId} · ${s.eventCount} events received` : undefined} />
         </aside>
       </div>
 
