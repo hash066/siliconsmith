@@ -64,6 +64,18 @@ class SandboxRunner:
         self.image = image
 
     def __call__(self, request_json: str, timeout_s: float) -> tuple[str, str, int]:
+        last: Exception | None = None
+        for attempt in range(4):  # the API answers a transient 403/5xx now and then; a persistent one still raises
+            try:
+                return self._once(request_json, timeout_s)
+            except Exception as e:  # noqa: BLE001
+                last = e
+                if not any(t in f"{type(e).__name__} {e}" for t in ("403", "Forbidden", "500", "502", "503", "504")):
+                    raise
+                time.sleep(2 + 3 * attempt)
+        raise RuntimeError(f"sandbox call failed after retries: {type(last).__name__}") from last
+
+    def _once(self, request_json: str, timeout_s: float) -> tuple[str, str, int]:
         handle = self.sdk.images.use(self.image).run(
             shell=self.SHELL, env={}, timeout=timeout_s + 30, disposable=True, truncate_output_at=8 * 1024 * 1024,
             files={"/opt/gw/_genworker.py": WORKER.read_bytes(), "/tmp/req.json": request_json.encode()})

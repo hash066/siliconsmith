@@ -28,7 +28,7 @@ from ..events import EventBus
 from . import export, generators, ladder
 from . import reference_generators as ref
 from .runners import make_runner
-from .problem import Spreader, baseline, force_chip, solve_mask
+from .problem import Spreader, baseline, force_chip, isothermal_bound, solve_mask
 
 MAX_PARAMS = 8
 
@@ -448,7 +448,7 @@ class MatterRun:
         if best_id:
             bn = scored[best_id]
             eq = (bn.get("m5") or {}).get("baseline_peak")
-            verdict = ladder.verdict(bn["best"]["peak"], eq, bpeak)
+            verdict = ladder.verdict(bn["best"]["peak"], eq, bpeak, isothermal_bound(sp, sp.budget_cells))
         summary = dict(
             ok=True, best_node_id=best_id, verdict=verdict,
             baselines=dict(equal_material_peak_c=(scored[best_id].get("m5") or {}).get("baseline_peak") if best_id else None,
@@ -460,6 +460,7 @@ class MatterRun:
                              delta_vs_equal_material_k=(n.get("m5") or {}).get("delta_k"),
                              material_fraction=(n.get("best") or {}).get("material_fraction"))
                    for nid, n in self.nodes.items()},
+            generator_runner=type(self.runner).__name__ if self.runner is not None else "local_runner",
             stopped=stopped, cost_usd=round(getattr(self.llm, "spent_usd", 0.0), 6),
             tokens=getattr(self.llm, "tokens", 0), wall_s=round(wall, 1), spreader=sp.as_dict())
         rep = render_report(summary, sp)

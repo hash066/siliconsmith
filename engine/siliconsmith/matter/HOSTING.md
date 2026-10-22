@@ -65,7 +65,7 @@ Response (real output, mask and field truncated):
     "equal_material": {"peak_temp_c": 80.28, "delta_k": -1.27, "cells": 1248, "params": {"spine": 8, "spine_len": 32, "n_fins": 13, "fin_w": 2, "fin_len": 19, "cells": 1244}},
     "full_budget":    {"peak_temp_c": 72.82, "delta_k": -8.73, "cells": 1440, "params": {"spine": 6, "spine_len": 60, "n_fins": 15, "fin_w": 4, "fin_len": 9, "cells": 1440}}
   },
-  "verdict": {"label": "Does not beat a rectangular-fin baseline", "delta_equal_material_k": -1.27, "delta_full_budget_k": -8.73, "beats_equal_material": false, "beats_full_budget": false, "note": "2D steady-state model, stated h and k, no airflow CFD, not validated on a printed part."},
+  "verdict": {"label": "Does not beat a rectangular-fin baseline", "delta_equal_material_k": -1.27, "delta_full_budget_k": -8.73, "lower_bound_peak_c": 71.30, "gap_closed_vs_full_budget": null, "beats_equal_material": false, "beats_full_budget": false, "note": "2D steady-state model, stated h and k, no airflow CFD, not validated on a printed part."},
   "viewer": {"format": "matter-candidate/1", "n": 60, "dx_mm": 1.0, "thickness_mm": 2.0, "chip": [27, 33, 27, 33],
              "mask": ["0000...", "..."], "field": {"n": 60, "units": "degC", "T_inf": 25.0, "peak": 81.55, "T": [[null, null, "..."]]}},
   "limits": ["2D plate model, steady state, ...", "..."],
@@ -76,7 +76,7 @@ Response (real output, mask and field truncated):
 
 Notes for the UI:
 * `ladder[i].label` is non-null only when that rung **passes**; show the label only then. A failing or skipped rung has `status`, `detail` and `check`. `first_failure` names the first failing rung.
-* `verdict` is `null` unless M2 and M3 pass. Always show **both** baselines; `verdict.label` is worded so it cannot oversell (for example "Beats the equal-material baseline by 0.25 K; does NOT beat the full-budget baseline"). Margins are model estimates under stated assumptions.
+* `verdict` is `null` unless M2 and M3 pass. Always show **both** baselines and, if you show a progress bar, `lower_bound_peak_c` (the isothermal floor no geometry can beat; the whole headroom over the full-budget baseline is about 1.5 K for the default problem); `verdict.label` is worded so it cannot oversell (for example "Beats the equal-material baseline by 0.25 K; does NOT beat the full-budget baseline"). Margins are model estimates under stated assumptions.
 * With `"include_stl": true` the response also has `stl: {base64, bytes, sha256, units: "mm"}` (about 0.3 MB base64 for a typical plate).
 
 ## Viewer artifact: `matter-candidate/1`

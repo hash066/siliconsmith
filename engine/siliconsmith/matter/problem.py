@@ -154,6 +154,12 @@ def _baseline_cached(sp: Spreader, cells: int) -> tuple[float, dict]:
     return best
 
 
+def isothermal_bound(sp: Spreader, cells: int) -> float:
+    """Lower bound on the peak temperature (degC) for `cells` of material: if every cell sat at one temperature
+    the plate would lose 2 h A dT = Q. Real plates are hotter (heat must be conducted), so no geometry can beat it."""
+    return sp.T_inf + sp.Q / (2.0 * sp.h * cells * sp.dx * sp.dx)
+
+
 def baseline(sp: Spreader, cells: int) -> tuple[float, dict]:
     """Best plain-rectangular-fin plate using no more than `cells` material cells (a swept baseline,
     not a single hand-picked one). Returns (peak temperature in degC, parameters)."""

@@ -80,3 +80,13 @@ def test_run_agent_with_scripted_model_returns_events_and_honest_result(tmp_path
     assert out["candidates"] and out["candidates"][0]["format"] == "matter-candidate/1"
     assert out["winner"]["stl"]["bytes"] > 1000
     json.dumps(out)  # fully JSON-serialisable
+
+
+def test_no_result_beats_the_physical_lower_bound():
+    from siliconsmith.matter.problem import Spreader, isothermal_bound
+
+    out = serverless.simulate({"gen_params": {"n_fins": 8, "fin_len": 16}})
+    b = out["verdict"]["lower_bound_peak_c"]
+    assert b == pytest.approx(isothermal_bound(Spreader(), Spreader().budget_cells))
+    assert b < out["baselines"]["full_budget"]["peak_temp_c"] < out["metrics"]["peak_temp_c"] + 100
+    assert out["metrics"]["peak_temp_c"] > b

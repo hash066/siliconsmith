@@ -23,7 +23,7 @@ import numpy as np
 from . import export, ladder
 from . import limits as lim
 from . import reference_generators as ref
-from .problem import Spreader, baseline, force_chip, solve_mask
+from .problem import Spreader, baseline, force_chip, isothermal_bound, solve_mask
 
 GENERATORS = {g["name"]: g for g in (ref.RECT_FINS, ref.RADIAL_SPOKES)}
 
@@ -117,7 +117,7 @@ def simulate(params: dict | None = None) -> dict:
             baselines = dict(equal_material=dict(peak_temp_c=eq_peak, delta_k=eq_peak - res.peak, params=eq_params, cells=cells),
                              full_budget=dict(peak_temp_c=full_peak, delta_k=full_peak - res.peak, params=full_params,
                                               cells=sp.budget_cells))
-            verdict = ladder.verdict(res.peak, eq_peak, full_peak)
+            verdict = ladder.verdict(res.peak, eq_peak, full_peak, isothermal_bound(sp, sp.budget_cells))
         else:
             ladder_out += [_rung("skipped", "skipped: M3 did not pass", 3), _rung("skipped", "skipped: M3 did not pass", 4)]
     else:

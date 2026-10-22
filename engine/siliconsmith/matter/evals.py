@@ -1,6 +1,6 @@
 """Matter evals from docs/WORKSTATION_PLAN.md section 10, as code.
 
-    python -m siliconsmith.matter.evals RUN_DIR [RUN_DIR ...] [--write PATH]
+    python -m siliconsmith.matter.evals RUN_DIR [RUN_DIR ...] [--runner local|sandbox] [--write PATH]
 
 Targets (fixed in the plan before any run, never edited after seeing results):
   * solver validation: all within thresholds
@@ -22,7 +22,7 @@ from .export import mask_to_stl, stl_stats
 from .problem import Spreader, solve_mask, force_chip
 
 
-def eval_run(run_dir: Path) -> dict:
+def eval_run(run_dir: Path, runner=None) -> dict:
     res = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))
     out = dict(run=run_dir.name, cost_usd=res["cost_usd"], tokens=res["tokens"], nodes=len(res["nodes"]),
                best=res["best_node_id"], all_rungs=res["all_rungs_passed"], baseline_full=res["baseline_peak_c"])
@@ -32,7 +32,7 @@ def eval_run(run_dir: Path) -> dict:
     sp = Spreader(**res["spreader"])
     node = json.loads((run_dir / "nodes" / nid / "result.json").read_text(encoding="utf-8"))
     code = (run_dir / "nodes" / nid / "generator.py").read_text(encoding="utf-8")
-    g = generators.run_generator(code, [node["params"]], sp.n, sp.chip_cells)[0]
+    g = generators.run_generator(code, [node["params"]], sp.n, sp.chip_cells, runner=runner)[0]
     if not g.ok:
         return out | dict(reproduced=False, note=f"generator no longer runs: {g.error}")
     peak = solve_mask(force_chip(g.mask, sp), sp).peak
@@ -82,12 +82,19 @@ def summarize(rows: list[dict]) -> tuple[dict, str]:
 
 
 def main(argv: list[str]) -> int:
+    runner = None
+    if "--runner" in argv:  # re-derive in the same kind of place the run used (numpy versions differ by a cell at edges)
+        i = argv.index("--runner")
+        from .runners import make_runner
+
+        runner = make_runner(argv[i + 1])
+        argv = argv[:i] + argv[i + 2:]
     write = None
     if "--write" in argv:
         i = argv.index("--write")
         write = Path(argv[i + 1])
         argv = argv[:i] + argv[i + 2:]
-    rows = [eval_run(Path(a)) for a in argv]
+    rows = [eval_run(Path(a), runner) for a in argv]
     ev, md = summarize(rows)
     print(md)
     if write:
