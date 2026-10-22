@@ -224,7 +224,9 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
             continue
         volt = _net_voltage(design, parts, net)
         if volt is None:
-            unknowns.append(f"{ref}.{pin}: no source on net {net} declares a voltage")
+            driven = sorted({n.name for n in design.nets if _net_voltage(design, parts, n.name) is not None})
+            unknowns.append(f"{ref}.{pin}: no power output drives net {net}; a supply pin must share a net with the pin "
+                            f"that powers it (nets with a declared source: {', '.join(driven) or 'none'})")
             continue
         lo, hi, src = volt
         fid = part.pin_fact_id(pin)
@@ -272,7 +274,7 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
             if not nets:
                 continue
             members = {(r, q) for n, r, q in design.connections() if n == nets[0]}
-            total, terms, missing, loads_ev = 0.0, [], [], []
+            total, terms, missing, loads_ev, fixed = 0.0, [], [], [], 0.0
             for other in design.instances:
                 opart = parts[other.ref]
                 if other.ref == inst.ref or opart is None:
@@ -287,6 +289,7 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
                     terms.append(f"{other.ref} {load[0]:g}")
                     if load[1].startswith("part:"):
                         loads_ev.append(load[1])
+                        fixed += load[0]
             fid = f"part:{part.id}.iout_max_ma"
             if missing:
                 unknowns.append(f"{inst.ref} rail {nets[0]}: no current fact for {', '.join(missing)} "
@@ -295,7 +298,8 @@ def run_b2(design: Design, library: dict[str, Part]) -> CheckResult:
                 continue
             line = f"{inst.ref} rail {nets[0]}: " + (" + ".join(terms) or "0") + f" = {total:g} mA vs limit {limit.value:g} mA"
             if total > float(limit.value):
-                fails.append(line + " (overloaded)")
+                fails.append(line + f" (overloaded; loads fixed by part facts total {fixed:g} mA, leaving "
+                             f"{max(float(limit.value) - fixed, 0):g} mA for the rest, which must stay below that)")
                 ev_fail += [fid] + loads_ev
             else:
                 ok_lines.append(line)

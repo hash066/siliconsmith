@@ -28,7 +28,7 @@ def test_overvoltage_fault_is_detected_with_pin_and_source_evidence():
 def test_regulator_overload_is_detected_with_the_arithmetic():
     r = run_b2(inject_fault(reference_design(), "regulator_overload"), LIB)
     assert r.status == "fail"
-    assert "1300.71 mA vs limit 600 mA" in r.detail
+    assert "1300.71 mA vs limit 600 mA" in r.detail and "leaving 99.286 mA" in r.detail
     assert "part:ldo33.iout_max_ma" in r.evidence
 
 

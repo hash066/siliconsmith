@@ -16,7 +16,7 @@ the board ladder hold. It uses no LLM; the verifiers must stay deterministic cod
   reviewed. Everything else is unchecked and the UI must say "author-curated, not independently verified".
   Only document and section names are cited; no page numbers are recorded.
 * The USB-C sink Rd (5.1 kOhm on CC1 and CC2) fact is **unchecked**: the USB-IF specification itself was not read.
-* Of the 10 library parts, only 3 cite a public datasheet (`esp32`, `bme280`, `mcp73831`; `std_i2c` is a rules record from a TI app note). The other 7 are
+* Of the 11 library records, only 3 parts cite a public datasheet (`esp32`, `bme280`, `mcp73831`; `std_i2c` is a rules record from a TI app note). The other 7 parts are
   `origin: author_defined`: `ldo33` is a **generic LDO with values chosen for the template**, not a
   datasheet part (the day-1 brief asked for an LDO; no specific product is named), and `res`, `led`,
   `btn`, `load`, `batt`, `usbc` are placeholders. `usbc` cites the USB Type-C Rd rule as a fact.
