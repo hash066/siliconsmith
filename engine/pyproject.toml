@@ -28,4 +28,4 @@ ss = "siliconsmith.cli:main"
 include = ["siliconsmith*"]
 
 [tool.setuptools.package-data]
-siliconsmith = ["examples/*/*"]
+siliconsmith = ["examples/*/*", "board/*.json", "board/parts/*.json", "board/templates/*.json", "board/designs/*.json"]
