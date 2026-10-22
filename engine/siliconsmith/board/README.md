@@ -110,18 +110,25 @@ Run logs (`runs/logs/<id>.ndjson`, git-ignored; copies in the shared notes folde
 | board-propose-template-6 | template to design, Ultra architect + Super repairs | **passed B1 to B5** in 3 judged designs, $0.0093, artifacts with SHA-256 in the log |
 | board-repair-pin_mismatch-1 | injected GPIO12-vs-GPIO14 firmware/netlist mismatch: B4 flags it, Super repairs, rerun passes B1 to B5 | **passed** in 2 judged designs, $0.0020 |
 
-Evals (plan section 10; thresholds fixed in `evals.py`, never edited after seeing results), one live batch,
-`runs/evals/board-live-20261022-114123.json`, a fresh budget-capped client per session, no re-runs cherry-picked:
+Evals (plan section 10; thresholds fixed in `evals.py`, never edited), each batch = 5 template sessions + 8 repair
+sessions, a fresh budget-capped client per session. Three live batches were run; between them I fixed failure causes
+found in the logs (see below), so batches 2 and 3 are **not independent of tuning on these exact tasks**. All three are
+reported:
 
-| Eval | Target | Result |
-|---|---|---|
-| Fault detection, 8 faults, clean design | 8/8, 0 false positives | **PASS** 8/8, 0 false positives (deterministic) |
-| Agent: template to design passing B1 to B5, 5 runs, pass@3 | >= 80% | **FAIL**: 3/5 = 60% (runs 3 and 5 hit the repair limit) |
-| Agent: repair each of the 8 faults, pass@3 | >= 75% | **PASS** at the threshold: 6/8 = 75% (`missing_cc_resistors` and `regulator_overload` not repaired) |
-| Cost per session | mean < $0.05 | **PASS**: mean $0.0045, total $0.059 over 13 sessions |
+| Batch | Fault detection | Agent: template to design (>= 80%) | Agent: repair 8 faults (>= 75%) | Cost mean (< $0.05) |
+|---|---|---|---|---|
+| 1 `board-live-20261022-114123` | PASS 8/8, 0 FP | **FAIL** 3/5 = 60% | PASS 6/8 = 75% | PASS $0.0045 |
+| 2 `board-live-20261022-115924` (after format, hint and charger changes) | PASS | PASS 5/5 = 100% | **FAIL** 5/8 = 62.5% | PASS $0.0053 |
+| 3 `board-live-20261022-120244` (after B2 feedback change) | PASS | PASS 4/5 = 80% (at threshold) | PASS 6/8 = 75% (at threshold) | PASS $0.0052 |
 
-The agent-design eval failed its target and is reported as failed. The prompt was tuned on runs 1 to 6 before this batch
-(on the same template), so the 60% is not a held-out estimate either way; 5 runs is a small sample.
+Read batch 3 as "at the threshold, with run-to-run variance of a size that moved the repair result between 62.5% and 75%
+in one afternoon". `regulator_overload` (the model edits the load number instead of removing it) and
+`i2c_address_collision` remain unreliable; five repairs are reliable across batches. 5 and 8 sessions are small samples.
+
+Fixes made after batch 1, all in the model-facing layer or in check feedback (the checks' pass/fail logic was not loosened):
+a per-pin `connections` draft format, a net named like a pin means "wired to that pin", safe-GPIO lists and load-parameter
+notes in the library brief, B5 accepting `params.sleep_ma` on a load, B2 feedback naming the headroom and the nets that
+have a source, a clearer SDO-strap message.
 
 ## Fault detection status
 
