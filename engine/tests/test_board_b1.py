@@ -120,7 +120,7 @@ def test_clean_design_passes_b1_with_label_and_evidence():
     assert r.rung == "B1" and r.label == "Netlist is well formed"
     assert r.evidence and all(resolve_fact(LIB, e) for e in r.evidence)
     assert all(f.status == "pass" for f in r.findings)
-    assert [x.model_dump()["rung"] for x in run_ladder(reference_design(), LIB)] == ["B1"]
+    assert [x.model_dump()["rung"] for x in run_ladder(reference_design(), LIB)] == ["B1", "B2"]
 
 
 def test_result_has_the_documented_shape():
@@ -215,7 +215,7 @@ def test_catalogue_has_the_eight_named_faults():
     assert [f.id for f in FAULTS] == [
         "pin_mismatch", "strapping_pin_misuse", "input_only_output", "i2c_pullup_too_large",
         "missing_cc_resistors", "regulator_overload", "overvoltage_3v3_pin", "i2c_address_collision"]
-    assert all(f.expected_rung in ("B2", "B3", "B4") and not f.implemented for f in FAULTS)
+    assert all(f.expected_rung in ("B2", "B3", "B4") for f in FAULTS)
 
 
 def test_injection_does_not_mutate_the_original():

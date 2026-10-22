@@ -40,10 +40,16 @@ Evidence ids look like `part:esp32.gpio12.strapping` and resolve through `parts.
 | Rung | Label | Status |
 |---|---|---|
 | B1 | Netlist is well formed | implemented |
-| B2 | Electrical limits respected (curated facts) | pending |
+| B2 | Electrical limits respected (curated facts) | implemented |
 | B3 | Bus and connector rules satisfied (curated facts) | pending |
 | B4 | Firmware matches the netlist | pending |
 | B5 | Battery estimate meets target (model, not measured) | pending |
+
+B2 checks (net voltage = what the net's `power_out` pins declare; passives are not traced): supply pins within
+absolute-max and recommended range; signal pins within domain + 0.3 V; regulator rail current = sum of load budgets
+vs the regulator's `iout_max_ma`, arithmetic shown. A load's budget is its instance `peak_ma`, else the part's
+peak fact, else the datasheet's stated supply requirement (the ESP32 module's 0.5 A supply, an upper bound, not a
+measured peak). The charger-input-vs-USB check needs a charger part and is not implemented.
 
 B1 checks: every connected pin exists in its part's pin table; required pins are connected; a pin is on
 one net only; no net has two output drivers; MCU assignments name real pins. A failed finding fails the
@@ -51,8 +57,8 @@ rung, otherwise an unknown finding (part not in the library, driver direction un
 
 ## Fault detection status
 
-The 8 catalogue faults are **not detected on day 1**: they need rungs that do not exist yet. The tests
-only assert that B1 stays silent on them (it does not claim to catch them).
+A fault is detected only by its own rung. Faults whose rung does not exist yet are pending; the tests assert that
+implemented rungs stay silent on faults they do not own.
 
 | Fault | Rung that will catch it | Status |
 |---|---|---|
@@ -61,8 +67,8 @@ only assert that B1 stays silent on them (it does not claim to catch them).
 | input_only_output | B4 | pending |
 | i2c_pullup_too_large | B3 | pending |
 | missing_cc_resistors | B3 | pending |
-| regulator_overload | B2 | pending |
-| overvoltage_3v3_pin | B2 | pending |
+| regulator_overload | B2 | detected |
+| overvoltage_3v3_pin | B2 | detected |
 | i2c_address_collision | B3 | pending |
 
 Three structural faults (outside the 8) exercise B1 and are detected: `floating_required_pin`,

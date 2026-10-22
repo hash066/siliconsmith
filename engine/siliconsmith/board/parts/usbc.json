@@ -19,7 +19,9 @@
         "power"
       ],
       "required": true,
-      "domain_v": 5.0
+      "domain_v": 5.0,
+      "v_out_min": 5.0,
+      "v_out_max": 5.0
     },
     {
       "name": "GND",

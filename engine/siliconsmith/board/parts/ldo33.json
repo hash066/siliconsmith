@@ -40,7 +40,9 @@
         "power"
       ],
       "required": true,
-      "domain_v": 3.3
+      "domain_v": 3.3,
+      "v_out_min": 3.3,
+      "v_out_max": 3.3
     }
   ],
   "facts": [

@@ -507,6 +507,32 @@
         "citation_checked": true,
         "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
       }
+    },
+    {
+      "key": "wifi_tx_typ_ma",
+      "kind": "typical_current",
+      "value": 240,
+      "unit": "mA",
+      "text": "Typical current, Wi-Fi transmit 802.11b DSSS 1 Mbps at +19.5 dBm; measured at 3.3 V, 25 C, 50% transmit duty cycle (so not a peak value).",
+      "provenance": {
+        "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+        "section": "5.4 RF Current Consumption in Active Mode (Table 5-4)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+      }
+    },
+    {
+      "key": "deep_sleep_ua",
+      "kind": "typical_current",
+      "value": 10,
+      "unit": "uA",
+      "text": "Chip power consumption in Deep-sleep mode is 10 uA (RTC memory kept on). This is the chip figure from the series datasheet, not a module measurement.",
+      "provenance": {
+        "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+        "section": "Features (low-power management bullet)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+      }
     }
   ]
 }

@@ -138,6 +138,32 @@
       }
     },
     {
+      "key": "iddp_ma",
+      "kind": "peak_current",
+      "value": 0.714,
+      "unit": "mA",
+      "text": "Current during pressure measurement, the largest of the three per-measurement currents in Table 1 (humidity 340 uA, pressure 714 uA, temperature 350 uA).",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
+      "key": "sleep_ua",
+      "kind": "typical_current",
+      "value": 0.1,
+      "unit": "uA",
+      "text": "Sleep current, typical.",
+      "provenance": {
+        "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+        "section": "1.1 General electrical specification (Table 1)",
+        "citation_checked": true,
+        "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+      }
+    },
+    {
       "key": "vdd_abs_max",
       "kind": "abs_max",
       "value": 4.25,

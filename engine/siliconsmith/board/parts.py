@@ -53,6 +53,8 @@ class Pin(BaseModel):
     v_abs_max: float | None = None
     v_rec_min: float | None = None
     v_rec_max: float | None = None
+    v_out_min: float | None = None  # power_out pins: voltage range this pin drives
+    v_out_max: float | None = None
     provenance: Provenance | None = None  # falls back to the part's pin_table_provenance
     note: str | None = None
 

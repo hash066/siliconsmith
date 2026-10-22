@@ -17,7 +17,9 @@
       "capabilities": [
         "power"
       ],
-      "required": true
+      "required": true,
+      "v_out_min": 3.5,
+      "v_out_max": 4.2
     },
     {
       "name": "BAT_N",
