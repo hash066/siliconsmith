@@ -10,6 +10,9 @@ export type UiAction =
   | { name: "matter.set_params"; args: { generator?: string; gen_params?: Record<string, number>; spreader?: Record<string, number> } }
   | { name: "matter.simulate"; args: Record<string, never> }
   | { name: "silicon.open_run"; args: { run_id: string; node_id?: string } }
+  | { name: "silicon.run_live"; args: { workload: "w1" | "w2" } } // starts the LIVE single-candidate pipeline (spends credits; needs a click)
+  | { name: "board.design"; args: { brief: string } } // bounded propose/check/repair loop (spends credits; needs a click)
+  | { name: "preview.tab"; args: { tab: "preview" | "files" | "proof" } }
   | { name: "workflow.focus"; args: { step: "brief" | "propose" | "verify" | "evidence" | "export" } };
 
 export type UiActionName = UiAction["name"];
@@ -23,6 +26,9 @@ export const ACTION_COST: Record<UiActionName, "free" | "credits"> = {
   "matter.set_params": "free",
   "matter.simulate": "free",
   "silicon.open_run": "free",
+  "silicon.run_live": "credits",
+  "board.design": "credits",
+  "preview.tab": "free",
   "workflow.focus": "free",
 };
 
