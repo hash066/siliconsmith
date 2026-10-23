@@ -258,7 +258,8 @@ def test_no_usable_proposal():
 def test_spend_cap_stops_further_model_calls():
     llm = FakeLLM(budget=0.010, cost=0.006)  # architect ($0.006) ok, first implement ($0.012 total) ok, then over budget
     ev, *_ = run(llm=llm, backend=FakeBackend([ladder.StageFailure("unit", "bad", "")]))
-    assert llm.spent_usd < 0.03 and ev[-1]["verdict"] == "failed" and ev[-1]["totals"]["cost_usd"] == llm.spent_usd
+    assert llm.spent_usd < 0.03 and ev[-1]["verdict"] == "stopped" and ev[-1]["totals"]["cost_usd"] == llm.spent_usd
+    assert "spend cap" in ev[-1]["headline"] and ev[-2]["report"]["stopped_by"] == "budget"
     assert any(e["type"] == "node.pruned" and "budget" in e["reason"] for e in ev)
 
 

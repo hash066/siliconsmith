@@ -75,6 +75,7 @@ class LiveSearch(Search):
         self.base = base
         self.base_image = base_image
         self.last_fail: dict[str, tuple[str, str]] = {}  # node id -> (stage, detail) of the last failing stage
+        self.deadline_s = 0.0
         self.last_impl: dict[str, dict] = {}  # node id -> artifacts of the last implementation (for the report)
 
     # every stage event also remembers the last failure and the last implementation, for the verdict and the report
@@ -122,6 +123,7 @@ class LiveSearch(Search):
     def run(self, deadline: Deadline, caps: dict, tool_versions: dict, meta: dict) -> dict:
         """Emits every event; returns the result dict (verdict, headline, ...) that the bundle is built from."""
         c, bus, wl = self.cfg, self.bus, self.wl
+        self.deadline_s = deadline.max_seconds
         t0 = time.monotonic()
         bus.emit("run.started", domain="silicon", ladder=LADDER, tool_versions=tool_versions, live=True, caps=caps,
                  workload={"id": wl.id, "title": wl.title, "lang": "c",
@@ -178,6 +180,12 @@ class LiveSearch(Search):
                     "", "")
         stage, detail = self.last_fail.get(node.id, ("", ""))
         reason = self.pruned_reason(node)
+        if "wall-time cap" in reason or "run budget" in reason:
+            what = (f"the {self.deadline_s:.0f} s time cap" if "wall-time cap" in reason
+                    else f"the ${self.llm.s.run_budget_usd:.2f} spend cap")
+            last = f" The last rung that failed was `{stage}`: {detail}" if stage else ""
+            return ("stopped", f"Stopped by {what} before {mn} could be verified.{last} Nothing here is a verified "
+                    "result; try again.", stage, reason)
         if reason.startswith("no speedup"):
             return ("no_speedup", f"Not faster: {mn} produced bit-identical output but did not cut cycles, so it was "
                     f"rejected at the benchmark ({reason}). The formal proof and area were not run for it.", "bench", reason)
@@ -197,7 +205,7 @@ class LiveSearch(Search):
         bus = self.bus
         if verdict is None:
             verdict, headline, stage, reason = self._verdict(node)
-        stopped_by = "time" if "wall-time cap" in reason else "budget" if "budget" in reason else None
+        stopped_by = "time" if "wall-time cap" in reason else "budget" if "run budget" in reason else None
         totals = {"cost_usd": round(self.llm.spent_usd, 4), "tokens": self.llm.tokens,
                   "wall_s": round(time.monotonic() - t0, 1)}
         best = node if node is not None and node.status == "scored" else root
