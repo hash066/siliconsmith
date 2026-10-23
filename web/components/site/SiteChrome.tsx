@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 import { ThemeToggle, Wordmark } from "./Brand";
 
 const NAV = [
   { href: "/workstation", label: "Workstation" },
-  { href: "/how", label: "How it works" },
+  { href: "/#how", label: "How it works" },
   { href: "/runs/r_w1_contree3/report", label: "Report" },
-  { href: "/try", label: "Try your code" },
+  { href: "/app", label: "Open the app" },
 ];
 
 export function SiteHeader() {
@@ -22,7 +23,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/workstation" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
+          <Link href="/app" className="inline-flex h-10 items-center rounded-md bg-ink px-4 text-[14px] font-medium text-bg transition-transform duration-150 active:scale-[0.97]">
             <span className="sm:hidden">Workstation</span>
             <span className="hidden sm:inline">Open the workstation</span>
           </Link>
@@ -36,17 +37,17 @@ export function SiteFooter() {
   return (
     <footer className="mt-32 border-t border-line">
       <div className="mx-auto max-w-[1280px] px-4 pb-10 pt-14 sm:px-6 lg:px-8">
-        <p className="text-[clamp(56px,13vw,200px)] font-semibold leading-[0.85] tracking-[-0.05em] text-ink">SiliconSmith</p>
+        <p className="text-[clamp(56px,13vw,200px)] font-semibold leading-[0.85] tracking-[-0.05em] text-ink">{BRAND.name}</p>
         <div className="mt-10 grid gap-8 text-[14px] sm:grid-cols-3">
           <div>
-            <p className="text-ink">Change the chip, not just the code.</p>
+            <p className="text-ink">{BRAND.tagline}</p>
             <p className="mt-2 leading-relaxed text-ink-3">
               Built for the Nebius × NVIDIA Global AI Hackathon. The agent runs on NVIDIA Nemotron through Nebius Token Factory. Each candidate CPU is verified in its own isolated workspace.
             </p>
           </div>
           <nav aria-label="Footer" className="flex flex-col gap-2">
-            <Link href="/workstation" className="text-ink-2 hover:text-ink">
-              Workstation
+            <Link href="/app" className="text-ink-2 hover:text-ink">
+              Open the app
             </Link>
             <Link href="/runs/r_w1_contree3" className="text-ink-2 hover:text-ink">
               W1 run: TinyMaix
@@ -54,11 +55,11 @@ export function SiteFooter() {
             <Link href="/runs/r_w2_final3" className="text-ink-2 hover:text-ink">
               W2 run: ChaCha20
             </Link>
-            <Link href="/how" className="text-ink-2 hover:text-ink">
+            <Link href="/#how" className="text-ink-2 hover:text-ink">
               How it works
             </Link>
-            <Link href="/try" className="text-ink-2 hover:text-ink">
-              Try your code
+            <Link href="/app" className="text-ink-2 hover:text-ink">
+              Open the app
             </Link>
           </nav>
           <p className="leading-relaxed text-ink-3">

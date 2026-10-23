@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BRAND } from "@/lib/brand";
 import { useEffect, useState } from "react";
 
 /** The mark: a die outline with its pin rows and the pin-1 marker in the signal colour. */
@@ -23,9 +24,9 @@ export function Mark({ size = 22 }: { size?: number }) {
 
 export function Wordmark({ href = "/" }: { href?: string }) {
   return (
-    <Link href={href} className="flex items-center gap-2 text-ink" aria-label="SiliconSmith home">
+    <Link href={href} className="flex items-center gap-2 text-ink" aria-label={`${BRAND.name} home`}>
       <Mark />
-      <span className="text-[15px] font-semibold tracking-[-0.01em]">SiliconSmith</span>
+      <span className="text-[15px] font-semibold tracking-[-0.01em]">{BRAND.name}</span>
     </Link>
   );
 }
