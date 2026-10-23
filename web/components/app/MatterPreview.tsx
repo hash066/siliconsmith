@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MATTER_GENERATORS, MATTER_SPREADER, type MatterSimulation } from "@/lib/hosted";
 import { buildPlate, heatColor, heatGradientCss } from "@/lib/plate";
 import { ApiErrorView } from "../domain/ApiErrorView";
@@ -19,8 +19,14 @@ function PlateViewer({ sim, hi }: { sim: MatterSimulation; hi: number }) {
     const span = Math.max(hi - lo, 1e-9);
     return (tri: number) => heatColor((plate.temps[Math.floor(tri / 2)] - lo) / span);
   }, [plate, lo, hi]);
+  // The canvas sizes itself from a width it measures after mounting; stay invisible for those two frames so nothing visibly jumps.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true)));
+    return () => cancelAnimationFrame(id);
+  }, []);
   return (
-    <div>
+    <div className={settled ? "" : "invisible"}>
       <MeshCanvas
         mesh={plate.mesh}
         colorOf={byTri}
@@ -136,10 +142,10 @@ export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "pr
 
 function Empty({ busy, onRun, what }: { busy: boolean; onRun: () => void; what: string }) {
   return (
-    <div className="grid min-h-[320px] place-items-center p-6" role="status">
+    <div className="grid min-h-[500px] place-items-center p-6" role="status">
       {busy ? (
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto h-44 w-full animate-pulse rounded-2xl bg-raised" />
+        <div className="w-full text-center">
+          <div className="mx-auto h-[380px] w-full animate-pulse rounded-2xl bg-raised" />
           <p className="mt-3 text-[13px] text-ink-3">Simulating the heat flow and checking it with a second solver…</p>
         </div>
       ) : (

@@ -20,7 +20,7 @@ const TONE: Record<Verdict["tone"], { color: string; word: string }> = {
 export function VerdictBar({ v }: { v: Verdict }) {
   const t = TONE[v.tone];
   return (
-    <div role="status" aria-live="polite" data-tone={v.tone} data-testid="verdict" className="flex min-w-0 items-start gap-3 rounded-xl border px-3.5 py-2.5" style={{ borderColor: `color-mix(in srgb, ${t.color} 55%, transparent)`, background: `color-mix(in srgb, ${t.color} 10%, transparent)` }}>
+    <div role="status" aria-live="polite" data-tone={v.tone} data-testid="verdict" className="flex min-h-[66px] min-w-0 items-start gap-3 rounded-xl border px-3.5 py-2.5" style={{ borderColor: `color-mix(in srgb, ${t.color} 55%, transparent)`, background: `color-mix(in srgb, ${t.color} 10%, transparent)` }}>
       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${v.tone === "working" ? "anim-breathe" : ""}`} style={{ background: t.color }} aria-hidden="true" />
       <div className="min-w-0">
         <p className="text-[14px] font-semibold leading-snug text-ink">

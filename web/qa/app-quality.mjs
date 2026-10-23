@@ -31,7 +31,7 @@ const open = async (w, h, theme = "dark", { silicon = false } = {}) => {
   if (silicon) await installSiliconMock(page, { delayMs: 30 });
   return { ctx, page };
 };
-const settle = (page) => page.waitForFunction(() => { const t = document.querySelector("[data-testid=verdict]")?.getAttribute("data-tone"); return !t || t !== "working"; }, null, { timeout: 30000 }).catch(() => {});
+const settle = (page) => page.waitForFunction(() => { const v = document.querySelector("[data-testid=verdict]"); return !v || ["green", "amber", "red"].includes(v.getAttribute("data-tone")); }, null, { timeout: 30000 }).catch(() => {});
 const runAxe = async (page) => {
   await page.addScriptTag({ path: axePath });
   return page.evaluate(() => window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag22aa"] } }));
