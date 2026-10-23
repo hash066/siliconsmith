@@ -5,6 +5,7 @@ import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import type { UiAction, UiActionResult } from "@/lib/agent-actions";
 import { fromSearch, toHref } from "@/lib/deeplink";
 import { MATTER_GENERATORS, type MatterGenerator } from "@/lib/hosted";
+import type { AgentContext } from "../agent";
 import { AgentSlot } from "./AgentSlot";
 import { BoardCanvasView, BoardInputs } from "./BoardBench";
 import { EvidenceDock, type AnyEvidence } from "./EvidenceDock";
@@ -18,7 +19,7 @@ import { Tour } from "./Tour";
 import { UI_ACTION_EVENT, type UiActionDetail } from "./ui-actions";
 import { useBoardBench } from "./useBoardBench";
 import { useCredits } from "./useCredits";
-import { useMatterBench } from "./useMatterBench";
+import { solvedOf, useMatterBench } from "./useMatterBench";
 import { WorkflowBar } from "./WorkflowBar";
 import { LIMITS, DEFAULT_LAYOUT, gridTemplate } from "./layout-state";
 import { TOUR_KEY, type TourStep } from "./tour-steps";
@@ -333,11 +334,38 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
   const boardTitle = board.templates.state === "ready" ? board.templates.value.find((t) => t.id === board.templateId)?.title : undefined;
   const project = wb === "silicon" ? (silicon.s.workload?.title ?? "Recorded run") : wb === "board" ? (boardTitle ?? "Custom board design") : `${genLabel} plate`;
   const runLabel = wb === "silicon" ? runId : wb === "board" ? (board.templateId ?? undefined) : undefined;
-  const context = (() => {
-    if (wb === "matter") return `matter · ${matter.input.generator} ${Object.entries(matter.input.gen_params).map(([k, v]) => `${k}=${v}`).join(" ")}${matter.sim ? ` · peak ${matter.sim.metrics.peak_temp_c.toFixed(1)} °C` : " · not simulated"}`;
-    if (wb === "board") return `board · ${board.templateId ?? "custom design"}${bd ? ` · ${bd.rungs.filter((r) => r.status === "pass").length}/${bd.rungs.length} rungs pass${board.stale ? " (edited since)" : ""}` : " · not checked"}`;
-    return `${runId} · ${silicon.s.eventCount} events received`;
-  })();
+  const agentContext = useMemo<AgentContext>(() => {
+    if (wb === "matter") {
+      const sol = matter.sim ? solvedOf(matter.sim) : null;
+      return {
+        matter: {
+          generator: matter.input.generator,
+          gen_params: matter.input.gen_params,
+          spreader: matter.input.spreader,
+          last: matter.sim && sol && !matter.stale ? { peak_temp_c: sol.peak, rungs: matter.sim.ladder.map((r) => ({ id: r.id, status: r.status })) } : undefined,
+        },
+      };
+    }
+    if (wb === "board") {
+      let design: unknown;
+      try {
+        design = board.designText.trim() ? JSON.parse(board.designText) : undefined;
+      } catch {
+        design = undefined; // half-typed JSON is not sent
+      }
+      return { board: { template_id: board.templateId ?? undefined, design, last_check: bd && !board.stale ? { passed: bd.passed, rungs: bd.rungs.map((r) => ({ rung: r.rung, status: r.status })) } : undefined } };
+    }
+    return { silicon: { run_id: runId, node_id: silicon.focus.follow ? undefined : (silicon.focus.shown ?? undefined) } };
+  }, [wb, matter.input, matter.sim, matter.stale, board.designText, board.templateId, board.stale, bd, runId, silicon.focus.follow, silicon.focus.shown]);
+  // The server already ran the free tool; the app mirrors it (same deterministic call) and logs the real outcome.
+  const onAgentAction = useCallback(
+    async (a: UiAction) => {
+      const r = await apply(a);
+      log(`Agent · ${a.name}: ${r.summary}`, r.ok);
+      return r;
+    },
+    [apply, log],
+  );
 
   const paneClass = (p: PaneId) => (pane === p ? "flex" : "hidden lg:flex");
   const layoutVars = { "--cols": gridTemplate(layout) } as React.CSSProperties;
@@ -381,7 +409,7 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
 
             <Splitter className="hidden lg:block" label="Resize the agent pane" value={layout.right} min={LIMITS.rightMin} max={LIMITS.rightMax} onDelta={(dx) => nudge("right", dx)} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right, rightCollapsed: false }))} onToggle={() => setLayout((l) => ({ ...l, rightCollapsed: !l.rightCollapsed }))} />
             <Pane id="agent" title="Agent" side="right" tour="agent" collapsed={wide && layout.rightCollapsed} onToggle={() => setLayout((l) => ({ ...l, rightCollapsed: !l.rightCollapsed }))} className={paneClass("agent")}>
-              <AgentSlot model={model} workbench={wb} runId={wb === "silicon" ? runId : undefined} context={context} />
+              <AgentSlot workbench={wb} context={agentContext} model={model} onModel={chooseModel} onAction={onAgentAction} />
             </Pane>
           </div>
         </div>

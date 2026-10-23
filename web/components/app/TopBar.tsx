@@ -86,10 +86,6 @@ function CreditsPill({ credits }: { credits: CreditsView }) {
               </dl>
               {credits.poolExhausted && <p className="mt-2 rounded-md bg-amber-dim px-2.5 py-1.5 text-[12px] text-ink">The shared pool is used up. Agent turns are paused; the free checks still work.</p>}
             </>
-          ) : credits.mode === "limits" ? (
-            <p className="mt-2 text-[13px] leading-snug text-ink-2">
-              The server reports a limit of {credits.turnsPerDay ?? "a few"} agent turns per visitor per day, not a dollar balance yet. Each message shows its own cost when the agent answers.
-            </p>
           ) : credits.mode === "loading" ? (
             <p className="mt-2 text-[13px] text-ink-3" role="status">Asking the server for your balance…</p>
           ) : (
