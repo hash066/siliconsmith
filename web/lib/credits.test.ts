@@ -19,64 +19,74 @@ describe("credit math", () => {
 });
 
 describe("allowance, IP backstop and the pool", () => {
-  it("lets a visitor spend up to the allowance, then refuses and says free tools still work", async () => {
+  it("lets a visitor spend up to the allowance (their cookie's spend), then refuses and says free tools still work", async () => {
     const c = new Credits(memoryStore(), cfg);
-    expect((await c.preflight("v1", "1.1.1.1", 0.01)).ok).toBe(true);
-    await c.charge("v1", "1.1.1.1", 0.49);
-    expect((await c.snapshot("v1", "1.1.1.1")).remainingUsd).toBeCloseTo(0.01, 6);
-    const stop = await c.preflight("v1", "1.1.1.1", 0.02);
+    expect((await c.preflight(0, "1.1.1.1", 0.01)).ok).toBe(true);
+    expect((await c.snapshot(0.49, "1.1.1.1")).remainingUsd).toBeCloseTo(0.01, 6);
+    const stop = await c.preflight(0.49, "1.1.1.1", 0.02);
     expect(stop).toMatchObject({ ok: false, reason: "allowance" });
     expect(!stop.ok && stop.message).toMatch(/Free tools and replays still work/);
-    // another visitor is unaffected
-    expect((await c.preflight("v2", "2.2.2.2", 0.02)).ok).toBe(true);
+    expect((await c.preflight(0, "2.2.2.2", 0.02)).ok).toBe(true); // another cookie is unaffected
   });
 
-  it("resets the visitor allowance the next UTC day but not the pool", async () => {
-    let day = "2026-10-23";
-    const c = new Credits(memoryStore(), cfg, () => new Date(`${day}T12:00:00Z`));
-    await c.charge("v1", "ip", 0.5);
-    expect((await c.preflight("v1", "ip", 0.01)).ok).toBe(false);
-    day = "2026-10-24";
-    const s = await c.snapshot("v1", "ip");
+  it("charges only the pool and the IP: the visitor's spend is whatever the cookie says", async () => {
+    const c = new Credits(memoryStore(), cfg);
+    await c.charge("ip", 0.5);
+    const s = await c.snapshot(0, "ip");
     expect(s.spentUsd).toBe(0);
     expect(s.pool.spentUsd).toBeCloseTo(0.5, 6);
   });
 
   it("stops everyone when the $25 pool is spent, whatever their own allowance", async () => {
     const c = new Credits(memoryStore(), { ...cfg, poolCapUsd: 25 });
-    for (let i = 0; i < 50; i++) await c.charge(`v${i}`, `ip${i}`, 0.5);
-    expect((await c.snapshot("fresh", "ipf")).pool.spentUsd).toBeCloseTo(25, 6);
-    const stop = await c.preflight("fresh", "ipf", 0.001);
-    expect(stop).toMatchObject({ ok: false, reason: "pool" });
-    expect((await c.snapshot("fresh", "ipf")).remainingUsd).toBe(0);
+    for (let i = 0; i < 50; i++) await c.charge(`ip${i}`, 0.5);
+    expect((await c.snapshot(0, "ipf")).pool.spentUsd).toBeCloseTo(25, 6);
+    expect(await c.preflight(0, "ipf", 0.001)).toMatchObject({ ok: false, reason: "pool" });
+    expect((await c.snapshot(0, "ipf")).remainingUsd).toBe(0);
   });
 
   it("a turn that would cross the pool cap is refused even if the pool is not yet full", async () => {
     const c = new Credits(memoryStore(), cfg);
-    await c.charge("a", "ipa", 24.99);
-    expect((await c.preflight("b", "ipb", 0.02)).ok).toBe(false);
-    expect((await c.preflight("b", "ipb", 0.005)).ok).toBe(true);
+    await c.charge("ipa", 24.99);
+    expect((await c.preflight(0, "ipb", 0.02)).ok).toBe(false);
+    expect((await c.preflight(0, "ipb", 0.005)).ok).toBe(true);
   });
 
-  it("the IP backstop blocks many cookies behind one address", async () => {
+  it("the IP backstop blocks many fresh cookies behind one address", async () => {
     const c = new Credits(memoryStore(), cfg);
-    for (let i = 0; i < 3; i++) await c.charge(`cookie${i}`, "9.9.9.9", 0.5);
-    expect(await c.preflight("cookie-new", "9.9.9.9", 0.01)).toMatchObject({ ok: false, reason: "ip" });
-    expect((await c.preflight("cookie-new", "8.8.8.8", 0.01)).ok).toBe(true);
+    for (let i = 0; i < 3; i++) await c.charge("9.9.9.9", 0.5);
+    expect(await c.preflight(0, "9.9.9.9", 0.01)).toMatchObject({ ok: false, reason: "ip" });
+    expect((await c.preflight(0, "8.8.8.8", 0.01)).ok).toBe(true);
+  });
+
+  it("the IP ledger starts over the next UTC day but the pool does not", async () => {
+    let day = "2026-10-23";
+    const c = new Credits(memoryStore(), cfg, () => new Date(`${day}T12:00:00Z`));
+    await c.charge("ip", 1.5);
+    expect((await c.preflight(0, "ip", 0.01)).ok).toBe(false);
+    day = "2026-10-24";
+    expect((await c.preflight(0, "ip", 0.01)).ok).toBe(true);
+    expect((await c.snapshot(0, "ip")).pool.spentUsd).toBeCloseTo(1.5, 6);
   });
 
   it("a snapshot never reports negative remaining", async () => {
-    const c = new Credits(memoryStore(), cfg);
-    await c.charge("v", "ip", 0.9);
-    expect((await c.snapshot("v", "ip")).remainingUsd).toBe(0);
+    expect((await new Credits(memoryStore(), cfg).snapshot(0.9, "ip")).remainingUsd).toBe(0);
   });
 
   it("ignores zero, negative and NaN charges", async () => {
     const c = new Credits(memoryStore(), cfg);
-    await c.charge("v", "ip", 0);
-    await c.charge("v", "ip", -1);
-    await c.charge("v", "ip", Number.NaN);
-    expect((await c.snapshot("v", "ip")).spentUsd).toBe(0);
+    await c.charge("ip", 0);
+    await c.charge("ip", -1);
+    await c.charge("ip", Number.NaN);
+    expect((await c.snapshot(0, "ip")).pool.spentUsd).toBe(0);
+  });
+
+  it("says exactly which scope applies", async () => {
+    const mem = await new Credits(memoryStore(), cfg).snapshot(0, "ip");
+    expect(mem.scopes).toEqual({ visitor: "exact (signed cookie)", pool: "per server instance, in memory" });
+    expect(mem.scope).toBe("your balance is exact; the shared pool is per server instance, in memory until a durable store is added");
+    const kv = creditStoreFromEnv({ KV_REST_API_URL: "https://x", KV_REST_API_TOKEN: "t" }, (async () => Response.json({ result: null })) as unknown as typeof fetch);
+    expect((await new Credits(kv, cfg).snapshot(0, "ip")).scope).toBe("your balance is exact; the shared pool is durable (Upstash / Vercel KV)");
   });
 });
 
@@ -129,7 +139,7 @@ describe("pluggable store", () => {
       },
     };
     const c = new Credits(down, cfg);
-    expect(await c.preflight("v", "ip", 0.01)).toMatchObject({ ok: false, reason: "store", snapshot: null });
-    await expect(c.charge("v", "ip", 0.01)).resolves.toBeUndefined();
+    expect(await c.preflight(0, "ip", 0.01)).toMatchObject({ ok: false, reason: "store", snapshot: null });
+    await expect(c.charge("ip", 0.01)).resolves.toBeUndefined();
   });
 });

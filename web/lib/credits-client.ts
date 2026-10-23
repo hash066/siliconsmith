@@ -23,8 +23,16 @@ export async function fetchCredits(signal?: AbortSignal): Promise<CreditsSnapsho
   }
 }
 
+/** Tells every credits pill the balance changed; with a snapshot they show it at once and then re-read the server. */
+export function announceCredits(snapshot?: CreditsSnapshot) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<CreditsSnapshot | undefined>(CREDITS_CHANGED, { detail: snapshot }));
+}
+
 /** Formats demo credits for a pill: "$0.48". */
 export const formatUsd = (n: number) => `$${n < 0.1 ? n.toFixed(3) : n.toFixed(2)}`;
+
+/** A balance to the tenth of a cent, so a lookup turn (about $0.0003) visibly moves it: "$0.4997". */
+export const formatBalance = (n: number) => `$${n < 1 ? n.toFixed(4) : n.toFixed(2)}`;
 
 export interface UseCredits {
   credits: CreditsSnapshot | null;
@@ -51,7 +59,14 @@ export function useCredits(): UseCredits {
     return () => ctl.abort();
   }, [tick]);
   useEffect(() => {
-    const on = () => setTick((t) => t + 1);
+    const on = (e: Event) => {
+      const snap = (e as CustomEvent<CreditsSnapshot | undefined>).detail;
+      if (snap) {
+        setCredits(snap);
+        setLoading(false);
+      }
+      setTick((t) => t + 1);
+    };
     window.addEventListener(CREDITS_CHANGED, on);
     return () => window.removeEventListener(CREDITS_CHANGED, on);
   }, []);

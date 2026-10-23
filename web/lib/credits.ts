@@ -98,13 +98,22 @@ export interface CreditsSnapshot {
   spentUsd: number;
   remainingUsd: number;
   pool: { capUsd: number; spentUsd: number };
+  /** One honest line covering both scopes (see `scopes`). */
   scope: string;
+  /** Where each number is kept, and how far to trust it. */
+  scopes: { visitor: string; pool: string };
 }
 
 export type Preflight = { ok: true; snapshot: CreditsSnapshot } | { ok: false; reason: "allowance" | "ip" | "pool" | "store"; message: string; snapshot: CreditsSnapshot | null };
 
 const DAY_S = 36 * 3600;
+/** The visitor's own balance is exact because it lives in a signed cookie (lib/credits-cookie.ts), whichever instance serves the request. */
+export const VISITOR_SCOPE = "exact (signed cookie)";
 
+/**
+ * The server-side half of the demo credits: the shared pool and the per-IP backstop, kept in the store. The visitor's own spend is NOT
+ * here: callers pass it in from the verified cookie. With the in-memory store the pool and IP numbers are per server instance.
+ */
 export class Credits {
   constructor(
     private store: CreditStore,
@@ -112,30 +121,38 @@ export class Credits {
     private now: () => Date = () => new Date(),
   ) {}
 
-  private keys(visitorId: string, ip: string) {
+  private keys(ip: string) {
     const day = this.now().toISOString().slice(0, 10);
-    return { v: `cr:v:${day}:${visitorId}`, ip: `cr:ip:${day}:${ip}`, pool: "cr:pool" };
+    return { ip: `cr:ip:${day}:${ip}`, pool: "cr:pool" };
   }
 
-  async snapshot(visitorId: string, ip: string): Promise<CreditsSnapshot> {
-    const k = this.keys(visitorId, ip);
-    const [spent, pool] = await Promise.all([this.store.get(k.v), this.store.get(k.pool)]);
+  readonly scopes = (): { visitor: string; pool: string } => ({ visitor: VISITOR_SCOPE, pool: this.store.scope });
+
+  private describeScope() {
+    const sc = this.scopes();
+    return sc.pool.startsWith("durable") ? `your balance is exact; the shared pool is ${sc.pool}` : `your balance is exact; the shared pool is ${sc.pool} until a durable store is added`;
+  }
+
+  async snapshot(visitorSpentUsd: number, ip: string): Promise<CreditsSnapshot> {
+    void ip;
+    const pool = await this.store.get("cr:pool");
     return {
       allowanceUsd: this.cfg.allowanceUsd,
-      spentUsd: round(spent),
-      remainingUsd: round(Math.max(0, Math.min(this.cfg.allowanceUsd - spent, this.cfg.poolCapUsd - pool))),
+      spentUsd: round(visitorSpentUsd),
+      remainingUsd: round(Math.max(0, Math.min(this.cfg.allowanceUsd - visitorSpentUsd, this.cfg.poolCapUsd - pool))),
       pool: { capUsd: this.cfg.poolCapUsd, spentUsd: round(pool) },
-      scope: this.store.scope,
+      scope: this.describeScope(),
+      scopes: this.scopes(),
     };
   }
 
-  /** Before spending: is there room for `needUsd` for this visitor, this IP and the pool? Fails closed if the store is down. */
-  async preflight(visitorId: string, ip: string, needUsd: number): Promise<Preflight> {
+  /** Before spending: is there room for `needUsd` for this visitor (cookie spend), this IP and the pool? Fails closed if the store is down. */
+  async preflight(visitorSpentUsd: number, ip: string, needUsd: number): Promise<Preflight> {
     let snap: CreditsSnapshot;
     let ipSpent: number;
     try {
-      snap = await this.snapshot(visitorId, ip);
-      ipSpent = await this.store.get(this.keys(visitorId, ip).ip);
+      snap = await this.snapshot(visitorSpentUsd, ip);
+      ipSpent = await this.store.get(this.keys(ip).ip);
     } catch {
       return { ok: false, reason: "store", message: "The credit store is unavailable, so agent turns are paused. Free tools and replays still work.", snapshot: null };
     }
@@ -148,11 +165,11 @@ export class Credits {
     return { ok: true, snapshot: snap };
   }
 
-  /** After a turn: charge the real cost to the visitor, the IP and the pool. Never throws (a store failure must not lose the answer). */
-  async charge(visitorId: string, ip: string, usd: number): Promise<void> {
+  /** After a turn: charge the real cost to the IP and the pool. Never throws (a store failure must not lose the answer). */
+  async charge(ip: string, usd: number): Promise<void> {
     if (!(usd > 0)) return;
-    const k = this.keys(visitorId, ip);
-    await Promise.all([this.store.add(k.v, usd, DAY_S), this.store.add(k.ip, usd, DAY_S), this.store.add(k.pool, usd)]).catch(() => undefined);
+    const k = this.keys(ip);
+    await Promise.all([this.store.add(k.ip, usd, DAY_S), this.store.add(k.pool, usd)]).catch(() => undefined);
   }
 }
 
