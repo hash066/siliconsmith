@@ -117,9 +117,9 @@ export function tempColor(T: number, tMin: number, tMax: number): RGB {
 }
 
 /** RGBA pixels for the viewer: row 0 of the image is the top, model row j=0 is the bottom. Cells without material are transparent. */
-export function plateRgba(v: Viewer): { data: Uint8ClampedArray; n: number } {
+export function plateRgba(v: Viewer): { data: Uint8ClampedArray<ArrayBuffer>; n: number } {
   const n = v.n;
-  const data = new Uint8ClampedArray(n * n * 4);
+  const data = new Uint8ClampedArray(new ArrayBuffer(n * n * 4));
   for (let j = 0; j < n; j++) {
     const row = v.field.T[j] ?? [];
     for (let i = 0; i < n; i++) {

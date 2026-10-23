@@ -186,7 +186,7 @@ describe("api errors", () => {
   });
   it("treats ok:false in a 200 body as an error and passes good bodies through", async () => {
     reply(200, { ok: false, error: { message: "bad" } });
-    expect((await getJson("/x").catch((e) => e)).kind).toBe("server");
+    expect(((await getJson("/x").catch((e) => e)) as BenchApiError).kind).toBe("server");
     reply(200, { ok: true, v: 1 });
     expect(await getJson<{ v: number }>("/x")).toEqual({ ok: true, v: 1 });
   });
