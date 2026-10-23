@@ -1,0 +1,209 @@
+{
+ "kind": "recorded-agent-session",
+ "label": "Recorded session",
+ "id": "board-fault",
+ "title": "Board: firmware and netlist disagree",
+ "workbench": "board",
+ "question": "My ESP32 battery sensor board (BME280 on I2C, USB-C charging, 3.3 V LDO) has the wake button on GPIO12 in the firmware pin header, but the netlist wires it to GPIO14 (template fault_gpio12_vs_gpio14). Is this board OK to send to fab?",
+ "source": "POST https://siliconsmith.vercel.app/api/agent {text}, streamed NDJSON events, saved unedited",
+ "captured": "2026-10-23",
+ "model": "nemotron-super",
+ "cost_usd": null,
+ "cost_note": "The endpoint streams no usage figures, so no cost is shown for agent sessions.",
+ "events": [
+  {
+   "type": "turn.started",
+   "id": "amvkcfrtd",
+   "model": "super"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "We"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " need to check using"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " board"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "_check with template fault"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "_gpio"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "12_vs"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "_gpio14"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": ". Let's call"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " board"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "_check.\n\n"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "\n"
+  },
+  {
+   "type": "tool.call",
+   "id": "amvkcfrtd",
+   "call": {
+    "id": "chatcmpl-tool-bb5c3304079b0666",
+    "name": "board_check",
+    "args": {
+     "template_id": "fault_gpio12_vs_gpio14"
+    }
+   }
+  },
+  {
+   "type": "tool.result",
+   "id": "amvkcfrtd",
+   "callId": "chatcmpl-tool-bb5c3304079b0666",
+   "ok": true,
+   "summary": "fault_gpio12_vs_gpio14: 4 of 5 rungs pass; unknown or failing rungs do not count"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "The"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " board fails rung"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " B4 because"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " the wake button is"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " wired to GPIO1"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "4 while"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " firmware expects GPIO1"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "2, a boot"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "‑strapping pin"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": ". This mismatch"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " means the board is"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " **"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "not** OK to"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": " send to fab as"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "‑"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "is. Evidence"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": ": board:f"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "ault_gpio1"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "2_vs_g"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "pio14#"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcfrtd",
+   "text": "B4."
+  },
+  {
+   "type": "evidence",
+   "id": "amvkcfrtd",
+   "ids": [
+    "board:fault_gpio12_vs_gpio14#B4"
+   ]
+  },
+  {
+   "type": "turn.done",
+   "id": "amvkcfrtd"
+  }
+ ]
+}
