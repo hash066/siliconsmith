@@ -18,9 +18,6 @@ export function Cta() {
             <Link href="/app" className="mk-btn mk-btn-primary">
               Launch App <Icon name="arrow" size={16} />
             </Link>
-            <a href={BRAND.repo} className="mk-btn" rel="noreferrer">
-              <Icon name="gh" size={16} /> View the repo
-            </a>
           </div>
           <div className="mk-checks">
             {["Board and Matter checks are free", "Agent runs on demo credits", "Nemotron is the only model"].map((t) => (
@@ -72,7 +69,7 @@ export function Footer() {
           </div>
           <Col title="Product" items={[["Launch App", "/app"], ["Workbenches", "#workbenches"], ["The Bench", "#bench"], ["How it works", "#how"]]} />
           <Col title="Proof" items={[["Recorded sessions", "#demo"], ["Chatbot vs verified", "#proof"], ["Pipeline", "#pipeline"], ["Architecture", "#stack"]]} />
-          <Col title="Project" items={[["Repository", BRAND.repo], ["Example pull request", BRAND.prExample]]} />
+          <Col title="Project" items={[["Code", BRAND.repo], ["Example pull request", BRAND.prExample]]} />
         </div>
         <div className="mk-foot-base">
           <span>

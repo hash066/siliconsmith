@@ -103,7 +103,7 @@ export function Demo({ sessions }: { sessions: RecordedAgent[] }) {
               </button>
             </span>
           </div>
-          <div ref={logRef} className="mk-pane" style={{ height: 430 }} role="log" aria-live="polite" aria-label={`Recorded session: ${s.title}`}>
+          <div ref={logRef} className="mk-pane" style={{ height: 430 }} role="log" tabIndex={0} aria-live="polite" aria-label={`Recorded session: ${s.title}`}>
             {!asked ? (
               <div className="mk-empty">
                 <Icon name="play" size={30} />

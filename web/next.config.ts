@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/api/board/:path*", destination: `${target}/api/board/:path*` },
       { source: "/api/matter/:path*", destination: `${target}/api/matter/:path*` },
+      // Live Silicon pipeline (Token Factory Sandboxes) is a streaming POST served by the same Python host.
+      { source: "/api/silicon/:path*", destination: `${target}/api/silicon/:path*` },
     ];
   },
   async redirects() {

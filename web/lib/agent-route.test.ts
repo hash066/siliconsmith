@@ -2,10 +2,11 @@
 // allowance exhaustion, input validation and the confirm-only rule for loops. No network, no key.
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GET as creditsGet } from "@/app/api/credits/route";
+import { GET as creditsGet, POST as creditsPost } from "@/app/api/credits/route";
 import { GET as agentGet, POST } from "@/app/api/agent/route";
 import type { AgentEvent } from "./agent";
 import { Credits, memoryStore, type CreditStore } from "./credits";
+import { dayOf, deriveKey, readState, signState } from "./credits-cookie";
 import { setCreditsForTest } from "./credits-server";
 
 const sse = (...chunks: object[]) => new Response(chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n", { status: 200 });
@@ -29,6 +30,10 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
   POST(new NextRequest("http://localhost:3000/api/agent", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "7.7.7.7", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) }));
 const events = async (res: Response): Promise<AgentEvent[]> => (await res.text()).trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as AgentEvent);
 const cookieOf = (res: Response) => res.headers.get("set-cookie")?.split(";")[0] ?? "";
+const KEY = () => deriveKey(process.env.NEBIUS_API_KEY);
+const stateIn = async (res: Response) => readState(await KEY(), (res.headers.get("set-cookie") ?? "").split(";")[0].split("=").slice(1).join("="), new Date());
+const settle = (receipt: string, cookie: string) => creditsPost(new NextRequest("http://localhost:3000/api/credits", { method: "POST", headers: { cookie, "content-type": "application/json", "x-forwarded-for": "7.7.7.7" }, body: JSON.stringify({ receipt }) }));
+const cookieFrom = (res: Response) => (res.headers.get("set-cookie") ?? "").split(";")[0];
 const credits = async (cookie: string) => (await creditsGet(new NextRequest("http://localhost:3000/api/credits", { headers: { cookie, "x-forwarded-for": "7.7.7.7" } }))).json();
 
 describe("/api/agent: connection, cookie and input validation", () => {
@@ -38,17 +43,19 @@ describe("/api/agent: connection, cookie and input validation", () => {
     expect(await (await agentGet()).json()).toEqual({ connected: false });
   });
 
-  it("issues an httpOnly visitor cookie once and reuses a valid one", async () => {
+  it("issues an httpOnly signed credits cookie on a fresh visit and treats a forged one as a fresh allowance", async () => {
     const first = await post({ text: "which entries are in the library?", workbench: "silicon" });
     const set = first.headers.get("set-cookie") ?? "";
-    expect(set).toMatch(/^hw_vid=[0-9a-f-]{36};/);
+    expect(set).toMatch(/^hw_credits=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+;/);
     expect(set).toContain("HttpOnly");
     expect(set).toContain("SameSite=Lax");
-    const again = await post({ text: "hello" }, { cookie: cookieOf(first) });
-    expect(again.headers.get("set-cookie")).toBeNull();
-    // a malformed cookie id is replaced, not trusted
-    const bad = await post({ text: "hello" }, { cookie: "hw_vid=../../etc" });
-    expect(bad.headers.get("set-cookie")).toMatch(/^hw_vid=[0-9a-f-]{36}/);
+    expect(set).not.toContain(process.env.NEBIUS_API_KEY!);
+    const forgedCookie = "hw_credits=eyJ2IjoiYSIsInMiOjB9.AAAA";
+    const forged = await post({ text: "hello" }, { cookie: forgedCookie });
+    expect((await stateIn(forged))?.v).not.toBe("a"); // a new visitor id, not the forged one
+    const c = await credits(forgedCookie);
+    expect(c.spentUsd).toBe(0);
+    expect(c.remainingUsd).toBe(0.5);
   });
 
   it("rejects bad input with a plain 400 and calls no model", async () => {
@@ -67,20 +74,54 @@ describe("/api/agent: connection, cookie and input validation", () => {
 });
 
 describe("/api/agent: credits", () => {
-  it("charges the real cost of a turn to the visitor and the pool, and /api/credits reports it", async () => {
+  it("reserves the estimate in the cookie, ends the stream with a signed receipt, and the balance drops by the real cost", async () => {
     const res = await post({ text: "simulate 10 fins", workbench: "matter" });
     const cookie = cookieOf(res);
     const ev = await events(res);
     const cost = ev.filter((e) => e.type === "cost") as Array<Extract<AgentEvent, { type: "cost" }>>;
     expect(cost).toHaveLength(1);
     expect(cost[0].usd).toBeCloseTo(SUPER_COST, 10);
-    const c = await credits(cookie);
+    const last = ev[ev.length - 1] as Extract<AgentEvent, { type: "credits" }>;
+    expect(last.type).toBe("credits");
+    expect(last.snapshot.spentUsd).toBeCloseTo(SUPER_COST, 6);
+    expect(last.snapshot.remainingUsd).toBeCloseTo(0.5 - SUPER_COST, 6);
+    // until the receipt is claimed the cookie holds the larger reservation: it only ever overpays
+    expect((await credits(cookie)).spentUsd).toBeGreaterThan(SUPER_COST);
+    const claimed = await settle(last.receipt, cookie);
+    expect(claimed.status).toBe(200);
+    expect(((await claimed.json()) as { spentUsd: number }).spentUsd).toBeCloseTo(SUPER_COST, 6);
+    const settled = cookieFrom(claimed);
+    const c = await credits(settled);
     expect(c.spentUsd).toBeCloseTo(SUPER_COST, 6);
     expect(c.pool.spentUsd).toBeCloseTo(SUPER_COST, 6);
     expect(c.remainingUsd).toBeCloseTo(0.5 - SUPER_COST, 6);
     expect(c.allowanceUsd).toBe(0.5);
     expect(c.pool.capUsd).toBe(25);
-    expect(c.scope).toBe("per server instance, in memory");
+    expect(c.scope).toBe("your balance is exact; the shared pool is per server instance, in memory until a durable store is added");
+    // a replayed receipt cannot lower it again, and a forged one is refused
+    expect((await settle(last.receipt, settled)).status).toBe(400);
+    expect((await settle("x.y", settled)).status).toBe(400);
+  });
+
+  it("the balance keeps falling across two turns, even when another instance (empty memory) serves the second", async () => {
+    const t1 = await post({ text: "simulate 10 fins", workbench: "matter" });
+    const e1 = (await events(t1)).pop() as Extract<AgentEvent, { type: "credits" }>;
+    const cookie1 = cookieFrom(await settle(e1.receipt, cookieOf(t1)));
+    setCreditsForTest(new Credits(memoryStore(), { allowanceUsd: 0.5, poolCapUsd: 25, ipCapUsd: 1.5 })); // another serverless instance
+    const t2 = await post({ text: "simulate 12 fins", workbench: "matter" }, { cookie: cookie1 });
+    const e2 = (await events(t2)).pop() as Extract<AgentEvent, { type: "credits" }>;
+    expect(e2.snapshot.spentUsd).toBeCloseTo(2 * SUPER_COST, 6);
+    expect(e2.snapshot.remainingUsd).toBeLessThan(e1.snapshot.remainingUsd);
+    const cookie2 = cookieFrom(await settle(e2.receipt, cookieOf(t2)));
+    expect((await credits(cookie2)).spentUsd).toBeCloseTo(2 * SUPER_COST, 6);
+  });
+
+  it("an exhausted cookie is refused by an instance that has never seen the visitor", async () => {
+    const spent = await signState(await KEY(), { v: "11111111-2222-3333-4444-555555555555", d: dayOf(new Date()), s: 0.499 });
+    const res = await post({ text: "simulate 10 fins" }, { cookie: `hw_credits=${spent}` });
+    expect(res.status).toBe(402);
+    expect((await res.json()).reason).toBe("allowance");
+    expect(upstream).not.toHaveBeenCalled();
   });
 
   it("refuses with 402 and calls no model when the visitor's allowance is used up; free tools are named as still working", async () => {
@@ -108,7 +149,7 @@ describe("/api/agent: credits", () => {
     const c = new Credits(memoryStore(), { allowanceUsd: 0.5, poolCapUsd: 25, ipCapUsd: 0.004 });
     setCreditsForTest(c);
     expect((await post({ text: "simulate" })).status).toBe(200); // worst-case estimate for Super is about $0.0035
-    await c.charge("someone", "7.7.7.7", 0.004);
+    await c.charge("7.7.7.7", 0.004);
     const blocked = await post({ text: "simulate" });
     expect(blocked.status).toBe(402);
     expect((await blocked.json()).reason).toBe("ip");
@@ -150,7 +191,9 @@ describe("/api/agent: credits", () => {
     const total = (ev.filter((e) => e.type === "cost") as Array<Extract<AgentEvent, { type: "cost" }>>).reduce((s, e) => s + e.usd, 0);
     expect(total).toBeGreaterThan(0);
     expect(total).toBeLessThan(0.05);
-    const c = await credits(cookieOf(res));
-    expect(c.spentUsd).toBeCloseTo(total, 8);
+    const last = ev[ev.length - 1] as Extract<AgentEvent, { type: "credits" }>;
+    expect(last.type).toBe("credits");
+    expect(last.snapshot.spentUsd).toBeCloseTo(total, 8);
+    expect(last.snapshot.pool.spentUsd).toBeCloseTo(total, 8);
   });
 });

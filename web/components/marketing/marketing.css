@@ -267,3 +267,32 @@
 .mk-edge { display: block; }
 .mk-node { width: 100%; display: block; }
 @media (max-width: 520px) { .mk-win-bar { flex-wrap: wrap; } }
+
+/* What is real */
+.mk-real { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; text-align: left; }
+@media (min-width: 640px) { .mk-real { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .mk-real { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mk-real-item { min-width: 0; padding: 20px; display: block; transition: border-color .3s, transform .4s var(--hw-ease); }
+a.mk-real-item:hover { border-color: var(--hw-border-hover); transform: translateY(-3px); }
+.mk-real-item h3 { margin-top: 14px; font-family: var(--font-display), sans-serif; font-size: 1rem; letter-spacing: -0.02em; }
+.mk-real-item p { margin-top: 6px; font-size: 14px; color: var(--hw-ink-2); line-height: 1.45; }
+.mk-real-item code { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 11.5px; background: var(--hw-bg); border: 1px solid var(--hw-border); overflow-wrap: anywhere; color: var(--hw-ink-2); }
+
+/* Light theme contrast: the ember button and accent text need a darker ember on white / pale grounds */
+:root[data-theme="light"] .mk-btn-primary { background: #b4410e; border-color: #b4410e; color: #fff; box-shadow: none; }
+:root[data-theme="light"] .mk-btn-primary:hover { background: #983609; }
+
+/* Contrast fixes (axe wcag2aa, both themes) */
+.mk .mk-btn-primary { color: var(--hw-on-accent); }
+:root[data-theme="light"] .mk .mk-btn-primary { color: #fff; }
+.mk-chip { color: color-mix(in srgb, var(--chip, var(--hw-ember)) 72%, var(--hw-ink)); }
+:root[data-theme="light"] .mk-chip { color: color-mix(in srgb, var(--chip, var(--hw-ember)) 55%, var(--hw-ink)); background: color-mix(in srgb, var(--chip, var(--hw-ember)) 9%, var(--hw-surface)); }
+.mk-tile-num { color: var(--c); }
+.mk-toggle button { color: var(--hw-ink-2); }
+.mk-toggle button[aria-checked="true"] { color: var(--hw-on-accent); }
+:root[data-theme="light"] .mk-toggle button[aria-checked="true"] { color: #fff; }
+:root[data-theme="light"] .mk-rung[data-s="pass"] { color: color-mix(in srgb, var(--hw-ok) 70%, var(--hw-ink)); }
+:root[data-theme="light"] .mk-rung[data-s="fail"] { color: color-mix(in srgb, var(--hw-bad) 75%, var(--hw-ink)); }
+.mk-feat .n { color: var(--hw-ink-2); }
+:root[data-theme="light"] .mk-toggle .thumb { background: color-mix(in srgb, var(--tc, var(--hw-ember)) 80%, #000); }
+:root[data-theme="light"] .mk-tab[aria-selected="true"] { color: color-mix(in srgb, var(--hw-ember) 60%, var(--hw-ink)); }
