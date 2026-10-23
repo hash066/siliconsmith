@@ -233,6 +233,8 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
         }
         case "workflow.focus":
           return focusStep(a.args.step);
+        default:
+          return { ok: false, summary: "This action is not available in the app yet." };
       }
     },
     [goWb, selectRun, focusStep],

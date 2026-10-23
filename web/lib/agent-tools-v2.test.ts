@@ -110,7 +110,7 @@ describe("board_check and matter_simulate", () => {
   });
 
   it("every advertised tool is free or only PROPOSES a loop, and has a validator entry", () => {
-    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "board_set_design", "evidence_get", "library_search", "matter_simulate", "propose_board_design", "propose_matter_optimize", "run_explain_failure", "run_nodes_search", "silicon_open_run", "workbench_open", "workflow_focus"]);
+    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "board_set_design", "evidence_get", "library_search", "matter_simulate", "propose_board_design", "propose_matter_optimize", "propose_silicon_run", "run_explain_failure", "run_nodes_search", "silicon_open_run", "workbench_open", "workflow_focus"]);
     expect(validateArgs("matter_simulate", { gen_params: { a: "x" } }).ok).toBe(false);
     expect(validateArgs("matter_simulate", { Q: "2" }).ok).toBe(false);
   });

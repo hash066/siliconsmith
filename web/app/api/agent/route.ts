@@ -3,7 +3,9 @@ import type { NextRequest } from "next/server";
 import { ACTION_TOOLS, type AgentContext, type AgentEvent, type ModelChoice } from "@/lib/agent";
 import { LOOP_CAPS, httpLlm, runBoardDesign, runMatterOptimize } from "@/lib/agent-loops";
 import { configFromEnv, publicStatus, routeModel, runAgentTurn, turnEstimateUsd } from "@/lib/agent-server";
-import { fsReplayLoader } from "@/lib/agent-tools";
+import { plainText } from "@/lib/agent-plain";
+import { runSiliconRun } from "@/lib/agent-silicon";
+import { fsReplayLoader, SILICON_RUN_CAP_USD } from "@/lib/agent-tools";
 import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import { round6, signReceipt } from "@/lib/credits-cookie";
 import { getCredits, identify, setCookieFor } from "@/lib/credits-server";
@@ -12,8 +14,8 @@ import { fsManifestStore } from "@/lib/manifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// A confirmed loop can run up to its 90 s cap.
-export const maxDuration = 120;
+// A confirmed loop can run up to its 90 s cap; a live Silicon run up to 270 s.
+export const maxDuration = 300;
 
 const loader = fsReplayLoader(join(process.cwd(), "public", "replays"));
 const manifests = fsManifestStore(join(process.cwd(), "public", "library"));
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
   const action = isRecord(body.action) ? body.action : null;
 
   // A confirmed loop: validate what the click carried, never trust the model's earlier proposal.
-  let loop: { tool: "board_design"; brief: string } | { tool: "matter_optimize"; generator: MatterGenerator } | null = null;
+  let loop: { tool: "board_design"; brief: string } | { tool: "matter_optimize"; generator: MatterGenerator } | { tool: "silicon_run"; workload: "w1" | "w2" } | null = null;
   if (confirm) {
     const tool = action?.tool;
     const args = isRecord(action?.args) ? action.args : {};
@@ -62,6 +64,9 @@ export async function POST(req: NextRequest) {
       const brief = typeof args.brief === "string" ? args.brief.trim() : "";
       if (!brief || brief.length > 500) return json(400, { error: "bad_request", message: "The brief must be 1 to 500 characters." }, freshCookie);
       loop = { tool, brief };
+    } else if (tool === "silicon_run") {
+      if (args.workload !== "w1" && args.workload !== "w2") return json(400, { error: "bad_request", message: "The workload must be w1 or w2." }, freshCookie);
+      loop = { tool, workload: args.workload };
     } else {
       const g = args.generator === undefined ? "rect_fins" : args.generator;
       if (typeof g !== "string" || !(g in MATTER_GENERATORS)) return json(400, { error: "bad_request", message: "Unknown generator." }, freshCookie);
@@ -84,18 +89,19 @@ export async function POST(req: NextRequest) {
   const context = isRecord(body.context) ? (body.context as AgentContext) : undefined;
 
   const credits = getCredits();
-  const need = loop ? LOOP_CAPS.usd : turnEstimateUsd(model, cfg);
+  const need = loop ? (loop.tool === "silicon_run" ? SILICON_RUN_CAP_USD : LOOP_CAPS.usd) : turnEstimateUsd(model, cfg);
   const pre = await credits.preflight(who.state.s, who.ip, need);
   if (!pre.ok) return json(402, { error: "credits", reason: pre.reason, message: pre.message, credits: pre.snapshot }, freshCookie);
 
   // The hosted Board and Matter functions live on this same deployment; the agent calls them like any visitor (they are rate limited too).
   const origin = req.nextUrl.origin;
-  const hosted = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), "x-forwarded-for": who.ip }, signal: req.signal });
+  const hosted = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), "x-forwarded-for": who.ip }, signal: init?.signal ?? req.signal });
   const turnId = `a${Date.now().toString(36)}`;
   const tools = { manifests, hosted };
 
   let events: AsyncGenerator<AgentEvent>;
   if (loop?.tool === "board_design") events = runBoardDesign({ turnId, brief: loop.brief, llm: httpLlm(cfg), hosted, signal: req.signal });
+  else if (loop?.tool === "silicon_run") events = runSiliconRun({ turnId, workload: loop.workload, hosted, signal: req.signal });
   else if (loop?.tool === "matter_optimize") events = runMatterOptimize({ turnId, generator: loop.generator, llm: httpLlm(cfg), hosted, signal: req.signal });
   else events = runAgentTurn({ text, model: choice, workbench, context, history, runId: typeof body.run_id === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(body.run_id) ? body.run_id : undefined, tools, cfg, loader, signal: req.signal, turnId });
 
@@ -110,7 +116,8 @@ export async function POST(req: NextRequest) {
     try {
       for await (const e of events) {
         if (e.type === "cost") spent += e.usd;
-        yield e;
+        // chips and loop summaries are plain words too (idempotent on text that already went through the stream filter)
+        yield e.type === "tool.result" ? { ...e, summary: plainText(e.summary) } : e.type === "text.delta" ? { ...e, text: plainText(e.text) } : e;
       }
       settled = true;
     } finally {

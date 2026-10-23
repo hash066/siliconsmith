@@ -175,6 +175,44 @@ describe("/api/agent: credits", () => {
     expect(c.status).toBe(503);
   });
 
+  it("a confirmed live Silicon run streams chips, charges the real llm.call costs and settles the cookie", async () => {
+    const nd = (...evs: object[]) => new Response(evs.map((e) => JSON.stringify(e)).join(String.fromCharCode(10)) + String.fromCharCode(10), { status: 200 });
+    const b = { v: 1, seq: 0, t: 0, run_id: "live" };
+    let sent: unknown;
+    upstream.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/api/silicon/run")) {
+        sent = JSON.parse(String(init?.body));
+        return nd(
+          { ...b, type: "run.baseline", cycles: 1000 },
+          { ...b, type: "llm.call", node_id: null, model: "nemotron-ultra", role: "architect", tokens_in: 100, tokens_out: 10, cost_usd: 0.004, latency_ms: 1 },
+          { ...b, type: "node.scored", node_id: "n1", cycles: 500, speedup: 2, luts: 1, ffs: 1, area_delta_pct: 1, fmax_mhz: null, wall_speedup: 2, feasible: true, on_pareto: true, ladder: {} },
+          { ...b, type: "run.completed", best_node_id: "n1", pareto: ["n1"], totals: { nodes: 1, sandboxes: 1, cost_usd: 0.004, tokens: 110, wall_s: 1 }, report: {} },
+        );
+      }
+      return SUPER_REPLY();
+    });
+    expect((await post({ confirm: true, action: { tool: "silicon_run", args: { workload: "w9" } } })).status).toBe(400);
+    const res = await post({ confirm: true, action: { tool: "silicon_run", args: { workload: "w1" } } });
+    expect(res.status).toBe(200);
+    const ev = await events(res);
+    expect(sent).toEqual({ workload: "w1" });
+    expect(ev.some((e) => e.type === "ui.action" && e.action.name === "silicon.run_live")).toBe(true);
+    const last = ev[ev.length - 1] as Extract<AgentEvent, { type: "credits" }>;
+    expect(last.type).toBe("credits");
+    expect(last.snapshot.spentUsd).toBeCloseTo(0.004, 6);
+    expect(last.snapshot.pool.spentUsd).toBeCloseTo(0.004, 6);
+    // the reservation for a live run is its $0.15 cap until the receipt is claimed
+    expect((await credits(cookieOf(res))).spentUsd).toBeCloseTo(0.15, 6);
+    expect(((await (await settle(last.receipt, cookieOf(res))).json()) as { spentUsd: number }).spentUsd).toBeCloseTo(0.004, 6);
+  });
+
+  it("a live Silicon run needs the whole $0.15 cap in credits", async () => {
+    setCreditsForTest(new Credits(memoryStore(), { allowanceUsd: 0.1, poolCapUsd: 25, ipCapUsd: 5 }));
+    const res = await post({ confirm: true, action: { tool: "silicon_run", args: { workload: "w1" } } });
+    expect(res.status).toBe(402);
+    expect((await res.json()).reason).toBe("allowance");
+  });
+
   it("a confirmed Matter loop runs, streams cost events and charges them", async () => {
     // the route calls the hosted simulator on its own origin with global fetch: script both the model and the simulator
     const sim = (peak: number) =>

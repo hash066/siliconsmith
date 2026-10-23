@@ -26,7 +26,7 @@ export const READ_TOOLS = [
   "workflow_focus",
 ] as const;
 /** Bounded loops that spend credits. The model can only PROPOSE them; the user clicks, and the server re-checks credits and caps. */
-export const ACTION_TOOLS = ["board_design", "matter_optimize"] as const;
+export const ACTION_TOOLS = ["board_design", "matter_optimize", "silicon_run"] as const;
 export type ToolName = (typeof READ_TOOLS)[number] | (typeof ACTION_TOOLS)[number];
 
 export const isActionTool = (name: string): boolean => (ACTION_TOOLS as readonly string[]).includes(name);
@@ -71,7 +71,8 @@ export interface AgentContext {
 export interface AgentRequest {
   text: string;
   model: ModelChoice;
-  workbench: WorkbenchId;
+  /** Absent on the start screen: the agent then routes the goal to a workbench itself (and opens it with a workbench.open action). */
+  workbench?: WorkbenchId;
   context?: AgentContext;
   /** The last few turns, so the conversation has continuity. The server truncates. */
   history?: Array<{ role: "user" | "assistant"; text: string }>;
@@ -81,7 +82,7 @@ export interface AgentRequest {
 }
 
 export interface MessageFlag {
-  kind: "invented_command" | "claims_run";
+  kind: "invented_command" | "claims_run" | "invented_number";
   message: string;
 }
 
@@ -103,6 +104,8 @@ export interface AgentMessage {
   evidence: string[];
   /** Server post-check findings about the final text (an invented command, a claim that a command was run). */
   flags?: MessageFlag[];
+  /** Follow-up prompts the user can click (chips), computed server-side from what the turn did. */
+  suggestions?: string[];
   /** Actions the agent performed in the app during this turn (the app mirrors them; the user can apply one again). */
   uiActions?: UiAction[];
   streaming?: boolean;
@@ -128,6 +131,7 @@ export type AgentEvent =
   | { type: "ui.action"; id: string; action: UiAction }
   | { type: "cost"; id: string; usd: number; tokens_in: number; tokens_out: number; model: AgentModel }
   | { type: "action.proposed"; action: PendingAction }
+  | { type: "suggest"; id: string; chips: string[] }
   /** Last event of a metered turn: the visitor's balance after it, and a signed receipt the browser posts to /api/credits to settle the cookie. */
   | { type: "credits"; snapshot: CreditsSnapshot; receipt: string }
   | { type: "turn.done"; id: string; usage?: TurnUsage }
@@ -177,6 +181,8 @@ export function applyAgentEvent(s: AgentState, e: AgentEvent): AgentState {
       }));
     case "action.proposed":
       return { ...s, pending: e.action };
+    case "suggest":
+      return patch(s, e.id, (m) => ({ ...m, suggestions: e.chips }));
     case "credits":
       return s;
     case "turn.done":

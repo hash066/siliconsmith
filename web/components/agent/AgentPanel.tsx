@@ -25,6 +25,7 @@ import type { UiAction } from "@/lib/agent-actions";
 import { CreditsError, fetchAgentStatus, httpAgentTransport } from "@/lib/agent-client";
 import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import { formatBalance, formatUsd, useCredits, type CreditsSnapshot } from "@/lib/credits-client";
+import { STAGE_PLAIN } from "@/lib/agent-silicon";
 import { Markdown } from "./Markdown";
 
 export const SUGGESTED_PROMPTS: Record<WorkbenchId, string[]> = {
@@ -32,6 +33,36 @@ export const SUGGESTED_PROMPTS: Record<WorkbenchId, string[]> = {
   board: ["Check the GPIO12 fault template and tell me which rung fails.", "Load the clean template and move the wake button to GPIO13, then re-check.", "Draft a design for a 3.3 V sensor board with an LED and check it."],
   silicon: ["Why was n2.2.4 pruned in r_w1_contree3?", "Open the best node of r_w1_contree3 and explain what it does.", "Which library instruction has the biggest speedup, and how do I reproduce it?"],
 };
+
+/** What a person sees on the start screen (no workbench yet): one real, working prompt per workbench. */
+export const START_PROMPTS: string[] = [
+  "A heat sink for a 5 W chip, 40 mm square, under 70 C.",
+  "A battery ESP32 sensor board with a BME280 and USB-C charging; check it against its firmware.",
+  "Make this loop faster with a custom RISC-V instruction.",
+];
+
+/** Plain names for the chips in a conversation; the technical name stays in the expanded card. */
+const TOOL_PLAIN: Record<string, string> = {
+  board_check: "Checking the board",
+  board_set_design: "Updating the board design and checking it",
+  matter_simulate: "Simulating the heat sink",
+  matter_optimize: "Searching for a cooler heat sink",
+  board_design: "Drafting a board design",
+  silicon_run: "Running the live Silicon pipeline",
+  silicon_propose: "Choosing the instruction",
+  library_search: "Looking up the stored results",
+  evidence_get: "Opening the stored evidence",
+  run_nodes_search: "Searching the recorded runs",
+  run_explain_failure: "Finding out why it failed",
+  workbench_open: "Opening the workbench",
+  silicon_open_run: "Opening a recorded run",
+  workflow_focus: "Moving to the next step",
+  propose_parameters: "Choosing the next parameters",
+  propose_board_design: "Proposing a board design",
+  propose_matter_optimize: "Proposing a search for a cooler heat sink",
+  propose_silicon_run: "Proposing a live Silicon run",
+};
+export const toolPlain = (c: { name: string; args: Record<string, unknown> }): string => (c.name === "silicon_stage" ? (STAGE_PLAIN[String(c.args.stage)] ?? "Working") : (TOOL_PLAIN[c.name] ?? c.name));
 
 const MODEL_LABEL: Record<ModelChoice, string> = { auto: "Auto", ultra: "Ultra", super: "Super", nano: "Nano" };
 const MODEL_TITLE: Record<ModelChoice, string> = {
@@ -76,10 +107,8 @@ export function ToolCard({ call }: { call: ToolCall }) {
     <div className="min-w-0 rounded-md border border-line bg-sunken" role="group" aria-label={`Tool call ${call.name}`}>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${call.status === "running" ? "anim-breathe" : ""}`} style={{ background: tone }} aria-hidden="true" />
-        <code className="num min-w-0 flex-1 truncate text-[12px] text-ink">{call.name}</code>
-        <span className="shrink-0 text-[11px] text-ink-3">
-          {action ? "action" : "tool"} · {call.status === "running" ? "running" : call.status === "ok" ? "done" : "failed"}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{toolPlain(call)}</span>
+        <span className="shrink-0 text-[11px] text-ink-3">{call.status === "running" ? "working" : call.status === "ok" ? "done" : "failed"}</span>
         <span className="shrink-0 text-[11px] text-ink-3" aria-hidden="true">
           {open ? "−" : "+"}
         </span>
@@ -88,7 +117,8 @@ export function ToolCard({ call }: { call: ToolCall }) {
       {open && (
         <div className="flex flex-col gap-2 border-t border-line px-3 py-2">
           <div>
-            <p className="text-[11px] text-ink-3">Arguments</p>
+            <p className="text-[11px] text-ink-3">{action ? "Action" : "Tool"} <code className="num text-ink-2">{call.name}</code></p>
+            <p className="mt-1.5 text-[11px] text-ink-3">Arguments</p>
             <pre className="scroll-quiet num mt-0.5 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11.5px] text-ink-2">{short(call.args)}</pre>
           </div>
           <div>
@@ -119,6 +149,12 @@ export const actionLabel = (a: UiAction): string => {
       return `Opened ${a.args.run_id}${a.args.node_id ? ` · ${a.args.node_id}` : ""}`;
     case "workflow.focus":
       return `Focused ${a.args.step}`;
+    case "silicon.run_live":
+      return "Started the live Silicon run";
+    case "board.design":
+      return "Started a board design";
+    case "preview.tab":
+      return `Showed the ${a.args.tab}`;
   }
 };
 
@@ -190,7 +226,12 @@ export function MessageView({ m, onApply }: { m: AgentMessage; onApply?: (a: UiA
           This answer says something is verified or proven without citing evidence. Only the verifiers can set a status; treat it as unverified.
         </p>
       )}
-      {m.evidence.length > 0 && <p className="num break-all text-[11.5px] text-ink-3">Cites: {m.evidence.join(", ")}</p>}
+      {m.evidence.length > 0 && (
+        <details className="text-[11.5px] text-ink-3">
+          <summary className="cursor-pointer select-none">Show the evidence behind this ({m.evidence.length})</summary>
+          <p className="num mt-1 break-all">{m.evidence.join(", ")}</p>
+        </details>
+      )}
       {(m.flags ?? []).map((f, i) => (
         <p key={i} className="rounded-md bg-red-dim px-2.5 py-1.5 text-[12px] leading-snug text-red" role="note">
           {f.message}
@@ -208,7 +249,8 @@ export function MessageView({ m, onApply }: { m: AgentMessage; onApply?: (a: UiA
 
 export interface AgentPanelViewProps {
   state: AgentState;
-  workbench: WorkbenchId;
+  /** Absent on the start screen: the agent routes the goal itself. */
+  workbench?: WorkbenchId;
   /** null while the status probe is in flight: the panel reserves its space instead of flashing "not connected". */
   connected: boolean | null;
   busy: boolean;
@@ -237,6 +279,8 @@ export function AgentPanelView(p: AgentPanelViewProps) {
     const el = scrollRef.current;
     if (el && state.messages.length > 0) el.scrollTop = el.scrollHeight;
   }, [state.messages, state.pending]);
+  const lastMsg = state.messages[state.messages.length - 1];
+  const followUps = !busy && !state.pending && lastMsg && lastMsg.role === "assistant" && !lastMsg.streaming && !lastMsg.error ? (lastMsg.suggestions ?? []) : [];
   const checking = connected === null;
   const blocked = connected !== true || creditsExhausted;
   const submit = () => {
@@ -280,7 +324,7 @@ export function AgentPanelView(p: AgentPanelViewProps) {
             <h3 className="text-[14px] font-medium text-ink">Ask the agent to do it</h3>
             <p className="mt-1 text-[13px] leading-snug text-ink-3">It runs the free checkers in the app for you and cites what the verifiers say. It cannot declare anything proven.</p>
             <ul className="mt-3 flex flex-col gap-2" aria-label="Suggested prompts">
-              {SUGGESTED_PROMPTS[workbench].map((q) => (
+              {(workbench ? SUGGESTED_PROMPTS[workbench] : START_PROMPTS).map((q) => (
                 <li key={q}>
                   <button type="button" onClick={() => p.onSend(q)} disabled={busy || blocked} className="w-full rounded-md border border-line px-3 py-2 text-left text-[13px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
                     {q}
@@ -295,6 +339,17 @@ export function AgentPanelView(p: AgentPanelViewProps) {
               <MessageView key={m.id} m={m} onApply={p.onApply} />
             ))}
           </ol>
+        )}
+        {followUps.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Suggested next steps">
+            {followUps.map((q) => (
+              <li key={q}>
+                <button type="button" onClick={() => p.onSend(q)} disabled={busy || blocked} className="inline-flex min-h-7 items-center rounded-full border border-line-2 px-2.5 py-1 text-left text-[12px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
+                  {q}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         {p.error && (
           <p className="mt-3 rounded-md bg-red-dim px-3 py-2 text-[12.5px] text-red" role="alert">
@@ -371,7 +426,8 @@ let nextId = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(nextId++).toString(36)}`;
 
 export interface AgentPanelProps {
-  workbench: WorkbenchId;
+  /** Absent on the start screen: the agent routes the goal itself. */
+  workbench?: WorkbenchId;
   /** What the user sees right now. The agent can act on it (edit the current design, tune the current parameters). */
   context?: AgentContext;
   /** Controlled model choice (for a top-bar selector). Omit it and the panel keeps its own. */
@@ -462,7 +518,7 @@ export function AgentPanel({ workbench, context, model: modelProp, onModelChange
 
   const chips = useMemo(() => {
     if (context?.chips?.length) return context.chips;
-    const out: Array<{ label: string; value?: string }> = [{ label: "Workbench", value: WORKBENCHES[workbench].name }];
+    const out: Array<{ label: string; value?: string }> = workbench ? [{ label: "Workbench", value: WORKBENCHES[workbench].name }] : [];
     if (context?.board?.template_id) out.push({ label: "Design", value: context.board.template_id });
     if (context?.matter?.generator) out.push({ label: "Generator", value: context.matter.generator });
     if (context?.silicon?.run_id) out.push({ label: "Run", value: context.silicon.run_id });
