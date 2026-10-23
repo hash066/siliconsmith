@@ -27,7 +27,7 @@ function PlateViewer({ sim }: { sim: MatterSimulation }) {
   const plate = useMemo(() => buildPlate(sim.viewer), [sim]);
   // Colour runs from the coolest material cell to the peak, so the (often small) spread is visible; the legend states both numbers.
   const lo = plate.tMin;
-  const hi = sim.viewer.field.peak;
+  const hi = sim.viewer.field?.peak ?? lo;
   // two triangles per quad share one temperature entry: triangle t belongs to quad floor(t / 2)
   const byTri = useMemo(() => {
     const span = Math.max(hi - lo, 1e-9);
@@ -120,6 +120,7 @@ export function MatterSimulatePanel({ onEvidence }: { onEvidence: (ref: DrawerRe
 
   const stlHref = sim?.stl ? `data:model/stl;base64,${sim.stl.base64}` : null;
   const passN = sim ? sim.ladder.filter((r) => r.status === "pass").length : 0;
+  const solved = !!sim && sim.metrics.peak_temp_c !== undefined && !!sim.viewer.field;
   const chip = (rung: string, label: string) =>
     sim ? (
       <EvidenceTag
@@ -203,25 +204,33 @@ export function MatterSimulatePanel({ onEvidence }: { onEvidence: (ref: DrawerRe
             )}
             {sim && !busy && (
               <>
-                <PlateViewer sim={sim} />
+                {solved ? (
+                  <PlateViewer sim={sim} />
+                ) : (
+                  <p className="rounded-md bg-amber-dim px-3 py-2.5 text-[13px] leading-snug text-amber" role="status">
+                    Nothing was solved: the geometry was rejected before the solve ({sim.ladder.find((r) => r.status === "fail")?.detail ?? "a rung failed"}). There is no plate temperature or peak to show. Change the parameters and simulate again.
+                  </p>
+                )}
+                {solved && (
                 <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line text-[13px] sm:grid-cols-4 [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2">
                   <div>
                     <dt className="flex items-center justify-between gap-1 text-[12px] text-ink-3">Peak {chip("M4", "peak temperature")}</dt>
-                    <dd className="num text-[16px] text-ink">{f1(sim.metrics.peak_temp_c)} °C</dd>
+                    <dd className="num text-[16px] text-ink">{f1(sim.metrics.peak_temp_c!)} °C</dd>
                   </div>
                   <div>
                     <dt className="text-[12px] text-ink-3">Rise over ambient</dt>
-                    <dd className="num text-[16px] text-ink">{f1(sim.metrics.peak_rise_k)} K</dd>
+                    <dd className="num text-[16px] text-ink">{f1(sim.metrics.peak_rise_k!)} K</dd>
                   </div>
                   <div>
                     <dt className="text-[12px] text-ink-3">Material</dt>
-                    <dd className="num text-[16px] text-ink">{f1(sim.metrics.material_fraction * 100)}%</dd>
+                    <dd className="num text-[16px] text-ink">{f1((sim.metrics.material_fraction ?? 0) * 100)}%</dd>
                   </div>
                   <div>
                     <dt className="text-[12px] text-ink-3">Heat balance error</dt>
-                    <dd className="num text-[16px] text-ink">{sim.metrics.heat_balance_rel.toExponential(1)}</dd>
+                    <dd className="num text-[16px] text-ink">{(sim.metrics.heat_balance_rel ?? 0).toExponential(1)}</dd>
                   </div>
                 </dl>
+                )}
 
                 <section aria-label="Rungs">
                   <h3 className="mb-1.5 text-[13px] text-ink-2">Ladder</h3>
@@ -260,9 +269,9 @@ export function MatterSimulatePanel({ onEvidence }: { onEvidence: (ref: DrawerRe
                         ] as const
                       ).map(([name, b]) => (
                         <tr key={name} className="border-t border-line">
-                          <th scope="row" className="py-1.5 pr-2 text-left font-normal text-ink-2">{name} <span className="text-ink-3">({b.cells} cells)</span></th>
-                          <td>{f1(b.peak_temp_c)} °C</td>
-                          <td>{b.delta_k >= 0 ? `${f1(b.delta_k, 2)} K cooler` : `${f1(-b.delta_k, 2)} K hotter`}</td>
+                          <th scope="row" className="py-1.5 pr-2 text-left font-normal text-ink-2">{name} <span className="text-ink-3">({b ? b.cells : "—"} cells)</span></th>
+                          <td>{b ? `${f1(b.peak_temp_c)} °C` : "—"}</td>
+                          <td>{b && b.delta_k !== null ? (b.delta_k >= 0 ? `${f1(b.delta_k, 2)} K cooler` : `${f1(-b.delta_k, 2)} K hotter`) : "no comparison: nothing was solved"}</td>
                         </tr>
                       ))}
                     </tbody>

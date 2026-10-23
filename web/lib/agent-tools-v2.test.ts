@@ -97,13 +97,20 @@ describe("board_check and matter_simulate", () => {
     }
   });
 
+  it("matter_simulate with a rejected geometry (empty metrics) says nothing was solved instead of crashing", async () => {
+    const rejected: HostedCaller = async () => new Response(JSON.stringify({ ok: true, ladder: [{ id: "M1", status: "pass", detail: "ok" }, { id: "M2", status: "fail", detail: "material 1620 cells exceeds budget 1440" }], metrics: {}, baselines: { equal_material: null, full_budget: null }, verdict: null }), { status: 200 });
+    const r = await runTool("matter_simulate", {}, loader, { manifests, hosted: rejected });
+    expect(r.ok && r.summary).toContain("no solve");
+    expect(r.ok && r.summary).toContain("exceeds budget");
+  });
+
   it("without the hosted functions the tools say so instead of inventing a result", async () => {
     expect((await runTool("board_check", { template_id: "clean_sensor" }, loader, {})).ok).toBe(false);
     expect((await runTool("matter_simulate", {}, loader, {})).ok).toBe(false);
   });
 
-  it("every advertised tool is read-only and has a validator entry", () => {
-    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "evidence_get", "library_search", "matter_simulate", "run_explain_failure", "run_nodes_search"]);
+  it("every advertised tool is free or only PROPOSES a loop, and has a validator entry", () => {
+    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "board_set_design", "evidence_get", "library_search", "matter_simulate", "propose_board_design", "propose_matter_optimize", "run_explain_failure", "run_nodes_search", "silicon_open_run", "workbench_open", "workflow_focus"]);
     expect(validateArgs("matter_simulate", { gen_params: { a: "x" } }).ok).toBe(false);
     expect(validateArgs("matter_simulate", { Q: "2" }).ok).toBe(false);
   });

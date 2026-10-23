@@ -15,6 +15,8 @@ export interface PlateMesh {
 }
 
 export function buildPlate(v: MatterViewer): PlateMesh {
+  if (!v.field) return { mesh: { tris: new Float32Array(0), count: 0, min: [0, 0, 0], max: [0, 0, 0] }, temps: new Float32Array(0), tMin: 0, tMax: 0, cells: 0 };
+  const field = v.field;
   const n = v.n;
   const dx = v.dx_mm;
   const t = v.thickness_mm;
@@ -31,7 +33,7 @@ export function buildPlate(v: MatterViewer): PlateMesh {
   for (let j = 0; j < n; j++)
     for (let i = 0; i < n; i++) {
       if (!solid(i, j)) continue;
-      const T = v.field.T[j]?.[i];
+      const T = field.T[j]?.[i];
       if (typeof T !== "number") continue;
       cells++;
       tMin = Math.min(tMin, T);

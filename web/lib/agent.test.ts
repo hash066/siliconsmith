@@ -59,7 +59,9 @@ describe("agent panel protocol", () => {
   });
 
   it("separates actions from read-only tools and words the cost estimate honestly", () => {
-    expect(isActionTool("run_start")).toBe(true);
+    expect(isActionTool("board_design")).toBe(true);
+    expect(isActionTool("matter_optimize")).toBe(true);
+    expect(isActionTool("matter_simulate")).toBe(false);
     expect(isActionTool("evidence_get")).toBe(false);
     expect(formatCostEstimate(null)).toBe("No estimate available");
     expect(formatCostEstimate(0.0042)).toBe("Estimated cost $0.0042");

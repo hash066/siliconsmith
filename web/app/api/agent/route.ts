@@ -1,72 +1,127 @@
 import { join } from "node:path";
 import type { NextRequest } from "next/server";
-import { configFromEnv, DailyLimiter, publicStatus, runAgentTurn, type AgentConfig } from "@/lib/agent-server";
+import { ACTION_TOOLS, type AgentContext, type AgentEvent, type ModelChoice } from "@/lib/agent";
+import { LOOP_CAPS, httpLlm, runBoardDesign, runMatterOptimize } from "@/lib/agent-loops";
+import { configFromEnv, publicStatus, routeModel, runAgentTurn, turnEstimateUsd } from "@/lib/agent-server";
 import { fsReplayLoader } from "@/lib/agent-tools";
+import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
+import { getCredits, identify } from "@/lib/credits-server";
+import { MATTER_GENERATORS, type MatterGenerator } from "@/lib/hosted";
 import { fsManifestStore } from "@/lib/manifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// A confirmed loop can run up to its 90 s cap.
+export const maxDuration = 120;
 
 const loader = fsReplayLoader(join(process.cwd(), "public", "replays"));
 const manifests = fsManifestStore(join(process.cwd(), "public", "library"));
-let limiter: { key: string; l: DailyLimiter } | null = null;
-const limiterFor = (cfg: AgentConfig) => {
-  const key = `${cfg.visitorTurnsPerDay}/${cfg.globalTurnsPerDay}`;
-  if (!limiter || limiter.key !== key) limiter = { key, l: new DailyLimiter(cfg.visitorTurnsPerDay, cfg.globalTurnsPerDay) };
-  return limiter.l;
-};
 
-/** Whether the endpoint is connected, and its limits. Never includes the key. */
+/** Whether the endpoint is connected, and its limits. Never includes the key. Credits are at /api/credits. */
 export async function GET() {
   return Response.json(publicStatus(configFromEnv()), { headers: { "cache-control": "no-store" } });
 }
 
+const json = (status: number, body: unknown, setCookie: string | null) => {
+  const headers = new Headers({ "cache-control": "no-store" });
+  if (setCookie) headers.append("set-cookie", setCookie);
+  return Response.json(body, { status, headers });
+};
+
+const isWorkbench = (v: unknown): v is WorkbenchId => typeof v === "string" && v in WORKBENCHES;
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
 export async function POST(req: NextRequest) {
   const cfg = configFromEnv();
-  if (!cfg) return Response.json({ error: "not_connected", message: "The agent endpoint is not connected." }, { status: 503 });
-  if (Number(req.headers.get("content-length") ?? 0) > 4000) return Response.json({ error: "too_large", message: "Request too large." }, { status: 413 });
+  const who = identify(req.headers, req.nextUrl.protocol === "https:");
+  if (!cfg) return json(503, { error: "not_connected", message: "The agent endpoint is not connected." }, who.setCookie);
+  if (Number(req.headers.get("content-length") ?? 0) > 40_000) return json(413, { error: "too_large", message: "Request too large." }, who.setCookie);
 
-  let body: { text?: unknown; model?: unknown; run_id?: unknown };
+  let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const b: unknown = await req.json();
+    if (!isRecord(b)) throw new Error("not an object");
+    body = b;
   } catch {
-    return Response.json({ error: "bad_request", message: "Body must be JSON." }, { status: 400 });
+    return json(400, { error: "bad_request", message: "Body must be a JSON object." }, who.setCookie);
   }
+
+  const workbench = isWorkbench(body.workbench) ? body.workbench : undefined;
+  const confirm = body.confirm === true;
+  const action = isRecord(body.action) ? body.action : null;
+
+  // A confirmed loop: validate what the click carried, never trust the model's earlier proposal.
+  let loop: { tool: "board_design"; brief: string } | { tool: "matter_optimize"; generator: MatterGenerator } | null = null;
+  if (confirm) {
+    const tool = action?.tool;
+    const args = isRecord(action?.args) ? action.args : {};
+    if (!(ACTION_TOOLS as readonly unknown[]).includes(tool)) return json(400, { error: "bad_request", message: "Unknown action." }, who.setCookie);
+    if (tool === "board_design") {
+      const brief = typeof args.brief === "string" ? args.brief.trim() : "";
+      if (!brief || brief.length > 500) return json(400, { error: "bad_request", message: "The brief must be 1 to 500 characters." }, who.setCookie);
+      loop = { tool, brief };
+    } else {
+      const g = args.generator === undefined ? "rect_fins" : args.generator;
+      if (typeof g !== "string" || !(g in MATTER_GENERATORS)) return json(400, { error: "bad_request", message: "Unknown generator." }, who.setCookie);
+      loop = { tool: "matter_optimize", generator: g as MatterGenerator };
+    }
+  } else if (action) {
+    return json(400, { error: "bad_request", message: "A loop only runs with confirm: true." }, who.setCookie);
+  }
+
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  if (!text) return Response.json({ error: "bad_request", message: "Write a question first." }, { status: 400 });
-  if (text.length > cfg.maxInputChars) return Response.json({ error: "too_long", message: `Keep it under ${cfg.maxInputChars} characters.` }, { status: 400 });
-
-  const visitor = (req.headers.get("x-forwarded-for")?.split(",")[0] ?? req.headers.get("x-real-ip") ?? "anon").trim();
-  const taken = limiterFor(cfg).take(visitor);
-  if (!taken.ok) {
-    return Response.json(
-      {
-        error: "limit",
-        message:
-          taken.reason === "visitor"
-            ? `Daily limit of ${cfg.visitorTurnsPerDay} agent turns reached. Replays, the library and the evidence drawer still work.`
-            : "The shared daily agent budget is used up. Replays, the library and the evidence drawer still work.",
-      },
-      { status: 429 },
-    );
+  if (!loop) {
+    if (!text) return json(400, { error: "bad_request", message: "Write a question first." }, who.setCookie);
+    if (text.length > cfg.maxInputChars) return json(400, { error: "too_long", message: `Keep it under ${cfg.maxInputChars} characters.` }, who.setCookie);
   }
+  const choice = (typeof body.model === "string" ? body.model : "auto") as ModelChoice;
+  const model = routeModel(text, choice);
+  const history = Array.isArray(body.history)
+    ? body.history.filter((m): m is { role: "user" | "assistant"; text: string } => isRecord(m) && (m.role === "user" || m.role === "assistant") && typeof m.text === "string").slice(-cfg.historyMessages)
+    : [];
+  const context = isRecord(body.context) ? (body.context as AgentContext) : undefined;
 
-  const turnId = `a${Date.now().toString(36)}`;
+  const credits = getCredits();
+  const need = loop ? LOOP_CAPS.usd : turnEstimateUsd(model, cfg);
+  const pre = await credits.preflight(who.id, who.ip, need);
+  if (!pre.ok) return json(402, { error: "credits", reason: pre.reason, message: pre.message, credits: pre.snapshot }, who.setCookie);
+
   // The hosted Board and Matter functions live on this same deployment; the agent calls them like any visitor (they are rate limited too).
-  const origin = new URL(req.url).origin;
-  const hosted = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), "x-forwarded-for": visitor }, signal: req.signal });
-  const events = runAgentTurn({
-    tools: { manifests, hosted }, text, model: typeof body.model === "string" ? body.model : undefined, runId: typeof body.run_id === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(body.run_id) ? body.run_id : undefined, cfg, loader, signal: req.signal, turnId });
+  const origin = req.nextUrl.origin;
+  const hosted = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), "x-forwarded-for": who.ip }, signal: req.signal });
+  const turnId = `a${Date.now().toString(36)}`;
+  const tools = { manifests, hosted };
+
+  let events: AsyncGenerator<AgentEvent>;
+  if (loop?.tool === "board_design") events = runBoardDesign({ turnId, brief: loop.brief, llm: httpLlm(cfg), hosted, signal: req.signal });
+  else if (loop?.tool === "matter_optimize") events = runMatterOptimize({ turnId, generator: loop.generator, llm: httpLlm(cfg), hosted, signal: req.signal });
+  else events = runAgentTurn({ text, model: choice, workbench, context, history, runId: typeof body.run_id === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(body.run_id) ? body.run_id : undefined, tools, cfg, loader, signal: req.signal, turnId });
+
+  // Charge the real cost of whatever the turn used, even if the client stops it.
+  let spent = 0;
+  const metered = async function* () {
+    try {
+      for await (const e of events) {
+        if (e.type === "cost") spent += e.usd;
+        yield e;
+      }
+    } finally {
+      await credits.charge(who.id, who.ip, spent);
+    }
+  };
+  const it = metered();
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async pull(ctl) {
-      const { value, done } = await events.next();
+      const { value, done } = await it.next();
       if (done) ctl.close();
       else ctl.enqueue(enc.encode(`${JSON.stringify(value)}\n`));
     },
     async cancel() {
-      await events.return(undefined);
+      await it.return(undefined);
     },
   });
-  return new Response(stream, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" } });
+  const headers = new Headers({ "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" });
+  if (who.setCookie) headers.append("set-cookie", who.setCookie);
+  return new Response(stream, { headers });
 }

@@ -7,8 +7,7 @@ import { buildEvidence, buildRungEvidence, type EvidenceMetric } from "@/lib/evi
 import { usd } from "@/lib/format";
 import { useMediaQuery, useRunSource, useSnapshot } from "@/lib/hooks";
 import { initialRunState } from "@/lib/run-state";
-import { fetchAgentStatus, httpAgentTransport, type AgentStatus } from "@/lib/agent-client";
-import { AgentPanel } from "../agent/AgentPanel";
+import { AgentPanel } from "../agent";
 import { EvidencePanel } from "../evidence/EvidencePanel";
 import { BoardCanvas } from "../domain/BoardCanvas";
 import { MatterCanvas } from "../domain/MatterCanvas";
@@ -63,16 +62,6 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [sel, setSel] = useState<Sel | null>(null);
   const [opts] = useState(replayOptions);
-  const [agent, setAgent] = useState<AgentStatus>({ connected: false });
-  useEffect(() => {
-    const ctl = new AbortController();
-    void fetchAgentStatus(ctl.signal).then(setAgent);
-    return () => ctl.abort();
-  }, []);
-
-  const runRef = useRef(runId);
-  runRef.current = runId;
-  const transport = useMemo(() => (agent.connected ? httpAgentTransport(() => runRef.current) : null), [agent.connected]);
   const src = useRunSource(runId, opts);
   const controller = src.status === "ready" ? src.controller : null;
   const snap = useSnapshot(controller);
@@ -277,9 +266,13 @@ export function Workstation({ runs }: { runs: RunIndexEntry[] }) {
 
         <aside className={`min-h-[70dvh] flex-col border-line bg-panel lg:min-h-0 lg:border-l ${show("agent")}`}>
           <AgentPanel
-            transport={transport}
-            limitsNote={agent.limits ? `Read-only: it looks up recorded runs and the evidence library, and runs the free Board and Matter checks. Up to ${agent.limits.visitorTurnsPerDay} turns per visitor per day and ${agent.limits.maxInputChars} characters per message. Limits are counted in server memory (per instance), so they reset on restart.` : undefined}
-            context={toolView ? `${wb} live tool (no recorded run)` : snap ? `${runId} · ${s.eventCount} events received` : undefined} />
+            workbench={wb}
+            context={{ silicon: { run_id: runId }, chips: [{ label: "Workbench", value: wb }, ...(toolView ? [] : [{ label: "Run", value: runId }])] }}
+            onAction={(a) => {
+              if (a.name === "workbench.open") chooseWb(a.args.workbench);
+              else if (a.name === "silicon.open_run") pickRun(a.args.run_id);
+            }}
+          />
         </aside>
       </div>
 

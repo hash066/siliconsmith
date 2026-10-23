@@ -2,6 +2,9 @@
 // so the agent can only quote what the event streams say. Pure apart from the replay loader, which is injected.
 // Every result carries `evidence` ids ("run:<run>/<node>" or "run:<run>/<node>#<metric>") the answer must cite.
 
+import type { PendingAction } from "./agent";
+import type { UiAction } from "./agent-actions";
+import type { WorkbenchId } from "./brand";
 import { buildEvidence, type EvidenceMetric } from "./evidence";
 import { defaultSimulateInput, MATTER_GENERATORS, validateLocally, type MatterGenerator, type SimulateInput } from "./hosted";
 import { isEntryId, reproduceMatches, type ManifestStore } from "./manifest";
@@ -79,13 +82,50 @@ export const TOOL_DEFS: ToolDef[] = [
     },
   },
   {
+    name: "board_set_design",
+    description:
+      "Put a full design JSON on the Board canvas and check it (rungs B1 to B5). Use it to apply an edit to the user's current design (change a pin or a value): copy the current design from the app context, change only what was asked, send the whole object.",
+    parameters: { type: "object", properties: { design_json: { type: "string", maxLength: 12000 } }, required: ["design_json"], additionalProperties: false },
+  },
+  {
+    name: "workbench_open",
+    description: "Switch the app to a workbench.",
+    parameters: { type: "object", properties: { workbench: { type: "string", enum: ["silicon", "board", "matter"] } }, required: ["workbench"], additionalProperties: false },
+  },
+  {
+    name: "silicon_open_run",
+    description: "Open a recorded Silicon run (and optionally a node) in the app. The run must exist; use run_nodes_search or the context to find ids.",
+    parameters: { type: "object", properties: { run_id: { type: "string" }, node_id: { type: "string" } }, required: ["run_id"], additionalProperties: false },
+  },
+  {
+    name: "workflow_focus",
+    description: "Move the app's workflow bar to a step.",
+    parameters: { type: "object", properties: { step: { type: "string", enum: ["brief", "propose", "verify", "evidence", "export"] } }, required: ["step"], additionalProperties: false },
+  },
+  {
+    name: "propose_board_design",
+    description:
+      "Propose a bounded live loop that SPENDS CREDITS: Nemotron drafts a Board design for the brief, the free checker judges it, up to 2 repairs, hard cap about $0.05 and 90 s. This only proposes: the user must click Run. Say that, and do not claim it ran.",
+    parameters: { type: "object", properties: { brief: { type: "string", maxLength: 500 } }, required: ["brief"], additionalProperties: false },
+  },
+  {
+    name: "propose_matter_optimize",
+    description:
+      "Propose a bounded live loop that SPENDS CREDITS: up to 6 simulations adjusting the generator's parameters toward a lower peak temperature, hard cap about $0.05 and 90 s. This only proposes: the user must click Run. Say that, and do not claim it ran.",
+    parameters: { type: "object", properties: { generator: { type: "string", enum: ["rect_fins", "radial_spokes"] } }, additionalProperties: false },
+  },
+  {
     name: "run_explain_failure",
     description: "Explain why a node was pruned or failed a rung: the failing stage per attempt, its detail, and the prune reason, from the run's events.",
     parameters: { type: "object", properties: { run_id: { type: "string" }, node_id: { type: "string" } }, required: ["run_id", "node_id"], additionalProperties: false },
   },
 ];
 
-export type ToolResult = { ok: true; summary: string; data: unknown; evidence: string[] } | { ok: false; error: string };
+/**
+ * A tool's outcome. `ui` are actions the app should mirror (load a template, set parameters, run the check...): the server already executed
+ * the free tool itself, the app only shows it. `proposal` is a credit-spending loop the user must confirm with a click.
+ */
+export type ToolResult = { ok: true; summary: string; data: unknown; evidence: string[]; ui?: UiAction[]; proposal?: Omit<PendingAction, "id"> } | { ok: false; error: string };
 
 type Args = Record<string, unknown>;
 
@@ -117,6 +157,27 @@ export function validateArgs(name: string, raw: unknown): { ok: true; args: Args
     if (k === "node_id" && !NODE_ID.test(v)) return { ok: false, error: "node_id is not valid" };
   }
   return { ok: true, args: a };
+}
+
+function parseObject(text: string): Record<string, unknown> | null {
+  try {
+    const v = JSON.parse(text) as unknown;
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The tools a workbench's agent is offered: its own, plus the shared lookups. Fewer tools means fewer tokens and fewer wrong calls. */
+export function toolsFor(workbench?: WorkbenchId): ToolDef[] {
+  const shared = ["library_search", "evidence_get", "workbench_open", "workflow_focus"];
+  const own: Record<WorkbenchId, string[]> = {
+    board: ["board_check", "board_set_design", "propose_board_design"],
+    matter: ["matter_simulate", "propose_matter_optimize"],
+    silicon: ["run_nodes_search", "run_explain_failure", "silicon_open_run"],
+  };
+  const names = workbench ? [...shared, ...own[workbench]] : TOOL_DEFS.map((t) => t.name);
+  return TOOL_DEFS.filter((t) => names.includes(t.name));
 }
 
 const clip = (s: string | undefined, n: number) => (!s ? "" : s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -187,6 +248,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       if ((a.template_id === undefined) === (a.design_json === undefined)) return { ok: false, error: "give exactly one of template_id or design_json" };
       let design: string;
       let label: string;
+      const ui: UiAction[] = [];
       if (a.template_id !== undefined) {
         const id = String(a.template_id);
         if (!/^[a-z0-9_]{1,64}$/.test(id)) return { ok: false, error: "template_id is not valid" };
@@ -194,9 +256,12 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
         if (!t.ok) return { ok: false, error: `unknown template ${id}` };
         design = JSON.stringify(((await t.json()) as { design: unknown }).design);
         label = id;
+        ui.push({ name: "board.load_template", args: { template_id: id } });
       } else {
         design = String(a.design_json);
         label = "custom";
+        const parsed = parseObject(design);
+        if (parsed) ui.push({ name: "board.set_design", args: { design: parsed } });
       }
       const res = await ctx.hosted("/api/board/check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ design }) });
       const j = (await res.json()) as { ok?: boolean; error?: { message?: string }; passed?: boolean; rungs?: Array<{ rung: string; status: string; label: string | null; detail: string; evidence: string[] }>; notice?: string };
@@ -208,7 +273,33 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
         return { rung: r.rung, status: r.status, claim: r.status === "pass" ? r.label : null, detail: clip(r.detail, 320), facts: r.status === "pass" ? undefined : r.evidence.slice(0, 6), evidence_id: `board:${label}#${r.rung}` };
       });
       const passN = rungs.filter((r) => r.status === "pass").length;
-      return { ok: true, summary: `${label}: ${passN} of ${rungs.length} rungs pass${j.passed ? "" : "; unknown or failing rungs do not count"}`, data: { template: label, passed: !!j.passed, rungs, notice: j.notice, note: "Netlist-level check with author-curated facts; not a claim the board works." }, evidence: [...evidence] };
+      ui.push({ name: "board.check", args: {} });
+      return { ok: true, ui, summary: `${label}: ${passN} of ${rungs.length} rungs pass${j.passed ? "" : "; unknown or failing rungs do not count"}`, data: { template: label, passed: !!j.passed, rungs, notice: j.notice, note: "Netlist-level check with author-curated facts; not a claim the board works." }, evidence: [...evidence] };
+    }
+    case "board_set_design": {
+      const r = await runTool("board_check", { design_json: a.design_json }, loader, ctx);
+      return r;
+    }
+    case "workbench_open":
+      return { ok: true, summary: `opened ${String(a.workbench)}`, data: { workbench: a.workbench }, evidence: [], ui: [{ name: "workbench.open", args: { workbench: a.workbench as WorkbenchId } }] };
+    case "workflow_focus":
+      return { ok: true, summary: `focused ${String(a.step)}`, data: { step: a.step }, evidence: [], ui: [{ name: "workflow.focus", args: { step: a.step as "brief" } }] };
+    case "silicon_open_run": {
+      const runId = String(a.run_id);
+      const s = await loader.load(runId);
+      if (!s) return { ok: false, error: `run ${runId} is not recorded` };
+      const node = a.node_id === undefined ? undefined : String(a.node_id);
+      if (node !== undefined && !s.nodes[node]) return { ok: false, error: `node ${node} does not exist in ${runId}` };
+      return { ok: true, summary: `opened ${runId}${node ? ` at ${node}` : ""}`, data: { run_id: runId, node_id: node ?? null, title: s.workload?.title }, evidence: [`run:${runId}${node ? `/${node}` : ""}`].filter((e) => e.includes("/")), ui: [{ name: "silicon.open_run", args: node ? { run_id: runId, node_id: node } : { run_id: runId } }] };
+    }
+    case "propose_board_design": {
+      const brief = String(a.brief).trim();
+      if (!brief) return { ok: false, error: "give a short brief" };
+      return { ok: true, summary: "proposed a Board design loop (needs the user's click)", data: { status: "waiting for the user to click Run; nothing has been run or spent", cap_usd: 0.05 }, evidence: [], proposal: { tool: "board_design", summary: `Draft a Board design for: ${brief.slice(0, 120)}. The free checker judges it; up to 2 repairs.`, costEstimateUsd: 0.05, args: { brief } } };
+    }
+    case "propose_matter_optimize": {
+      const generator = (a.generator ?? "rect_fins") as MatterGenerator;
+      return { ok: true, summary: "proposed a Matter optimisation loop (needs the user's click)", data: { status: "waiting for the user to click Run; nothing has been run or spent", cap_usd: 0.05 }, evidence: [], proposal: { tool: "matter_optimize", summary: `Search ${MATTER_GENERATORS[generator].label.toLowerCase()} parameters for a lower peak temperature: up to 6 simulations.`, costEstimateUsd: 0.05, args: { generator } } };
     }
     case "matter_simulate": {
       if (!ctx.hosted) return { ok: false, error: "the Matter simulator is not available here" };
@@ -222,13 +313,17 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       const bad = validateLocally(input);
       if (bad.length) return { ok: false, error: bad.map((b) => `${b.path} ${b.message}`).join("; ") };
       const res = await ctx.hosted("/api/matter/simulate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
-      const j = (await res.json()) as { error?: { message?: string; field?: string }; ladder?: Array<{ id: string; status: string; label: string | null; detail: string }>; metrics?: { peak_temp_c: number; material_fraction: number }; baselines?: Record<string, { peak_temp_c: number; delta_k: number }>; verdict?: { label: string; lower_bound_peak_c: number; note: string } | null };
+      const j = (await res.json()) as { error?: { message?: string; field?: string }; ladder?: Array<{ id: string; status: string; label: string | null; detail: string }>; metrics?: { peak_temp_c?: number; material_fraction?: number }; baselines?: Record<string, { peak_temp_c: number; delta_k: number | null } | null>; verdict?: { label: string; lower_bound_peak_c: number; note: string } | null };
       if (!res.ok || !j.ladder) return { ok: false, error: j.error ? `${j.error.field ?? ""} ${j.error.message ?? ""}`.trim() : `the simulator answered ${res.status}` };
       const id = `matter:${generator}`;
       const passN = j.ladder.filter((r) => r.status === "pass").length;
       return {
         ok: true,
-        summary: `${generator}: peak ${j.metrics?.peak_temp_c.toFixed(1)} C, ${passN} of ${j.ladder.length} rungs pass`,
+        ui: [
+          { name: "matter.set_params", args: { generator, gen_params: input.gen_params, spreader: input.spreader } },
+          { name: "matter.simulate", args: {} },
+        ],
+        summary: j.metrics?.peak_temp_c === undefined ? `${generator}: no solve (${j.ladder.find((r) => r.status === "fail")?.detail ?? "geometry rejected"}), ${passN} of ${j.ladder.length} rungs pass` : `${generator}: peak ${j.metrics.peak_temp_c.toFixed(1)} C, ${passN} of ${j.ladder.length} rungs pass`,
         data: {
           generator,
           inputs: input,

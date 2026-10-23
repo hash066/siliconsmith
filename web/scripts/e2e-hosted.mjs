@@ -68,6 +68,8 @@ try {
   check("POST /api/matter/simulate returns M1..M5 and a viewer artifact", sim.status === 200 && sim.json.ladder?.length === 5 && sim.json.viewer?.format === "matter-candidate/1", `${sim.json?.timings_ms} ms, ${sim.text.length} bytes`);
   check("both baselines and the limits are present", !!sim.json?.baselines?.equal_material && !!sim.json?.baselines?.full_budget && sim.json.limits?.length > 0);
   check("a failing rung has no label (labels are claims)", sim.json.ladder.every((r) => (r.status === "pass") === (r.label !== null)));
+  const rejected = await call("POST", "/api/matter/simulate", { generator: "rect_fins", gen_params: { spine: 9, n_fins: 10, fin_w: 3, fin_len: 18 } });
+  check("a geometry rejected at M2 returns no peak, no field and null baselines (clients must not assume them)", rejected.status === 200 && rejected.json.ladder.find((r) => r.id === "M2")?.status === "fail" && rejected.json.metrics?.peak_temp_c === undefined && rejected.json.viewer?.field === null && rejected.json.baselines?.equal_material === null);
   const bad422 = await call("POST", "/api/matter/simulate", { spreader: { n: 500 } });
   check("out-of-range input is 422 with the field name", bad422.status === 422 && bad422.json?.error?.field === "spreader.n", bad422.json?.error?.message);
   check("GET /api/matter/simulate is 405", (await call("GET", "/api/matter/simulate")).status === 405);

@@ -71,11 +71,12 @@ export interface MatterViewer {
   thickness_mm: number;
   chip: [number, number, number, number];
   mask: string[];
-  field: { n: number; units: string; T_inf: number; peak: number; T: Array<Array<number | null>> };
+  /** null when nothing was solved (the geometry was rejected before the solve, for example M2 failed). */
+  field: { n: number; units: string; T_inf: number; peak: number; T: Array<Array<number | null>> } | null;
 }
 export interface MatterBaseline {
   peak_temp_c: number;
-  delta_k: number;
+  delta_k: number | null;
   cells: number;
   params: Record<string, number>;
 }
@@ -86,8 +87,9 @@ export interface MatterSimulation {
   spreader: Record<string, number>;
   ladder: MatterRung[];
   first_failure: string | null;
-  metrics: { peak_temp_c: number; peak_rise_k: number; material_cells: number; material_fraction: number; heat_balance_rel: number };
-  baselines: { equal_material: MatterBaseline; full_budget: MatterBaseline };
+  /** Empty when nothing was solved (an invalid geometry): then there is no peak, and the baselines may be null. */
+  metrics: Partial<{ peak_temp_c: number; peak_rise_k: number; material_cells: number; material_fraction: number; heat_balance_rel: number }>;
+  baselines: { equal_material: MatterBaseline | null; full_budget: MatterBaseline | null };
   verdict: {
     label: string;
     delta_equal_material_k: number;

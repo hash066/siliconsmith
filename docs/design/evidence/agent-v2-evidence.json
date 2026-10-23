@@ -1,0 +1,54 @@
+{
+  "contract": "Agent panel v2 (components/agent): streaming chat, Auto/Ultra/Super/Nano selector, collapsible tool cards, applied-action chips with Apply, per-message real cost, suggested prompts per workbench, context chips, stop button, confirm-before-spend cards, demo-credit balance and the used-up and not-connected states. Rendered inside the existing workstation shell (the app shell /app is built by another session). Viewports 390x844, 768x1024 and 1440x900, also swept at 360, 705 and 1024.",
+  "targetViewports": ["390x844", "768x1024", "1440x900"],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Limited. Structure checked in the rendered DOM and server-render tests: the model selector is a radiogroup with aria-checked, tool cards are buttons with aria-expanded, the composer has a label, errors and notices use role=alert or role=status, the conversation is an aria-live ordered list, and the textarea and buttons are real controls. Focus order, visible focus rings and colour contrast of the new panel were NOT measured with the ws-a11y script (the last measured run, in a11y.json, predates the panel), reduced motion, screen readers and forced colours were not exercised, and the tool-card +/- toggle glyph is aria-hidden with the state carried by aria-expanded."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "scripts/agent-shots.mjs (printed in shots.log, not kept) and scripts/ws-gate.mjs (overflow-agentv2-partial.json): documentElement.scrollWidth equals innerWidth for every capture at 1440x900 and 390x844 (empty, a real turn, a proposal, a confirmed loop, credits used up, not connected) and for the default and Agent tab views at 360, 390, 705, 768, 1024 and 1440. The header row wraps (title, model selector, balance) instead of overflowing at 360. Long tool arguments wrap inside their card."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "pass",
+      "evidence": "The panel shows 'working…' beside the model badge, running tool cards pulse, and the Send button becomes Stop while a turn runs. These states last 2 to 15 seconds on the real model and were not captured in a screenshot (the capture waits for the turn to finish), so the loading evidence is from the DOM states in code and the server-render test, not a picture."
+    },
+    "empty": {
+      "status": "pass",
+      "evidence": "agent-v2-empty-1440x900.png and agent-v2-empty-390x844.png: connected with no messages shows the workbench's three suggested prompts, the model selector with Auto selected, the credit balance and the context chips. agent-v2-not-connected-1440x900.png and agent-v2-not-connected-390x844.png: a server without a key shows 'Agent endpoint not connected yet', a disabled composer, no model active and no balance."
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "A real invalid-geometry result inside a confirmed Matter loop is shown in agent-v2-loop-390x844.png as a tool card 'not solved: material 2200 cells (61.1%) exceeds budget 1440 cells (40%)' without crashing the loop. Credits refusal (HTTP 402) and bad input are covered by route tests. NOT rendered in a browser: a model-endpoint error card, a network failure, a 402 shown as the panel's inline error, and the invented-command and uncited-claim flags (those are covered by server-render tests only)."
+    },
+    "partial": {
+      "status": "pass",
+      "evidence": "agent-v2-loop-1440x900.png and agent-v2-loop-390x844.png: the confirmed Matter loop shows its sequence of simulation and parameter-proposal cards, an attempt that was not solved, and a final summary naming the best attempt, both baselines and the 'small margins, not validated on a printed part' note, with the loop's own spend."
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "agent-v2-turn-1440x900.png and agent-v2-turn-390x844.png: a real Ultra turn on the Board workbench: the board_check tool card (arguments and result when expanded), the applied-action chips 'Loaded template fault_gpio12_vs_gpio14' and 'Ran the check' with Apply, the short answer naming rung B4, its evidence id, and the cost line. agent-v2-proposal-1440x900.png and agent-v2-proposal-390x844.png: the confirm card with the $0.05 hard cap and a Run button; nothing runs before the click."
+    },
+    "permission": {
+      "status": "pass",
+      "evidence": "agent-v2-exhausted-1440x900.png and agent-v2-exhausted-390x844.png: on a server with a $0.0005 allowance the panel shows 'Your demo credits are used up. The free tools and the recorded runs keep working.', disables the composer and the suggested prompts, and keeps the balance visible. The shared pool hard stop, the per-IP backstop and a durable-store outage are covered by route tests (402 with reasons) and were not rendered."
+    }
+  },
+  "renderedEvidence": [
+    { "viewport": "1440x900", "artifact": "agent-v2-empty-1440x900.png", "observation": "Connected, empty: selector, balance, suggested prompts for Matter, context chip, composer." },
+    { "viewport": "390x844", "artifact": "agent-v2-empty-390x844.png", "observation": "The same at phone width on the Agent tab." },
+    { "viewport": "1440x900", "artifact": "agent-v2-turn-1440x900.png", "observation": "A real turn on the Board workbench with an expanded board_check card, action chips with Apply, the answer and the balance after the turn." },
+    { "viewport": "390x844", "artifact": "agent-v2-turn-390x844.png", "observation": "The same turn at phone width." },
+    { "viewport": "1440x900", "artifact": "agent-v2-proposal-1440x900.png", "observation": "The agent proposed a Matter optimisation; the confirm card shows the hard cap and a Run button." },
+    { "viewport": "390x844", "artifact": "agent-v2-proposal-390x844.png", "observation": "The proposal at phone width." },
+    { "viewport": "1440x900", "artifact": "agent-v2-loop-1440x900.png", "observation": "After clicking Run: the bounded loop's tool cards and summary with baselines and honest limits." },
+    { "viewport": "390x844", "artifact": "agent-v2-loop-390x844.png", "observation": "The loop at phone width, including a not-solved attempt." },
+    { "viewport": "1440x900", "artifact": "agent-v2-exhausted-1440x900.png", "observation": "Credits used up: notice that free tools and replays still work, composer and prompts disabled." },
+    { "viewport": "390x844", "artifact": "agent-v2-exhausted-390x844.png", "observation": "The same at phone width." },
+    { "viewport": "1440x900", "artifact": "agent-v2-not-connected-1440x900.png", "observation": "No key on the server: the honest not-connected state." },
+    { "viewport": "390x844", "artifact": "agent-v2-not-connected-390x844.png", "observation": "The same at phone width." },
+    { "viewport": "768x1024", "artifact": "ws-768x1024-agent-agentv2.png", "observation": "The Agent tab at tablet width in the shell, connected, with its empty state." },
+    { "viewport": "1440x900", "artifact": "ws-1440x900-default-agentv2.png", "observation": "The agent column in the workstation at desktop width, connected." }
+  ]
+}

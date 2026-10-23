@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolve } from "node:path";
 import type { AgentEvent } from "./agent";
-import { configFromEnv, DailyLimiter, pickModel, publicStatus, runAgentTurn } from "./agent-server";
+import { configFromEnv, contextText, publicStatus, routeModel, runAgentTurn } from "./agent-server";
 import { fsReplayLoader, runTool, validateArgs } from "./agent-tools";
 import { applyAgentEvent, hasUncitedClaim, initialAgentState } from "./agent";
 import { fsManifestStore } from "./manifest";
@@ -58,21 +58,26 @@ describe("agent server", () => {
     expect(JSON.stringify(publicStatus(cfg))).not.toContain("test-key-not-real");
   });
 
-  it("limits per visitor and globally per day, then resets the next day", () => {
-    let day = "2026-10-22";
-    const l = new DailyLimiter(2, 3, () => new Date(`${day}T12:00:00Z`));
-    expect(l.take("a").ok && l.take("a").ok).toBe(true);
-    expect(l.take("a")).toEqual({ ok: false, reason: "visitor" });
-    expect(l.take("b").ok).toBe(true);
-    expect(l.take("c")).toEqual({ ok: false, reason: "global" });
-    day = "2026-10-23";
-    expect(l.take("a").ok).toBe(true);
+  it("routes by task in Auto: Nano for lookups, Super for tool turns, Ultra for planning and diagnosis; a fixed choice wins", () => {
+    expect(routeModel("why did n2.2.4 fail?")).toBe("ultra");
+    expect(routeModel("optimise the fins for a lower peak")).toBe("ultra");
+    expect(routeModel("simulate 10 fins")).toBe("super");
+    expect(routeModel("load the clean template")).toBe("super");
+    expect(routeModel("which entries are in the library?")).toBe("nano");
+    expect(routeModel("hello there")).toBe("super");
+    expect(routeModel("why", "nano")).toBe("nano");
+    expect(routeModel("list the library", "ultra")).toBe("ultra");
+    expect(routeModel("why", "auto")).toBe("ultra");
   });
 
-  it("routes diagnosis questions to Ultra, others to Super, and honours a manual choice", () => {
-    expect(pickModel("why did n2.2.4 fail?")).toBe("ultra");
-    expect(pickModel("list the best instruction")).toBe("super");
-    expect(pickModel("why", "nano")).toBe("nano");
+  it("cuts the app context to the limit and says when a design was left out", () => {
+    expect(contextText(undefined, 100)).toBe("");
+    expect(contextText({ chips: [{ label: "x" }] }, 100)).toBe("");
+    const big = { board: { template_id: "clean_sensor", design: { x: "y".repeat(500) } } };
+    expect(contextText(big, 5000)).toContain("clean_sensor");
+    const cut = contextText(big, 200);
+    expect(cut).toContain("omitted");
+    expect(cut.length).toBeLessThanOrEqual(200);
   });
 
   it("runs a tool round then streams the answer, citing only evidence ids the tools returned", async () => {
@@ -90,7 +95,7 @@ describe("agent server", () => {
     }) as unknown as typeof fetch;
     const events = await collect(runAgentTurn({ text: "what is the speedup of n1.2.1?", cfg, loader, turnId: "t1", fetchImpl, runId: "r_w1_contree3" }));
     const types = events.map((e) => e.type);
-    expect(types).toEqual(["turn.started", "tool.call", "tool.result", "text.delta", "text.delta", "evidence", "turn.done"]);
+    expect(types).toEqual(["turn.started", "cost", "tool.call", "tool.result", "text.delta", "text.delta", "cost", "evidence", "turn.done"]);
     const ev = events.find((e) => e.type === "evidence");
     expect(ev && "ids" in ev && ev.ids).toEqual(["run:r_w1_contree3/n1.2.1#wall_speedup"]);
     expect(events.find((e) => e.type === "tool.result")).toMatchObject({ ok: true });
