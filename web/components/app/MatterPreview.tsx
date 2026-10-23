@@ -51,11 +51,14 @@ function SimpleControls({ b }: { b: MatterBench }) {
     { id: "ctl-power", label: "Chip power", unit: "W", min: 0.5, max: 30, step: 0.5, value: input.spreader.Q, show: (v) => `${v} W`, set: (v) => setInput((i) => ({ ...i, spreader: { ...i.spreader, Q: v } })), err: errors["spreader.Q"] },
     { id: "ctl-material", label: "Material", unit: "%", min: mat.min, max: mat.max, step: 0.05, value: input.spreader.budget_fraction, show: (v) => `${Math.round(v * 100)}%`, set: (v) => setInput((i) => ({ ...i, spreader: { ...i.spreader, budget_fraction: v } })), err: errors["spreader.budget_fraction"] },
   ];
+  // "Size" exists once the hosted solver exposes the plate size (spreader.n, in mm); until then the control is simply absent.
+  const size = (MATTER_SPREADER as ReadonlyArray<{ key: string; min: number; max: number; step: number }>).find((p) => p.key === "n");
+  if (size) rows.push({ id: "ctl-size", label: "Plate size", unit: "mm", min: size.min, max: size.max, step: size.step, value: input.spreader.n, show: (v) => `${v} mm`, set: (v) => setInput((i) => ({ ...i, spreader: { ...i.spreader, n: v } })), err: errors["spreader.n"] });
   if (fin) rows.push({ id: "ctl-fins", label: input.generator === "rect_fins" ? "Fins" : "Spokes", unit: "", min: fin.min, max: fin.max, step: 1, value: input.gen_params[finKey], show: (v) => `${v}`, set: (v) => setInput((i) => ({ ...i, gen_params: { ...i.gen_params, [finKey]: v } })), err: errors[`gen_params.${finKey}`] });
   return (
     <fieldset className="rounded-xl border border-line bg-panel p-3">
       <legend className="hw-label px-1 !text-[10.5px]">Try it</legend>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 @lg:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 @lg:grid-cols-2 @3xl:grid-cols-4">
         {rows.map((r) => (
           <div key={r.id} className="min-w-0">
             <div className="flex items-baseline justify-between gap-2">
