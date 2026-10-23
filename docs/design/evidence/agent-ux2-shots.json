@@ -1,0 +1,71 @@
+{
+  "base": "http://localhost:3217",
+  "shots": [
+    {
+      "name": "heat-sink",
+      "w": 1440,
+      "h": 900,
+      "sw": 1440,
+      "iw": 1440,
+      "chips": [
+        "Try fewer fins",
+        "Use radial spokes instead"
+      ],
+      "cards": [
+        "Simulating the heat sink"
+      ],
+      "confirm": false,
+      "text": "✓\nRan the simulation\n· Apply",
+      "jargon": false
+    },
+    {
+      "name": "silicon-proposal",
+      "w": 1440,
+      "h": 900,
+      "sw": 1440,
+      "iw": 1440,
+      "chips": [],
+      "cards": [
+        "Proposing a live Silicon run"
+      ],
+      "confirm": true,
+      "text": "✓\nOpened silicon\n· Apply",
+      "jargon": false
+    },
+    {
+      "name": "heat-sink",
+      "w": 390,
+      "h": 844,
+      "sw": 390,
+      "iw": 390,
+      "chips": [
+        "Make it cooler",
+        "Use radial spokes instead",
+        "How much material does it use?"
+      ],
+      "cards": [
+        "Opening the workbench",
+        "Simulating the heat sink",
+        "Simulating the heat sink",
+        "Simulating the heat sink"
+      ],
+      "confirm": false,
+      "text": "✓Ran the simulation· Apply",
+      "jargon": false
+    },
+    {
+      "name": "silicon-proposal",
+      "w": 390,
+      "h": 844,
+      "sw": 390,
+      "iw": 390,
+      "chips": [],
+      "cards": [
+        "Proposing a live Silicon run"
+      ],
+      "confirm": true,
+      "text": "✓Opened silicon· Apply",
+      "jargon": false
+    }
+  ]
+}

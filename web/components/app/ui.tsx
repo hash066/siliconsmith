@@ -119,3 +119,32 @@ export function StatusPill({ tone, children }: { tone: "ok" | "warn" | "bad" | "
 
 export const btnPrimary = "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-signal px-3.5 text-[13px] font-medium text-on-signal transition-opacity duration-150 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
 export const btnGhost = "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line-2 px-3 text-[13px] text-ink-2 transition-colors duration-150 hover:bg-raised hover:text-ink disabled:cursor-not-allowed disabled:opacity-40";
+
+export const IconDownload = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 4v11M8 11l4 4 4-4M5 19h14" />
+  </svg>
+);
+export const IconHelp = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M9.6 9.6a2.4 2.4 0 1 1 3.4 2.2c-.7.4-1 .9-1 1.6M12 16.6v.1" />
+  </svg>
+);
+export const IconReset = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5" />
+  </svg>
+);
+export const IconSliders = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+    <circle cx="15" cy="7" r="2" />
+    <circle cx="9" cy="17" r="2" />
+  </svg>
+);
+export const IconArrowUp = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className} strokeWidth={2.2}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </svg>
+);

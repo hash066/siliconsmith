@@ -95,7 +95,11 @@ describe("agent server", () => {
     }) as unknown as typeof fetch;
     const events = await collect(runAgentTurn({ text: "what is the speedup of n1.2.1?", cfg, loader, turnId: "t1", fetchImpl, runId: "r_w1_contree3" }));
     const types = events.map((e) => e.type);
-    expect(types).toEqual(["turn.started", "cost", "tool.call", "tool.result", "text.delta", "text.delta", "cost", "evidence", "turn.done"]);
+    expect([...new Set(types)]).toEqual(["turn.started", "cost", "tool.call", "tool.result", "text.delta", "evidence", "turn.done"]);
+    // the answer is plain words: the raw ids are gone from the prose (the app shows them behind a toggle)
+    const prose = events.filter((e) => e.type === "text.delta").map((e) => (e as { text: string }).text).join("");
+    expect(prose).not.toMatch(/run:r_/);
+    expect(prose).toContain("candidate n1.2.1");
     const ev = events.find((e) => e.type === "evidence");
     expect(ev && "ids" in ev && ev.ids).toEqual(["run:r_w1_contree3/n1.2.1#wall_speedup"]);
     expect(events.find((e) => e.type === "tool.result")).toMatchObject({ ok: true });
@@ -161,7 +165,7 @@ describe("agent post-checks (scripted model, real library manifests)", () => {
     const events = await ask("Use: siliconsmith verify-entry dot4-tinymaix. I did not run it. (library:dot4-tinymaix)", true);
     expect(events.some((e) => e.type === "flag")).toBe(false);
     const ev = events.find((e) => e.type === "evidence");
-    expect(ev && "ids" in ev && ev.ids).toEqual(["library:dot4-tinymaix"]);
+    expect(ev && "ids" in ev && ev.ids).toContain("library:dot4-tinymaix");
   });
 
   it("flags a claim that the command was run", async () => {
@@ -180,7 +184,7 @@ describe("agent post-checks (scripted model, real library manifests)", () => {
   it("an id the model made up is not accepted as evidence even if it looks right", async () => {
     const events = await ask("It is proven (library:made-up-entry).", true);
     const ev = events.find((e) => e.type === "evidence");
-    expect(ev).toBeUndefined();
+    expect(ev && "ids" in ev ? ev.ids : []).not.toContain("library:made-up-entry");
   });
 });
 

@@ -1,7 +1,7 @@
 // Server-side post-checks on the agent's final text. The model streams its answer before these run, so a problem is reported as a
 // `flag` event the UI shows next to the message (the same way the uncited-claim filter works), never silently rewritten.
 
-export type FlagKind = "invented_command" | "claims_run";
+export type FlagKind = "invented_command" | "claims_run" | "invented_number";
 
 export interface Flag {
   kind: FlagKind;
@@ -40,4 +40,22 @@ export function guardText(text: string, entryIds: readonly string[]): Flag[] {
     flags.push({ kind: "claims_run", message: "The answer suggests the reproduce command was run. The agent cannot run commands: it only shows the command. Nothing was re-verified." });
   }
   return flags;
+}
+
+const TEMP = /(-?\d+(?:\.\d+)?)\s*(?:°\s*C|degrees?\s*C|\bC\b(?!\w))/g;
+const NUMBER = /-?\d+(?:\.\d+)?/g;
+
+/**
+ * A temperature the answer quotes must be a number the user wrote or a tool returned (to rounding). Anything else is invented: the model
+ * said "about 288 C" after a simulation that never solved. The text is already streamed, so this is a flag, like the other post-checks.
+ */
+export function guardNumbers(text: string, sources: readonly string[]): Flag[] {
+  const known: number[] = [];
+  for (const src of sources) for (const m of src.matchAll(NUMBER)) known.push(Number(m[0]));
+  const bad = new Set<string>();
+  for (const m of text.matchAll(TEMP)) {
+    const v = Number(m[1]);
+    if (!known.some((k) => Math.abs(k - v) <= Math.max(0.6, Math.abs(k) * 0.03))) bad.add(m[1]);
+  }
+  return bad.size ? [{ kind: "invented_number", message: `The answer quotes ${[...bad].map((b) => `${b} °C`).join(", ")}, but no simulation returned that number and you did not give it. Ignore it; the simulation result in the tool card is the real figure.` }] : [];
 }
