@@ -59,7 +59,7 @@ export function summarizeSim(sim: MatterSimulation): string {
 }
 
 export function useMatterBench() {
-  const [input, setInputState] = useState<SimulateInput>(() => ({ ...defaultSimulateInput("rect_fins"), include_stl: false }));
+  const [input, setInputState] = useState<SimulateInput>(() => ({ ...defaultSimulateInput("rect_fins"), include_stl: true }));
   const inputRef = useRef(input);
   const [busy, setBusy] = useState(false);
   const [sim, setSim] = useState<{ data: MatterSimulation; input: SimulateInput } | null>(null);

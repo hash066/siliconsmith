@@ -40,6 +40,12 @@ export function parseUiAction(raw: unknown): { ok: true; action: UiAction } | { 
       return typeof args.run_id === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(args.run_id) && (args.node_id === undefined || (typeof args.node_id === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(args.node_id)))
         ? { ok: true, action: { name: raw.name, args: { run_id: args.run_id, node_id: args.node_id as string | undefined } } }
         : { ok: false, reason: "run_id (and node_id) must be short ids." };
+    case "silicon.run_live":
+      return args.workload === "w1" || args.workload === "w2" ? { ok: true, action: { name: raw.name, args: { workload: args.workload } } } : { ok: false, reason: "workload must be w1 or w2." };
+    case "board.design":
+      return typeof args.brief === "string" && args.brief.trim() && args.brief.length <= 1200 ? { ok: true, action: { name: raw.name, args: { brief: args.brief } } } : { ok: false, reason: "brief must be a short non-empty string." };
+    case "preview.tab":
+      return args.tab === "preview" || args.tab === "files" || args.tab === "proof" ? { ok: true, action: { name: raw.name, args: { tab: args.tab } } } : { ok: false, reason: "tab must be preview, files or proof." };
     case "workflow.focus":
       return typeof args.step === "string" && STEPS.includes(args.step) ? { ok: true, action: { name: raw.name, args: { step: args.step as "brief" } } } : { ok: false, reason: `step must be one of ${STEPS.join(", ")}.` };
     default:

@@ -1,11 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BRAND, WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import { pillText, usd2, type CreditsView } from "./credits";
-import { ThemeToggle } from "../site/Brand";
-import { IconChevron, IconCoin, IconShare } from "./ui";
+import { IconCoin } from "./ui";
 
 export type ModelChoice = "auto" | "ultra" | "super" | "nano";
 export const MODEL_CHOICES: Array<{ id: ModelChoice; label: string; hint: string }> = [
@@ -15,7 +12,7 @@ export const MODEL_CHOICES: Array<{ id: ModelChoice; label: string; hint: string
   { id: "nano", label: "Nano", hint: "Nemotron Nano: summaries and routing" },
 ];
 
-function Mark() {
+export function Mark() {
   return (
     <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true" className="shrink-0">
       <rect x="1" y="1" width="26" height="26" rx="8" fill="var(--hw-elevated)" stroke="var(--hw-border)" />
@@ -30,7 +27,7 @@ function Mark() {
   );
 }
 
-function CreditsPill({ credits }: { credits: CreditsView }) {
+export function CreditsPill({ credits }: { credits: CreditsView }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -98,49 +95,3 @@ function CreditsPill({ credits }: { credits: CreditsView }) {
   );
 }
 
-export function TopBar({ project, wb, runLabel, model, onModel, credits, onShare, shareNote }: { project: string; wb: WorkbenchId; runLabel?: string; model: ModelChoice; onModel: (m: ModelChoice) => void; credits: CreditsView; onShare: () => void; shareNote: string | null }) {
-  const w = WORKBENCHES[wb];
-  return (
-    <header className="z-30 flex h-14 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 sm:gap-3 sm:px-4">
-      <Link href="/" className="flex shrink-0 items-center gap-2 text-ink" aria-label={`${BRAND.name} home`}>
-        <Mark />
-        <span className="hw-display hidden text-[15px] sm:inline">{BRAND.name}</span>
-      </Link>
-      <span className="hidden h-5 w-px bg-line sm:block" aria-hidden="true" />
-      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px]">
-        <span className="hidden truncate text-ink-3 md:inline" title="Project">{project}</span>
-        <IconChevron size={13} className="hidden shrink-0 text-ink-3 md:block" />
-        <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink"><span className="h-2 w-2 rounded-full" style={{ background: w.accent }} aria-hidden="true" />{w.name}</span>
-        {runLabel && (
-          <>
-            <IconChevron size={13} className="hidden shrink-0 text-ink-3 sm:block" />
-            <span className="num hidden min-w-0 truncate text-ink-2 sm:inline">{runLabel}</span>
-          </>
-        )}
-      </nav>
-      <label className="flex shrink-0 items-center gap-1.5 text-[12px] text-ink-3">
-        <span className="hidden lg:inline">Model</span>
-        <select
-          value={model}
-          onChange={(e) => onModel(e.target.value as ModelChoice)}
-          aria-label="Agent model"
-          title={MODEL_CHOICES.find((m) => m.id === model)?.hint}
-          data-testid="model-select"
-          className="h-9 rounded-lg border border-line bg-raised px-2 text-[13px] text-ink"
-        >
-          {MODEL_CHOICES.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <CreditsPill credits={credits} />
-      <ThemeToggle />
-      <button type="button" onClick={onShare} aria-label="Copy a link to this view" title={shareNote ?? "Copy a link to this view"} className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink-2 hover:bg-raised hover:text-ink sm:flex">
-        <IconShare />
-      </button>
-      <span role="status" aria-live="polite" className="sr-only">{shareNote}</span>
-    </header>
-  );
-}
