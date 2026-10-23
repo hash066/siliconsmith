@@ -25,6 +25,8 @@ export interface LibraryFact {
   rungsPassed: number;
   rungsTotal: number;
   rungsSkipped: string[];
+  /** The stored, proven RTL of the entry (evidence/<id>/rtl.v), or null. */
+  rtl: string | null;
 }
 
 export interface RecordedAgent {
@@ -52,6 +54,15 @@ export interface RecordedChat {
   toolCalls: number;
 }
 
+export interface BoardFaultFact {
+  sessionId: string;
+  template: string;
+  passed: number;
+  of: number;
+  failedRung: string;
+  evidenceId: string;
+}
+
 export interface Facts {
   silicon: {
     runs: SiliconRunFact[];
@@ -67,7 +78,7 @@ export interface Facts {
   board: EngineFacts["board"];
   matter: EngineFacts["matter"] & { bestPeakC: number; baselineC: number; marginK: number; totalCostUsd: number };
   library: { entries: LibraryFact[] };
-  recorded: { agent: RecordedAgent[]; chat: RecordedChat };
+  recorded: { agent: RecordedAgent[]; chat: RecordedChat; boardFault: BoardFaultFact };
 }
 
 const root = () => process.cwd();
@@ -96,6 +107,14 @@ function engineFacts(): EngineFacts {
   return readJson<EngineFacts>("public", "recorded", "engine-facts.json");
 }
 
+function readRtl(id: string): string | null {
+  for (const base of [["public", "library"], ["..", "evidence"]]) {
+    const p = resolve(root(), ...base, id, "rtl.v");
+    if (existsSync(p)) return readFileSync(p, "utf8");
+  }
+  return null;
+}
+
 function libraryFacts(): LibraryFact[] {
   const p = existsSync(resolve(root(), "public", "library", "index.json")) ? ["public", "library", "index.json"] : ["..", "evidence", "index.json"];
   type Entry = { id: string; title: string; instruction: { mnemonic: string }; metrics: { speedup: number | null; wall_speedup: number | null }; ladder: Record<string, string> };
@@ -109,11 +128,24 @@ function libraryFacts(): LibraryFact[] {
       rungsPassed: vals.filter(([, v]) => v === "pass").length,
       rungsTotal: vals.length,
       rungsSkipped: vals.filter(([, v]) => v === "skipped").map(([k]) => k),
+      rtl: readRtl(e.id),
     };
   });
 }
 
 const WORD = /\S+/g;
+
+/** The Board fault session: the tool result says how many rungs pass, the cited evidence id names the failing rung. */
+function boardFault(agent: RecordedAgent[]): BoardFaultFact {
+  const s = agent.find((a) => a.id === "board-fault");
+  if (!s) throw new Error("facts: recorded session board-fault is missing");
+  const res = s.events.find((e) => e.type === "tool.result");
+  const m = String(res?.summary ?? "").match(/^(\w+): (\d+) of (\d+) rungs pass/);
+  const ev = s.events.find((e) => e.type === "evidence");
+  const id = (ev?.ids as string[] | undefined)?.find((i) => /#B\d$/.test(i));
+  if (!m || !id) throw new Error("facts: board-fault session has no rung result");
+  return { sessionId: s.id, template: m[1], passed: Number(m[2]), of: Number(m[3]), failedRung: id.slice(id.indexOf("#") + 1), evidenceId: id };
+}
 
 function recordedFacts(): Facts["recorded"] {
   const dir = resolve(root(), "public", "recorded");
@@ -136,7 +168,7 @@ function recordedFacts(): Facts["recorded"] {
     evidenceIds: (c.answer.match(/\b(?:board|run|matter|library):[\w.#-]+/g) ?? []).length,
     toolCalls: 0,
   };
-  return { agent, chat };
+  return { agent, chat, boardFault: boardFault(agent) };
 }
 
 let cache: Facts | null = null;
