@@ -4,7 +4,7 @@ export const BRAND = {
   tagline: "Agents that design hardware, and prove it.",
   sub: "Chips, boards and physical parts, checked by verifiers the model cannot argue with.",
   repo: "https://github.com/hash066/siliconsmith",
-  prExample: "https://github.com/hash66/TinyMaix/pull/1",
+  prExample: "https://github.com/hash066/TinyMaix/pull/1",
 } as const;
 
 export type WorkbenchId = "silicon" | "board" | "matter";
