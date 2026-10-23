@@ -1,13 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { JetBrains_Mono, Space_Grotesk, Unbounded } from "next/font/google";
 import "./globals.css";
+import "./brand.css";
+
+const display = Unbounded({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const body = Space_Grotesk({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+const code = JetBrains_Mono({ subsets: ["latin"], variable: "--font-code", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "SiliconSmith — change the chip to fit the code", template: "%s · SiliconSmith" },
+  title: { default: "Hardwright: agents that design hardware, and prove it", template: "%s · Hardwright" },
   description:
-    "SiliconSmith profiles C code, invents a custom RISC-V instruction for the hot loop, writes the Verilog, and proves it before it opens a pull request.",
-  applicationName: "SiliconSmith",
+    "Hardwright is a workstation for hardware makers: agents propose chips, boards and parts, and verifiers the model cannot argue with decide what is true.",
+  applicationName: "Hardwright",
 };
 
 export const viewport: Viewport = {
@@ -23,7 +29,7 @@ const themeScript = `try{var t=localStorage.getItem("ss-theme");if(t==="light")d
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${display.variable} ${body.variable} ${code.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
