@@ -251,6 +251,8 @@ export interface AgentPanelViewProps {
   state: AgentState;
   /** Absent on the start screen: the agent routes the goal itself. */
   workbench?: WorkbenchId;
+  /** Starter prompts for an empty conversation (default: the built-in ones for the workbench). */
+  prompts?: string[];
   /** null while the status probe is in flight: the panel reserves its space instead of flashing "not connected". */
   connected: boolean | null;
   busy: boolean;
@@ -324,7 +326,7 @@ export function AgentPanelView(p: AgentPanelViewProps) {
             <h3 className="text-[14px] font-medium text-ink">Ask the agent to do it</h3>
             <p className="mt-1 text-[13px] leading-snug text-ink-3">It runs the free checkers in the app for you and cites what the verifiers say. It cannot declare anything proven.</p>
             <ul className="mt-3 flex flex-col gap-2" aria-label="Suggested prompts">
-              {(workbench ? SUGGESTED_PROMPTS[workbench] : START_PROMPTS).map((q) => (
+              {(p.prompts ?? (workbench ? SUGGESTED_PROMPTS[workbench] : START_PROMPTS)).map((q) => (
                 <li key={q}>
                   <button type="button" onClick={() => p.onSend(q)} disabled={busy || blocked} className="w-full rounded-md border border-line px-3 py-2 text-left text-[13px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
                     {q}
@@ -426,6 +428,13 @@ let nextId = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(nextId++).toString(36)}`;
 
 export interface AgentPanelProps {
+  /** A prompt pushed in by the app (the start screen's first goal, a "Fix it" button): sent as a normal user turn once per `id`, after the panel
+   * is connected and has credits. If a turn is running it waits for it to end; with no credits left it is not sent. */
+  prompt?: { id: number; text: string };
+  /** Starter prompts shown on an empty conversation instead of the built-in ones. */
+  suggestions?: string[];
+  /** Called whenever a turn starts or ends, for a progress chip elsewhere in the app. */
+  onBusyChange?: (busy: boolean) => void;
   /** Absent on the start screen: the agent routes the goal itself. */
   workbench?: WorkbenchId;
   /** What the user sees right now. The agent can act on it (edit the current design, tune the current parameters). */
@@ -441,7 +450,7 @@ export interface AgentPanelProps {
 }
 
 /** The agent. Streaming chat, model selector, tool cards, actions in the app, confirmed loops and real per-message cost. */
-export function AgentPanel({ workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
+export function AgentPanel({ prompt, suggestions, onBusyChange, workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
   const [state, setState] = useState<AgentState>(initialAgentState);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(transportProp ? true : null);
@@ -509,6 +518,18 @@ export function AgentPanel({ workbench, context, model: modelProp, onModelChange
     [request],
   );
 
+  const busyRef = useRef(onBusyChange);
+  busyRef.current = onBusyChange;
+  useEffect(() => {
+    busyRef.current?.(busy);
+  }, [busy]);
+  const lastPrompt = useRef<number | null>(null);
+  useEffect(() => {
+    if (!prompt || !prompt.text.trim() || lastPrompt.current === prompt.id || connected !== true || !credits || exhausted || busy) return;
+    lastPrompt.current = prompt.id;
+    onSend(prompt.text.trim());
+  }, [prompt, connected, credits, exhausted, busy, onSend]);
+
   const onRun = useCallback(() => {
     const p = stateRef.current.pending;
     if (!p || !p.args) return;
@@ -530,6 +551,7 @@ export function AgentPanel({ workbench, context, model: modelProp, onModelChange
       <AgentPanelView
         state={state}
         workbench={workbench}
+        prompts={suggestions}
         connected={connected}
         busy={busy}
         model={model}
