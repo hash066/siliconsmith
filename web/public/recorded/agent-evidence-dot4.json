@@ -1,0 +1,229 @@
+{
+ "kind": "recorded-agent-session",
+ "label": "Recorded session",
+ "id": "evidence-dot4",
+ "title": "Evidence: what is not claimed",
+ "workbench": "silicon",
+ "question": "Show me the stored evidence for the library entry dot4-tinymaix, and say what is NOT claimed.",
+ "source": "POST https://siliconsmith.vercel.app/api/agent {text}, streamed NDJSON events, saved unedited",
+ "captured": "2026-10-23",
+ "model": "nemotron-super",
+ "cost_usd": null,
+ "cost_note": "The endpoint streams no usage figures, so no cost is shown for agent sessions.",
+ "events": [
+  {
+   "type": "turn.started",
+   "id": "amvkcg4uq",
+   "model": "super"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "I"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "'ll"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " get the stored"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " evidence for the library"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " entry dot4-t"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "inymaix using"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " evidence_get"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": ".\n"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "\n"
+  },
+  {
+   "type": "tool.call",
+   "id": "amvkcg4uq",
+   "call": {
+    "id": "chatcmpl-tool-bd2ff90d0570121f",
+    "name": "evidence_get",
+    "args": {
+     "entry_id": "dot4-tinymaix"
+    }
+   }
+  },
+  {
+   "type": "tool.result",
+   "id": "amvkcg4uq",
+   "callId": "chatcmpl-tool-bd2ff90d0570121f",
+   "ok": true,
+   "summary": "dot4-tinymaix: dot4, ladder L1 pass L2 pass L3 pass L4 pass L5 pass L6 skipped"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "For"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " library"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " entry dot4-t"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "inymaix,"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " the stored"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " evidence shows what"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " is NOT claimed:"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "  "
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "\n- verified on"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " silicon  \n-"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " equivalence to anything other"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " than the stored spec"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "  \n- that"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " the spec itself is"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " the intended behaviour beyond"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " its validation against the"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " C reference  "
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "\n\nThe"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " reproduce command is:"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " siliconsmith verify"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "-entry dot4-t"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "inymaix ("
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "shown,"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " not run). Evidence"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": " ID: library:"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "dot4-tiny"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcg4uq",
+   "text": "maix."
+  },
+  {
+   "type": "evidence",
+   "id": "amvkcg4uq",
+   "ids": [
+    "library:dot4-tinymaix"
+   ]
+  },
+  {
+   "type": "turn.done",
+   "id": "amvkcg4uq"
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+{
+ "board": {
+  "faultsDetected": 8,
+  "faultsCatalogued": 8,
+  "structuralFaults": 0,
+  "heldoutBefore": {
+   "passed": 11,
+   "of": 18
+  },
+  "heldoutAfter": {
+   "passed": 18,
+   "of": 18
+  },
+  "proposeJudgedDesigns": 3,
+  "proposeCostUsd": 0.0093,
+  "repairJudgedDesigns": 2,
+  "repairCostUsd": 0.002,
+  "rungs": [
+   "B1",
+   "B2",
+   "B3",
+   "B4",
+   "B5"
+  ]
+ },
+ "matter": {
+  "runs": [
+   {
+    "run": "m_v3_1",
+    "winner": "interleaved_double_spiral",
+    "peakC": 72.56,
+    "marginK": 0.26,
+    "baselineC": 72.82,
+    "femErrPct": 0.02,
+    "costUsd": 0.0937
+   },
+   {
+    "run": "m_v3_2",
+    "winner": "concentric_spoked",
+    "peakC": 72.56,
+    "marginK": 0.26,
+    "baselineC": 72.82,
+    "femErrPct": 0.01,
+    "costUsd": 0.1074
+   },
+   {
+    "run": "m_v3_3",
+    "winner": "adaptive_quadtree",
+    "peakC": 72.6,
+    "marginK": 0.22,
+    "baselineC": 72.82,
+    "femErrPct": 0.01,
+    "costUsd": 0.09
+   }
+  ],
+  "agentBeatsBaseline": {
+   "wins": 3,
+   "of": 3
+  },
+  "rungs": [
+   "M1",
+   "M2",
+   "M3",
+   "M4",
+   "M5"
+  ],
+  "solverValidation": "PASS"
+ }
+}
