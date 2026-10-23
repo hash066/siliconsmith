@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { UiActionResult } from "@/lib/agent-actions";
-import { defaultSimulateInput, MATTER_GENERATORS, MATTER_SPREADER, matterApi, validateLocally, type ApiFailure, type MatterGenerator, type MatterSimulation, type SimulateInput } from "@/lib/hosted";
+import { defaultSimulateInput, MATTER_GENERATORS, MATTER_SPREADER, matterApi, validateLocally, type ApiFailure, type MatterBaseline, type MatterGenerator, type MatterSimulation, type SimulateInput } from "@/lib/hosted";
 
 export type MatterParams = { generator?: string; gen_params?: Record<string, number>; spreader?: Record<string, number> };
 
@@ -30,15 +30,32 @@ export function mergeMatterParams(cur: SimulateInput, p: MatterParams): { ok: tr
 const f1 = (n: number, d = 1) => n.toFixed(d);
 const same = (a: SimulateInput, b: SimulateInput) => JSON.stringify([a.generator, a.gen_params, a.spreader, !!a.include_stl]) === JSON.stringify([b.generator, b.gen_params, b.spreader, !!b.include_stl]);
 
-/** Geometry rejected at M2 comes back with empty metrics, no field and no baselines: nothing was solved. */
-export const wasSolved = (sim: MatterSimulation): boolean => typeof sim.metrics?.peak_temp_c === "number" && !!sim.viewer?.field && !!sim.baselines?.equal_material && !!sim.baselines?.full_budget;
+/** What a solved simulation carries. A geometry rejected before the solve (M2) comes back with empty metrics, no field and no baselines. */
+export interface Solved {
+  peak: number;
+  rise: number | null;
+  fraction: number | null;
+  balance: number | null;
+  fieldPeak: number;
+  equal: MatterBaseline;
+  full: MatterBaseline;
+}
+export function solvedOf(sim: MatterSimulation): Solved | null {
+  const m = sim.metrics;
+  const field = sim.viewer.field;
+  const { equal_material: equal, full_budget: full } = sim.baselines;
+  if (typeof m.peak_temp_c !== "number" || !field || !equal || !full) return null;
+  return { peak: m.peak_temp_c, rise: m.peak_rise_k ?? null, fraction: m.material_fraction ?? null, balance: m.heat_balance_rel ?? null, fieldPeak: field.peak, equal, full };
+}
+export const wasSolved = (sim: MatterSimulation): boolean => solvedOf(sim) !== null;
 
 export function summarizeSim(sim: MatterSimulation): string {
-  if (!wasSolved(sim)) return `Nothing was solved: ${sim.first_failure ?? "a rung"} rejected the geometry (${sim.ladder.filter((r) => r.status === "pass").length} of ${sim.ladder.length} rungs pass).`;
+  const solved = solvedOf(sim);
   const pass = sim.ladder.filter((r) => r.status === "pass").length;
+  if (!solved) return `Nothing was solved: ${sim.first_failure ?? "a rung"} rejected the geometry (${pass} of ${sim.ladder.length} rungs pass).`;
   const v = sim.verdict;
   const base = v ? ` ${v.label}; ${f1(Math.abs(v.delta_equal_material_k), 2)} K ${v.delta_equal_material_k >= 0 ? "cooler" : "hotter"} than the equal-material baseline.` : ` No verdict (${sim.first_failure ?? "a rung"} did not pass).`;
-  return `Peak ${f1(sim.metrics.peak_temp_c)} °C, ${pass} of ${sim.ladder.length} rungs pass.${base}`;
+  return `Peak ${f1(solved.peak)} °C, ${pass} of ${sim.ladder.length} rungs pass.${base}`;
 }
 
 export function useMatterBench() {

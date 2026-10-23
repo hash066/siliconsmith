@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSimulateInput, type BoardCheck, type MatterSimulation } from "@/lib/hosted";
-import { NO_CREDITS, parseCredits, pillText, usd2 } from "./credits";
+import { LOADING_CREDITS, NO_CREDITS, pillText, usd2, viewCredits } from "./credits";
 import { clampLayout, DEFAULT_LAYOUT, gridTemplate, keyDelta, LIMITS, parseLayout } from "./layout-state";
 import { workstationRedirect } from "./redirect";
 import { holePath, placeCard, TOUR_STEPS } from "./tour-steps";
@@ -99,26 +99,23 @@ describe("workflow status comes from real state", () => {
 
 describe("credits view", () => {
   it("never invents a balance", () => {
-    expect(parseCredits(null)).toEqual(NO_CREDITS);
-    expect(parseCredits({ connected: false })).toEqual(NO_CREDITS);
+    expect(viewCredits({ credits: null, loading: false })).toEqual(NO_CREDITS);
+    expect(viewCredits({ credits: null, loading: true })).toEqual(LOADING_CREDITS);
     expect(pillText(NO_CREDITS)).toBe("Credits: offline");
+    expect(pillText(NO_CREDITS, true)).toBe("Offline");
   });
-  it("reads dollar figures when the server reports them", () => {
-    const c = parseCredits({ connected: true, credits: { allowance_usd: 0.5, spent_usd: 0.1, pool_cap_usd: 25, pool_spent_usd: 25 } });
+  it("shows what the server reports, with the pool state and the honest scope", () => {
+    const c = viewCredits({ credits: { allowanceUsd: 0.5, spentUsd: 0.1, remainingUsd: 0.4, pool: { capUsd: 25, spentUsd: 25 }, scope: "per server instance, in memory" }, loading: false });
     expect(c.mode).toBe("ready");
-    expect(c.remainingUsd).toBeCloseTo(0.4);
+    expect(c.remainingUsd).toBe(0.4);
     expect(c.poolExhausted).toBe(true);
-    expect(pillText(c)).toBe("$0.40 demo credits");
-    expect(pillText(c, true)).toBe("$0.40");
+    expect(c.scope).toBe("per server instance, in memory");
+    expect(pillText(c)).toBe("$0.400 demo credits");
+    expect(pillText(c, true)).toBe("$0.400");
   });
-  it("falls back to the turn limit when only that is known", () => {
-    const c = parseCredits({ connected: true, limits: { visitorTurnsPerDay: 20, scope: "per server instance" } });
-    expect(c.mode).toBe("limits");
-    expect(pillText(c)).toBe("20 turns/day");
-  });
-  it("ignores malformed figures", () => {
-    expect(parseCredits({ connected: true, credits: { allowance_usd: "lots", spent_usd: -1 } }).mode).toBe("limits");
-    expect(usd2(0.5)).toBe("$0.50");
+  it("small balances keep three decimals", () => {
+    expect(usd2(0.0123)).toBe("$0.012");
+    expect(usd2(0.5)).toBe("$0.500");
   });
 });
 
