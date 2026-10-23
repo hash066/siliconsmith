@@ -1,0 +1,68 @@
+{
+ "workload": "w1_tinymaix_fc",
+ "measured": {
+  "cycles": 860730,
+  "hash": "c729ebe8",
+  "area": {
+   "luts": 1993,
+   "alus": 574,
+   "ffs": 923,
+   "dsps": 1,
+   "bram": 32,
+   "cells": 11334
+  },
+  "hotspots": [
+   {
+    "function": "tm_dot_prod",
+    "file": "tm_dot.h",
+    "line_start": 26,
+    "line_end": 37,
+    "pct": 95.72,
+    "fetches": 143680
+   },
+   {
+    "function": "tml_fc",
+    "file": "main.c",
+    "line_start": 40,
+    "line_end": 44,
+    "pct": 3.24,
+    "fetches": 4868
+   },
+   {
+    "function": "requant",
+    "file": "main.c",
+    "line_start": 32,
+    "line_end": 36,
+    "pct": 0.94,
+    "fetches": 1412
+   },
+   {
+    "function": "ss_rdcycle64",
+    "file": "runtime.h",
+    "line_start": 37,
+    "line_end": 41,
+    "pct": 0.09,
+    "fetches": 137
+   },
+   {
+    "function": "ss_region_end",
+    "file": "runtime.h",
+    "line_start": 12,
+    "line_end": 12,
+    "pct": 0.0,
+    "fetches": 4
+   }
+  ],
+  "disasm": "00000184 <main+0x14c>:\n    4096  184:\tlb\ta1,0(a4)\n    4096  188:\tlb\tt1,0(a5)\n    4096  18c:\tlb\ta2,1(a5)\n    4096  190:\tlb\ts11,1(a4)\n    4096  194:\tlb\tt5,2(a5)\n    4096  198:\tlb\ts2,2(a4)\n    4096  19c:\tmul\tt1,t1,a1\n    4096  1a0:\tlb\ta7,3(a5)\n    4096  1a4:\tlb\ts1,3(a4)\n    4096  1a8:\tlb\ts0,4(a5)\n    4096  1ac:\tlb\ta6,4(a4)\n    4096  1b0:\tlb\ta0,5(a5)\n    4096  1b4:\tlb\tt2,5(a4)\n    4096  1b8:\tlb\ta1,6(a5)\n    4096  1bc:\tlb\tt0,6(a4)\n    4096  1c0:\tlb\tt3,7(a5)\n    4096  1c4:\tmul\ta2,a2,s11\n    4096  1c8:\tlb\tt6,7(a4)\n    4096  1cc:\tadd\tt1,t1,a3\n    4096  1d0:\taddi\ta5,a5,8\n    4096  1d4:\taddi\ta4,a4,8\n    4096  1d8:\tmul\tt5,t5,s2\n    4096  1dc:\tadd\ta2,a2,t1\n    4096  1e0:\tmul\ta7,a7,s1\n    4096  1e4:\tadd\ta2,t5,a2\n    4096  1e8:\tmul\ta6,s0,a6\n    4096  1ec:\tadd\ta7,a7,a2\n    4096  1f0:\tmul\ta0,a0,t2\n    4096  1f4:\tadd\ta6,a6,a7\n    4096  1f8:\tmul\ta1,a1,t0\n    4096  1fc:\tadd\ta0,a0,a6\n    4096  200:\tmul\tt3,t3,t6\n    4096  204:\tadd\ta1,a1,a0\n    4096  208:\tadd\ta3,t3,a1\n    4096  20c:\tbne\ta5,s3,184 <main+0x14c>\n    4096  210:\tlw\ts0,16(sp)",
+  "extra": {}
+ },
+ "tool_versions": {
+  "verilator": "Verilator 5.053 devel rev v5.052-521-g6388139f7 (mod)",
+  "yosys": "Yosys 0.70+186 (git sha1 3718f7f13, Release, Clang /usr/bin/clang++ 21.1.8)",
+  "riscv-gcc": "riscv64-unknown-elf-gcc (13.2.0-11ubuntu1+12) 13.2.0",
+  "sandbox_image": "siliconsmith-base:latest"
+ },
+ "measured_at": "2026-10-23T13:54:13Z",
+ "baseline_run_image": "46ec5e16-2a8b-4ce5-b355-4f162fdead75",
+ "note": "Measured once in a real Token Factory Sandbox by `python -m siliconsmith.live baseline`; live runs reuse it instead of re-measuring."
+}
