@@ -34,6 +34,13 @@ describe("plate geometry from a matter-candidate/1 artifact", () => {
     expect(p.cells).toBe(1);
   });
 
+  it("an unsolved candidate (field null) builds no geometry and does not throw", () => {
+    const v = { ...viewer(["11"], [[1, 1]]), field: null };
+    const p = buildPlate(v);
+    expect(p.cells).toBe(0);
+    expect(p.mesh.count).toBe(0);
+  });
+
   it("colour ramp is clamped and monotonic in brightness at the ends", () => {
     expect(heatColor(-1)).toEqual(heatColor(0));
     expect(heatColor(2)).toEqual(heatColor(1));

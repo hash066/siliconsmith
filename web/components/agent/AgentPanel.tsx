@@ -1,79 +1,141 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addUserMessage,
-  AGENT_MODELS,
   applyAgentEvent,
   dismissPending,
   formatCostEstimate,
   hasUncitedClaim,
   initialAgentState,
   isActionTool,
+  MODEL_CHOICES,
+  type AgentContext,
   type AgentEvent,
   type AgentMessage,
   type AgentModel,
+  type AgentRequest,
   type AgentState,
   type AgentTransport,
+  type ModelChoice,
   type PendingAction,
   type ToolCall,
 } from "@/lib/agent";
+import type { UiAction } from "@/lib/agent-actions";
+import { CreditsError, fetchAgentStatus, httpAgentTransport } from "@/lib/agent-client";
+import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
+import { formatUsd, useCredits, type CreditsSnapshot } from "@/lib/credits-client";
+import { Markdown } from "./Markdown";
 
-const STARTERS = ["Check the board template fault_gpio12_vs_gpio14 and tell me which rung fails and why.", "Which instructions are in the evidence library, and how do I reproduce dot4-tinymaix?", "Simulate a rect_fins plate with 8 fins. Does it beat the baselines?"];
+export const SUGGESTED_PROMPTS: Record<WorkbenchId, string[]> = {
+  matter: ["Try 10 fins and show me the plate.", "Switch to radial spokes and simulate it.", "Propose an optimisation of the fin parameters for a lower peak temperature."],
+  board: ["Check the GPIO12 fault template and tell me which rung fails.", "Load the clean template and move the wake button to GPIO13, then re-check.", "Draft a design for a 3.3 V sensor board with an LED and check it."],
+  silicon: ["Why was n2.2.4 pruned in r_w1_contree3?", "Open the best node of r_w1_contree3 and explain what it does.", "Which library instruction has the biggest speedup, and how do I reproduce it?"],
+};
 
-const MODEL_LABEL: Record<AgentModel, string> = { ultra: "Ultra", super: "Super", nano: "Nano" };
-const MODEL_TITLE: Record<AgentModel, string> = {
+const MODEL_LABEL: Record<ModelChoice, string> = { auto: "Auto", ultra: "Ultra", super: "Super", nano: "Nano" };
+const MODEL_TITLE: Record<ModelChoice, string> = {
+  auto: "Auto: Nano for lookups, Super for turns that act with tools, Ultra for planning and diagnosis",
   ultra: "Nemotron Ultra: planning and diagnosis",
-  super: "Nemotron Super: tool calls, repairs, code",
-  nano: "Nemotron Nano: summaries and routing",
+  super: "Nemotron Super: tool calls and edits",
+  nano: "Nemotron Nano: lookups",
 };
 
-export function ModelBadge({ model, active, connected }: { model: AgentModel; active: boolean; connected: boolean }) {
+export function ModelSelector({ value, onChange, active, disabled }: { value: ModelChoice; onChange: (m: ModelChoice) => void; active: AgentModel | null; disabled?: boolean }) {
   return (
-    <span
-      title={connected ? MODEL_TITLE[model] : `${MODEL_TITLE[model]} (not connected)`}
-      aria-current={active ? "true" : undefined}
-      className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[12px] ${active ? "border-signal-line bg-signal-dim text-signal-ink" : "border-line text-ink-3"}`}
-    >
-      {MODEL_LABEL[model]}
-    </span>
-  );
-}
-
-const short = (v: unknown) => {
-  const t = JSON.stringify(v);
-  return t.length > 96 ? `${t.slice(0, 95)}…` : t;
-};
-
-export function ToolCallCard({ call }: { call: ToolCall }) {
-  const action = isActionTool(call.name);
-  const tone = call.status === "error" ? "var(--red)" : call.status === "ok" ? "var(--signal-ink)" : "var(--ink-3)";
-  return (
-    <div className="min-w-0 rounded-md border border-line bg-sunken px-3 py-2" role="group" aria-label={`Tool call ${call.name}`}>
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${call.status === "running" ? "anim-breathe" : ""}`} style={{ background: tone }} aria-hidden="true" />
-        <code className="num min-w-0 flex-1 truncate text-[12px] text-ink">{call.name}</code>
-        <span className="shrink-0 text-[11px] text-ink-3">{action ? "action" : "read-only"} · {call.status === "running" ? "running" : call.status === "ok" ? "done" : "failed"}</span>
-      </div>
-      <p className="num mt-1 break-all text-[11.5px] text-ink-3">{short(call.args)}</p>
-      {call.result && <p className="mt-1 text-[12.5px] text-ink-2">{call.result}</p>}
-      {call.error && <p className="mt-1 text-[12.5px] text-red">{call.error}</p>}
+    <div role="radiogroup" aria-label="Model" className="flex h-7 items-center rounded-md border border-line-2 p-0.5">
+      {MODEL_CHOICES.map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="radio"
+          aria-checked={value === m}
+          disabled={disabled}
+          title={MODEL_TITLE[m]}
+          onClick={() => onChange(m)}
+          className={`h-full rounded-[5px] px-2 text-[12px] transition-colors duration-150 disabled:opacity-50 ${value === m ? "bg-raised text-ink" : "text-ink-3 hover:text-ink"}`}
+        >
+          {MODEL_LABEL[m]}
+          {m === "auto" && value === "auto" && active ? <span className="ml-1 text-ink-3">· {MODEL_LABEL[active]}</span> : null}
+        </button>
+      ))}
     </div>
   );
 }
 
-export function ActionConfirm({ action, onConfirm, onCancel }: { action: PendingAction; onConfirm: () => void; onCancel: () => void }) {
+const short = (v: unknown, n = 1400) => {
+  const t = JSON.stringify(v, null, 2);
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
+
+export function ToolCard({ call }: { call: ToolCall }) {
+  const [open, setOpen] = useState(false);
+  const action = isActionTool(call.name);
+  const tone = call.status === "error" ? "var(--red)" : call.status === "ok" ? "var(--signal-ink)" : "var(--ink-3)";
   return (
-    <div className="rounded-lg border border-amber/40 bg-amber-dim p-3" role="group" aria-label="Confirm action">
-      <p className="text-[12px] text-ink-3">The agent wants to run</p>
-      <p className="num mt-0.5 break-all text-[13px] text-ink">{action.tool}</p>
+    <div className="min-w-0 rounded-md border border-line bg-sunken" role="group" aria-label={`Tool call ${call.name}`}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${call.status === "running" ? "anim-breathe" : ""}`} style={{ background: tone }} aria-hidden="true" />
+        <code className="num min-w-0 flex-1 truncate text-[12px] text-ink">{call.name}</code>
+        <span className="shrink-0 text-[11px] text-ink-3">
+          {action ? "action" : "tool"} · {call.status === "running" ? "running" : call.status === "ok" ? "done" : "failed"}
+        </span>
+        <span className="shrink-0 text-[11px] text-ink-3" aria-hidden="true">
+          {open ? "−" : "+"}
+        </span>
+      </button>
+      {(call.result || call.error) && !open && <p className={`px-3 pb-2 text-[12px] leading-snug ${call.error ? "text-red" : "text-ink-2"}`}>{call.error ?? call.result}</p>}
+      {open && (
+        <div className="flex flex-col gap-2 border-t border-line px-3 py-2">
+          <div>
+            <p className="text-[11px] text-ink-3">Arguments</p>
+            <pre className="scroll-quiet num mt-0.5 max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11.5px] text-ink-2">{short(call.args)}</pre>
+          </div>
+          <div>
+            <p className="text-[11px] text-ink-3">{call.error ? "Error" : "Result"}</p>
+            <p className={`mt-0.5 break-words text-[12.5px] leading-snug ${call.error ? "text-red" : "text-ink-2"}`}>{call.error ?? call.result ?? "waiting…"}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export const actionLabel = (a: UiAction): string => {
+  switch (a.name) {
+    case "workbench.open":
+      return `Opened ${a.args.workbench}`;
+    case "board.load_template":
+      return `Loaded template ${a.args.template_id}`;
+    case "board.set_design":
+      return "Set the design";
+    case "board.check":
+      return "Ran the check";
+    case "matter.set_params":
+      return "Set the parameters";
+    case "matter.simulate":
+      return "Ran the simulation";
+    case "silicon.open_run":
+      return `Opened ${a.args.run_id}${a.args.node_id ? ` · ${a.args.node_id}` : ""}`;
+    case "workflow.focus":
+      return `Focused ${a.args.step}`;
+  }
+};
+
+export function ConfirmCard({ action, remainingUsd, onRun, onCancel }: { action: PendingAction; remainingUsd: number | null; onRun: () => void; onCancel: () => void }) {
+  const cap = action.costEstimateUsd;
+  const lacking = remainingUsd !== null && cap !== null && remainingUsd < cap;
+  return (
+    <div className="rounded-lg border border-amber/40 bg-amber-dim p-3" role="group" aria-label="Confirm before spending credits">
+      <p className="text-[12px] text-ink-3">The agent proposes a loop that spends demo credits</p>
       <p className="mt-1 text-[13px] leading-snug text-ink">{action.summary}</p>
       <p className="num mt-1.5 text-[12px] text-amber" data-testid="cost-estimate">
-        {formatCostEstimate(action.costEstimateUsd)}
+        {cap === null ? formatCostEstimate(null) : `Up to ${formatUsd(cap)} (hard cap), usually less`}
       </p>
+      {lacking && <p className="mt-1 text-[12px] text-red">Not enough credits left for this cap ({formatUsd(remainingUsd!)} remaining).</p>}
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={onConfirm} className="h-9 rounded-md bg-signal px-3 text-[13px] font-medium text-on-signal">
-          Confirm and run
+        <button type="button" onClick={onRun} disabled={lacking} className="h-9 rounded-md bg-signal px-3 text-[13px] font-medium text-on-signal disabled:cursor-not-allowed disabled:opacity-40">
+          Run{cap !== null ? ` (up to ${formatUsd(cap)})` : ""}
         </button>
         <button type="button" onClick={onCancel} className="h-9 rounded-md border border-line-2 px-3 text-[13px] text-ink-2 hover:text-ink">
           Cancel
@@ -83,10 +145,10 @@ export function ActionConfirm({ action, onConfirm, onCancel }: { action: Pending
   );
 }
 
-export function MessageView({ m }: { m: AgentMessage }) {
+export function MessageView({ m, onApply }: { m: AgentMessage; onApply?: (a: UiAction) => void }) {
   if (m.role === "user") {
     return (
-      <li className="ml-auto max-w-[88%] min-w-0 rounded-lg bg-raised px-3 py-2 text-[13px] leading-snug text-ink">
+      <li className="ml-auto min-w-0 max-w-[88%] rounded-lg bg-raised px-3 py-2 text-[13px] leading-snug text-ink">
         <p className="whitespace-pre-wrap break-words">{m.text}</p>
       </li>
     );
@@ -95,21 +157,48 @@ export function MessageView({ m }: { m: AgentMessage }) {
   return (
     <li className="flex min-w-0 flex-col gap-2">
       <div className="flex items-center gap-2 text-[12px] text-ink-3">
-        {m.model && <ModelBadge model={m.model} active connected />}
-        {m.streaming && <span role="status">answering…</span>}
+        {m.model && <span className="inline-flex h-5 items-center rounded-full border border-signal-line bg-signal-dim px-2 text-[11px] text-signal-ink">{MODEL_LABEL[m.model]}</span>}
+        {m.streaming && <span role="status">working…</span>}
       </div>
       {m.toolCalls.map((c) => (
-        <ToolCallCard key={c.id} call={c} />
+        <ToolCard key={c.id} call={c} />
       ))}
-      {m.text && <p className="whitespace-pre-wrap break-words text-[13px] leading-snug text-ink">{m.text}</p>}
+      {(m.uiActions?.length ?? 0) > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Actions applied in the app">
+          {m.uiActions!.map((a, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => onApply?.(a)}
+                disabled={!onApply}
+                title="Apply this action in the app again"
+                className="inline-flex h-6 items-center gap-1 rounded-full border border-line-2 px-2 text-[11.5px] text-ink-2 hover:text-ink disabled:cursor-default disabled:hover:text-ink-2"
+              >
+                <span aria-hidden="true" className="text-signal-ink">
+                  ✓
+                </span>
+                {actionLabel(a)}
+                {onApply && <span className="text-ink-3">· Apply</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {m.text && <Markdown text={m.text} />}
       {uncited && (
-        <p className="rounded-md bg-amber-dim px-2.5 py-1.5 text-[12px] text-amber" role="note">
+        <p className="rounded-md bg-amber-dim px-2.5 py-1.5 text-[12px] leading-snug text-amber" role="note">
           This answer says something is verified or proven without citing evidence. Only the verifiers can set a status; treat it as unverified.
         </p>
       )}
-      {m.evidence.length > 0 && (
-        <p className="num break-all text-[11.5px] text-ink-3">
-          Cites: {m.evidence.join(", ")}
+      {m.evidence.length > 0 && <p className="num break-all text-[11.5px] text-ink-3">Cites: {m.evidence.join(", ")}</p>}
+      {(m.flags ?? []).map((f, i) => (
+        <p key={i} className="rounded-md bg-red-dim px-2.5 py-1.5 text-[12px] leading-snug text-red" role="note">
+          {f.message}
+        </p>
+      ))}
+      {m.cost && !m.streaming && (
+        <p className="num text-[11px] text-ink-3" title="Real token usage at Token Factory list prices, so an estimate">
+          {m.cost.usd > 0 ? `≈ ${formatUsd(m.cost.usd)}` : "$0"} · {m.cost.tokensIn.toLocaleString("en-US")} in · {m.cost.tokensOut.toLocaleString("en-US")} out · {MODEL_LABEL[m.cost.model]}
         </p>
       )}
       {m.error && <p className="text-[12.5px] text-red">{m.error}</p>}
@@ -119,62 +208,66 @@ export function MessageView({ m }: { m: AgentMessage }) {
 
 export interface AgentPanelViewProps {
   state: AgentState;
+  workbench: WorkbenchId;
   connected: boolean;
   busy: boolean;
-  /** One line of real project context shown above the composer (never model output). */
-  context?: string;
-  /** Plain-language limits shown under the composer when connected. */
-  limitsNote?: string;
-  /** A failure before any turn started (for example the request could not be sent). */
+  model: ModelChoice;
+  onModelChange: (m: ModelChoice) => void;
+  credits: CreditsSnapshot | null;
+  creditsExhausted: boolean;
+  chips?: Array<{ label: string; value?: string }>;
+  /** A failure before any turn started (a request that could not be sent). */
   error?: string | null;
   onSend: (text: string) => void;
   onStop: () => void;
-  onConfirm: () => void;
+  onRun: () => void;
   onCancel: () => void;
+  onApply?: (a: UiAction) => void;
 }
 
 /** Presentational panel. `connected=false` is the honest state: nothing here looks like a model answer. */
-export function AgentPanelView({ state, connected, busy, context, limitsNote, error, onSend, onStop, onConfirm, onCancel }: AgentPanelViewProps) {
+export function AgentPanelView(p: AgentPanelViewProps) {
+  const { state, workbench, connected, busy, model, credits, creditsExhausted } = p;
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = scrollRef.current;
     if (el && state.messages.length > 0) el.scrollTop = el.scrollHeight;
-  }, [state.messages]);
+  }, [state.messages, state.pending]);
+  const blocked = !connected || creditsExhausted;
   const submit = () => {
     const t = draft.trim();
-    if (!t || !connected || busy) return;
-    onSend(t);
+    if (!t || blocked || busy) return;
+    p.onSend(t);
     setDraft("");
   };
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col" aria-label="Agent">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-3 py-2.5">
         <h2 className="mr-auto text-[13px] font-medium text-ink">Agent</h2>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Models on Nebius Token Factory">
-          {AGENT_MODELS.map((m) => (
-            <ModelBadge key={m} model={m} active={connected && state.activeModel === m} connected={connected} />
-          ))}
-        </div>
+        <ModelSelector value={model} onChange={p.onModelChange} active={state.activeModel} disabled={busy} />
+        {connected && credits && (
+          <span className="num text-[11.5px] text-ink-3" title={`Demo credits. Pool ${formatUsd(credits.pool.spentUsd)} of ${formatUsd(credits.pool.capUsd)}. Counted ${credits.scope}.`}>
+            {formatUsd(credits.remainingUsd)} left
+          </span>
+        )}
       </div>
 
-      <div ref={scrollRef} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div ref={scrollRef} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {!connected && state.messages.length === 0 ? (
           <div className="rounded-lg border border-line bg-sunken p-4" role="status">
             <h3 className="text-[14px] font-medium text-ink">Agent endpoint not connected yet</h3>
-            <p className="mt-1.5 text-[13px] leading-snug text-ink-3">
-              Nemotron on Nebius Token Factory will answer here. Until the endpoint exists, nothing in this panel is a model response, and no model is active.
-            </p>
-            <p className="mt-2 text-[13px] leading-snug text-ink-3">Replays, the evidence drawer and every number on the canvas work without it.</p>
+            <p className="mt-1.5 text-[13px] leading-snug text-ink-3">Nemotron on Nebius Token Factory will answer here. Until the server has a key, nothing in this panel is a model response, and no model is active.</p>
+            <p className="mt-2 text-[13px] leading-snug text-ink-3">The Board check, the Matter simulation and the recorded runs work without it.</p>
           </div>
         ) : state.messages.length === 0 ? (
           <div role="status">
-            <h3 className="text-[14px] font-medium text-ink">Ask about what is on this site</h3>
-            <p className="mt-1 text-[13px] leading-snug text-ink-3">Answers come from tools that read recorded runs, the evidence library and the free Board and Matter checkers. The agent cannot declare anything proven; only the verifiers can.</p>
-            <ul className="mt-3 flex flex-col gap-2">
-              {STARTERS.map((q) => (
+            <h3 className="text-[14px] font-medium text-ink">Ask the agent to do it</h3>
+            <p className="mt-1 text-[13px] leading-snug text-ink-3">It runs the free checkers in the app for you and cites what the verifiers say. It cannot declare anything proven.</p>
+            <ul className="mt-3 flex flex-col gap-2" aria-label="Suggested prompts">
+              {SUGGESTED_PROMPTS[workbench].map((q) => (
                 <li key={q}>
-                  <button type="button" onClick={() => onSend(q)} disabled={busy} className="w-full rounded-md border border-line px-3 py-2 text-left text-[13px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
+                  <button type="button" onClick={() => p.onSend(q)} disabled={busy || blocked} className="w-full rounded-md border border-line px-3 py-2 text-left text-[13px] leading-snug text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-50">
                     {q}
                   </button>
                 </li>
@@ -184,25 +277,40 @@ export function AgentPanelView({ state, connected, busy, context, limitsNote, er
         ) : (
           <ol className="flex min-w-0 flex-col gap-4" aria-label="Conversation" aria-live="polite">
             {state.messages.map((m) => (
-              <MessageView key={m.id} m={m} />
+              <MessageView key={m.id} m={m} onApply={p.onApply} />
             ))}
           </ol>
         )}
-        {error && (
+        {p.error && (
           <p className="mt-3 rounded-md bg-red-dim px-3 py-2 text-[12.5px] text-red" role="alert">
-            {error}. Nothing was changed; you can send it again.
+            {p.error}
           </p>
         )}
         {state.pending && (
           <div className="mt-4">
-            <ActionConfirm action={state.pending} onConfirm={onConfirm} onCancel={onCancel} />
+            <ConfirmCard action={state.pending} remainingUsd={credits ? credits.remainingUsd : null} onRun={p.onRun} onCancel={p.onCancel} />
           </div>
         )}
       </div>
 
       <div className="shrink-0 border-t border-line p-3">
-        {context && <p className="num mb-2 truncate text-[11.5px] text-ink-3" title={context}>Context: {context}</p>}
-        {connected && limitsNote && <p className="mb-2 text-[11.5px] leading-snug text-ink-3">{limitsNote}</p>}
+        {creditsExhausted && connected && (
+          <p className="mb-2 rounded-md bg-amber-dim px-2.5 py-1.5 text-[12px] leading-snug text-amber" role="status">
+            Your demo credits are used up{credits && credits.pool.spentUsd >= credits.pool.capUsd ? " (the shared pool is empty)" : ""}. The free tools and the recorded runs keep working.
+          </p>
+        )}
+        {(p.chips?.length ?? 0) > 0 && (
+          <ul className="mb-2 flex flex-wrap gap-1.5" aria-label="Context the agent can see">
+            {p.chips!.map((c, i) => (
+              <li key={i} className="inline-flex max-w-full items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-2" title="The agent sees this">
+                <span className="truncate">
+                  {c.label}
+                  {c.value ? <span className="num text-ink-3">: {c.value}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -217,7 +325,7 @@ export function AgentPanelView({ state, connected, busy, context, limitsNote, er
             id="agent-input"
             rows={2}
             value={draft}
-            disabled={!connected}
+            disabled={blocked}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -225,19 +333,20 @@ export function AgentPanelView({ state, connected, busy, context, limitsNote, er
                 submit();
               }
             }}
-            placeholder={connected ? "Ask about this run" : "Agent endpoint not connected"}
+            placeholder={!connected ? "Agent endpoint not connected" : creditsExhausted ? "Demo credits used up" : "Ask or tell the agent what to do"}
             className="min-h-[56px] min-w-0 flex-1 resize-none rounded-md border border-line-2 bg-sunken px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 disabled:cursor-not-allowed disabled:opacity-60"
           />
           {busy ? (
-            <button type="button" onClick={onStop} className="h-10 shrink-0 rounded-md border border-line-2 px-3 text-[13px] text-ink">
+            <button type="button" onClick={p.onStop} className="h-10 shrink-0 rounded-md border border-line-2 px-3 text-[13px] text-ink">
               Stop
             </button>
           ) : (
-            <button type="submit" disabled={!connected || !draft.trim()} className="h-10 shrink-0 rounded-md bg-signal px-3 text-[13px] font-medium text-on-signal disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="submit" disabled={blocked || !draft.trim()} className="h-10 shrink-0 rounded-md bg-signal px-3 text-[13px] font-medium text-on-signal disabled:cursor-not-allowed disabled:opacity-40">
               Send
             </button>
           )}
         </form>
+        <p className="mt-1.5 text-[11px] leading-snug text-ink-3">Demo credits.{credits ? ` Counted ${credits.scope}.` : ""}</p>
       </div>
     </section>
   );
@@ -246,66 +355,124 @@ export function AgentPanelView({ state, connected, busy, context, limitsNote, er
 let nextId = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(nextId++).toString(36)}`;
 
-/** Stateful panel. Pass a transport to connect it; with none (today) it stays in the "not connected" state. */
-export function AgentPanel({ transport, context, limitsNote }: { transport?: AgentTransport | null; context?: string; limitsNote?: string }) {
+export interface AgentPanelProps {
+  workbench: WorkbenchId;
+  /** What the user sees right now. The agent can act on it (edit the current design, tune the current parameters). */
+  context?: AgentContext;
+  /** Controlled model choice (for a top-bar selector). Omit it and the panel keeps its own. */
+  model?: ModelChoice;
+  onModelChange?: (m: ModelChoice) => void;
+  /** Apply an action in the app: the agent performed it on the server and the app mirrors it. Also called by the Apply button. */
+  onAction?: (action: UiAction) => void | Promise<unknown>;
+  /** Override for tests; by default `/api/agent`. */
+  transport?: AgentTransport;
+  className?: string;
+}
+
+/** The agent. Streaming chat, model selector, tool cards, actions in the app, confirmed loops and real per-message cost. */
+export function AgentPanel({ workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
   const [state, setState] = useState<AgentState>(initialAgentState);
   const [busy, setBusy] = useState(false);
-  const abort = useRef<AbortController | null>(null);
+  const [connected, setConnected] = useState(!!transportProp);
+  const [ownModel, setOwnModel] = useState<ModelChoice>("auto");
   const [connError, setConnError] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const actionRef = useRef(onAction);
+  actionRef.current = onAction;
+  const { credits, exhausted, refresh } = useCredits();
+  const transport = useMemo(() => transportProp ?? httpAgentTransport(), [transportProp]);
+  const model = modelProp ?? ownModel;
 
-  const consume = useCallback(async (events: AsyncIterable<AgentEvent>) => {
-    let turn: string | null = null;
-    setConnError(null);
-    try {
-      for await (const e of events) {
-        if (e.type === "turn.started") turn = e.id;
-        setState((s) => applyAgentEvent(s, e));
-      }
-    } catch (err) {
-      if ((err as { name?: string }).name !== "AbortError") {
-        const message = err instanceof Error ? err.message : "The agent connection failed";
-        if (turn) setState((s) => applyAgentEvent(s, { type: "turn.error", id: turn!, message }));
-        else setConnError(message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (transportProp) return;
+    const ctl = new AbortController();
+    void fetchAgentStatus(ctl.signal).then((s) => setConnected(s.connected));
+    return () => ctl.abort();
+  }, [transportProp]);
 
-  const onSend = useCallback(
-    (text: string) => {
-      if (!transport) return;
+  const consume = useCallback(
+    async (events: AsyncIterable<AgentEvent>) => {
+      let turn: string | null = null;
+      setConnError(null);
+      try {
+        for await (const e of events) {
+          if (e.type === "turn.started") turn = e.id;
+          setState((s) => applyAgentEvent(s, e));
+          if (e.type === "ui.action") void Promise.resolve(actionRef.current?.(e.action)).catch(() => undefined);
+        }
+      } catch (err) {
+        if ((err as { name?: string }).name !== "AbortError") {
+          const message = err instanceof Error ? err.message : "The agent connection failed";
+          if (turn) setState((s) => applyAgentEvent(s, { type: "turn.error", id: turn!, message }));
+          else setConnError(err instanceof CreditsError ? message : `${message} Nothing was spent.`);
+        }
+      } finally {
+        setBusy(false);
+        refresh();
+      }
+    },
+    [refresh],
+  );
+
+  const request = useCallback(
+    (extra: Partial<AgentRequest> & { text: string }) => {
       const ctl = new AbortController();
       abort.current = ctl;
       setBusy(true);
-      setState((s) => addUserMessage(s, newId("u"), text));
-      void consume(transport.send({ text, signal: ctl.signal }));
+      const history = stateRef.current.messages
+        .filter((m) => m.text.trim())
+        .slice(-6)
+        .map((m) => ({ role: m.role, text: m.text }));
+      void consume(transport.send({ model, workbench, context, history, ...extra, signal: ctl.signal }));
     },
-    [transport, consume],
+    [transport, model, workbench, context, consume],
   );
 
-  const onConfirm = useCallback(() => {
-    const action = state.pending;
-    if (!transport?.confirm || !action) return;
-    const ctl = new AbortController();
-    abort.current = ctl;
-    setBusy(true);
+  const onSend = useCallback(
+    (text: string) => {
+      setState((s) => addUserMessage(dismissPending(s), newId("u"), text));
+      request({ text });
+    },
+    [request],
+  );
+
+  const onRun = useCallback(() => {
+    const p = stateRef.current.pending;
+    if (!p || !p.args) return;
     setState((s) => dismissPending(s));
-    void consume(transport.confirm(action, ctl.signal));
-  }, [transport, state.pending, consume]);
+    request({ text: p.summary, confirm: true, action: { tool: p.tool as "board_design", args: p.args } });
+  }, [request]);
+
+  const chips = useMemo(() => {
+    if (context?.chips?.length) return context.chips;
+    const out: Array<{ label: string; value?: string }> = [{ label: "Workbench", value: WORKBENCHES[workbench].name }];
+    if (context?.board?.template_id) out.push({ label: "Design", value: context.board.template_id });
+    if (context?.matter?.generator) out.push({ label: "Generator", value: context.matter.generator });
+    if (context?.silicon?.run_id) out.push({ label: "Run", value: context.silicon.run_id });
+    return out;
+  }, [context, workbench]);
 
   return (
-    <AgentPanelView
-      state={state}
-      connected={!!transport}
-      busy={busy}
-      context={context}
-      limitsNote={limitsNote}
-      error={connError}
-      onSend={onSend}
-      onStop={() => abort.current?.abort()}
-      onConfirm={onConfirm}
-      onCancel={() => setState((s) => dismissPending(s))}
-    />
+    <div className={`h-full min-h-0 min-w-0 ${className}`}>
+      <AgentPanelView
+        state={state}
+        workbench={workbench}
+        connected={connected}
+        busy={busy}
+        model={model}
+        onModelChange={(m) => (onModelChange ? onModelChange(m) : setOwnModel(m))}
+        credits={credits}
+        creditsExhausted={exhausted}
+        chips={chips}
+        error={connError}
+        onSend={onSend}
+        onStop={() => abort.current?.abort()}
+        onRun={onRun}
+        onCancel={() => setState((s) => dismissPending(s))}
+        onApply={onAction ? (a) => void Promise.resolve(onAction(a)).catch(() => undefined) : undefined}
+      />
+    </div>
   );
 }

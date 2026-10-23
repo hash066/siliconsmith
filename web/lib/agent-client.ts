@@ -1,10 +1,11 @@
-// Browser side of /api/agent: the status probe and the transport the Agent panel plugs in.
+// Browser side of /api/agent: the status probe and the transport the Agent panel uses.
 
-import type { AgentEvent, AgentTransport } from "./agent";
+import type { AgentEvent, AgentRequest, AgentTransport } from "./agent";
+import { CREDITS_CHANGED } from "./credits-client";
 
 export interface AgentStatus {
   connected: boolean;
-  limits?: { visitorTurnsPerDay: number; globalTurnsPerDay: number; turnMaxTokens: number; maxInputChars: number; scope: string };
+  limits?: { turnMaxTokens: number; maxInputChars: number };
 }
 
 export async function fetchAgentStatus(signal?: AbortSignal): Promise<AgentStatus> {
@@ -36,20 +37,41 @@ export async function* parseEventStream(body: ReadableStream<Uint8Array>): Async
   if (buf.trim()) yield JSON.parse(buf) as AgentEvent;
 }
 
-/** `getRunId` tells the agent which run the user is looking at (the id only; the server reads the recorded replay itself). */
-export const httpAgentTransport = (getRunId: () => string | undefined): AgentTransport => ({
-  async *send({ text, signal }) {
-    const res = await fetch("/api/agent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, run_id: getRunId() }), signal });
+/** The credits ran out (or the store is down). The message is the server's plain explanation; free tools and replays still work. */
+export class CreditsError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+  ) {
+    super(message);
+    this.name = "CreditsError";
+  }
+}
+
+export const httpAgentTransport = (): AgentTransport => ({
+  async *send({ signal, ...req }: AgentRequest & { signal: AbortSignal }) {
+    const res = await fetch("/api/agent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(req), signal });
     if (!res.ok || !res.body) {
       let message = `The agent endpoint answered ${res.status}.`;
+      let reason = "";
       try {
-        const j = (await res.json()) as { message?: string };
+        const j = (await res.json()) as { message?: string; reason?: string };
         if (j.message) message = j.message;
+        reason = j.reason ?? "";
       } catch {
         // keep the status-only message
       }
+      if (res.status === 402) {
+        if (typeof window !== "undefined") window.dispatchEvent(new Event(CREDITS_CHANGED));
+        throw new CreditsError(message, reason);
+      }
       throw new Error(message);
     }
-    yield* parseEventStream(res.body);
+    try {
+      yield* parseEventStream(res.body);
+    } finally {
+      // Whatever the turn spent is already charged; tell every credits pill to refresh.
+      if (typeof window !== "undefined") window.dispatchEvent(new Event(CREDITS_CHANGED));
+    }
   },
 });
