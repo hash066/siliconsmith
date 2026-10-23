@@ -207,6 +207,15 @@ describe("matter_optimize loop", () => {
     expect(evB.filter((e) => e.type === "text.delta").map((e) => (e as { text: string }).text).join("")).toContain("did not return usable parameters");
   });
 
+  it("a reply that names only some parameters keeps the others from the last attempt, and a bare object without the gen_params wrapper is accepted", async () => {
+    const { llm } = scriptedLlm([reply('{"n_fins": 11}'), reply('{"gen_params": {"fin_len": 18}}'), reply("{}")]);
+    const { hosted, sims } = matterHosted((p) => 90 - p.n_fins);
+    await collect(runMatterOptimize({ turnId: "m", generator: "rect_fins", llm, hosted }));
+    expect(sims[1]).toEqual({ spine: 8, n_fins: 11, fin_w: 3, fin_len: 16 });
+    expect(sims[2]).toEqual({ spine: 8, n_fins: 11, fin_w: 3, fin_len: 18 });
+    expect(sims).toHaveLength(3); // the third reply names nothing usable, so the loop stops
+  });
+
   it("prefers a valid geometry over a lower peak from an invalid one, and says when none was valid", async () => {
     const { llm } = scriptedLlm([reply(gp(12))]);
     const { hosted } = matterHosted(() => 70, "fail"); // M2 fails for every attempt

@@ -323,8 +323,18 @@ export async function* runMatterOptimize(input: LoopInput & { generator: MatterG
       const obj = extractJsonObject(reply.text);
       const gp = obj && typeof obj.gen_params === "object" && obj.gen_params !== null ? (obj.gen_params as Record<string, unknown>) : null;
       const next: Record<string, number> = {};
-      let readable = !!gp;
-      if (gp) for (const p of spec.params) typeof gp[p.key] === "number" && Number.isFinite(gp[p.key] as number) ? (next[p.key] = Math.round(gp[p.key] as number)) : (readable = false);
+      const flat = gp ?? (obj && spec.params.some((p) => typeof obj[p.key] === "number") ? obj : null);
+      let readable = !!flat;
+      let named = 0;
+      if (flat)
+        for (const p of spec.params) {
+          const v = flat[p.key];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            next[p.key] = Math.round(v);
+            named++;
+          } else next[p.key] = params[p.key];
+        }
+      if (named === 0) readable = false;
       if (!readable) {
         yield { type: "tool.result", id: turnId, callId: nid, ok: false, summary: "the reply was not a full parameter set" };
         stopReason = "the model did not return usable parameters";
