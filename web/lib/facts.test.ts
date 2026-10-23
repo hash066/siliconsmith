@@ -42,6 +42,7 @@ describe("landing facts are derived from the data", () => {
     expect(f.board).toEqual(e.board);
     expect(f.matter.runs).toEqual(e.matter.runs);
     expect(f.board.faultsDetected).toBe(f.board.faultsCatalogued);
+    expect(f.board.structuralFaults).toBe(3);
     expect(f.board.rungs).toEqual(["B1", "B2", "B3", "B4", "B5"]);
     expect(f.matter.marginK).toBeCloseTo(f.matter.baselineC - f.matter.bestPeakC, 2);
   });

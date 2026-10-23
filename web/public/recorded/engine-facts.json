@@ -2,7 +2,7 @@
  "board": {
   "faultsDetected": 8,
   "faultsCatalogued": 8,
-  "structuralFaults": 0,
+  "structuralFaults": 3,
   "heldoutBefore": {
    "passed": 11,
    "of": 18

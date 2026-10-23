@@ -45,7 +45,7 @@ function must<T>(v: T | null | undefined, what: string): T {
 export function extractBoardFacts(readme: string): BoardFacts {
   const detected = (readme.match(/\|\s*detected\s*\|\s*$/gm) ?? []).length;
   const pending = (readme.match(/\|\s*pending\s*\|\s*$/gm) ?? []).length;
-  const sl = must(readme.match(/structural faults[^:]*:([^.]*)\./), "structural faults");
+  const sl = must(readme.match(/Three structural faults[^:]*:([^.]*)\./), "structural faults");
   const structural = (sl[1].match(/`\w+`/g) ?? []).length;
   const held = must(readme.match(/Held-out, (\d+) sessions \| (\d+)\/(\d+)[^|]*\| \*\*(\d+)\/(\d+)\*\*/), "held-out table");
   const propose = must(readme.match(/board-propose-template-6 \|[^|]*\|\s*\*\*passed B1 to B5\*\* in (\d+) judged designs, \$([\d.]+)/), "propose run");
