@@ -183,7 +183,7 @@ describe("result summaries use only the real numbers", () => {
     expect(s).toContain("B4 fail: GPIO12 vs GPIO14");
   });
   it("Matter summary states the peak and the rung count, and refuses a verdict it was not given", () => {
-    const sim = { metrics: { peak_temp_c: 81.64 }, ladder: [{ status: "pass" }, { status: "fail" }], verdict: null, first_failure: "M5" } as unknown as MatterSimulation;
+    const sim = { metrics: { peak_temp_c: 81.64 }, viewer: { field: {} }, baselines: { equal_material: {}, full_budget: {} }, ladder: [{ status: "pass" }, { status: "fail" }], verdict: null, first_failure: "M5" } as unknown as MatterSimulation;
     const s = summarizeSim(sim);
     expect(s).toContain("Peak 81.6 °C");
     expect(s).toContain("1 of 2 rungs pass");
