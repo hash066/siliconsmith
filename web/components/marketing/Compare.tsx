@@ -11,6 +11,7 @@ export function Compare({ session, chat, fault }: { session: RecordedAgent; chat
   const drag = useRef(false);
   const segs = allSegments(session.events);
   const verified = finalText(segs);
+  const evidenceIds = segs.flatMap((g) => (g.kind === "evidence" ? g.ids : [])).length;
 
   const setFromX = useCallback((x: number) => {
     const r = box.current?.getBoundingClientRect();
@@ -59,8 +60,8 @@ export function Compare({ session, chat, fault }: { session: RecordedAgent; chat
                 <h3 className="hw-display" style={{ fontSize: "1.3rem" }}>Verified answer</h3>
                 <p className="mk-cmp-text"><Md text={verified} /></p>
                 <div className="mk-statrow">
-                  <span className="mk-rung mk-mono" data-s="pass">{session.toolCalls} tool call</span>
-                  <span className="mk-rung mk-mono" data-s="pass">1 evidence id</span>
+                  <span className="mk-rung mk-mono" data-s="pass">{session.toolCalls} tool call{session.toolCalls === 1 ? "" : "s"}</span>
+                  <span className="mk-rung mk-mono" data-s="pass">{evidenceIds} evidence id{evidenceIds === 1 ? "" : "s"}</span>
                   <span className="mk-rung mk-mono" data-s="fail">{fault.failedRung} fails</span>
                 </div>
               </div>
