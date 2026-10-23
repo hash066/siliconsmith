@@ -30,7 +30,11 @@ export function mergeMatterParams(cur: SimulateInput, p: MatterParams): { ok: tr
 const f1 = (n: number, d = 1) => n.toFixed(d);
 const same = (a: SimulateInput, b: SimulateInput) => JSON.stringify([a.generator, a.gen_params, a.spreader, !!a.include_stl]) === JSON.stringify([b.generator, b.gen_params, b.spreader, !!b.include_stl]);
 
+/** Geometry rejected at M2 comes back with empty metrics, no field and no baselines: nothing was solved. */
+export const wasSolved = (sim: MatterSimulation): boolean => typeof sim.metrics?.peak_temp_c === "number" && !!sim.viewer?.field && !!sim.baselines?.equal_material && !!sim.baselines?.full_budget;
+
 export function summarizeSim(sim: MatterSimulation): string {
+  if (!wasSolved(sim)) return `Nothing was solved: ${sim.first_failure ?? "a rung"} rejected the geometry (${sim.ladder.filter((r) => r.status === "pass").length} of ${sim.ladder.length} rungs pass).`;
   const pass = sim.ladder.filter((r) => r.status === "pass").length;
   const v = sim.verdict;
   const base = v ? ` ${v.label}; ${f1(Math.abs(v.delta_equal_material_k), 2)} K ${v.delta_equal_material_k >= 0 ? "cooler" : "hotter"} than the equal-material baseline.` : ` No verdict (${sim.first_failure ?? "a rung"} did not pass).`;

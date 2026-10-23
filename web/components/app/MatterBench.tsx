@@ -9,7 +9,7 @@ import { CellGlyph } from "../domain/RungMatrix";
 import { MeshCanvas } from "../domain/StlViewer";
 import { EvidenceTag } from "../evidence/EvidenceChip";
 import type { DrawerRef } from "../domain/BoardCheckPanel";
-import type { MatterBench } from "./useMatterBench";
+import { wasSolved, type MatterBench } from "./useMatterBench";
 import { Block, btnPrimary, ScopeRow } from "./ui";
 
 const f1 = (n: number, d = 1) => n.toFixed(d);
@@ -189,6 +189,7 @@ export function MatterCanvasView({ b, onEvidence }: { b: MatterBench; onEvidence
       </div>
     );
   const passN = sim.ladder.filter((r) => r.status === "pass").length;
+  const solved = wasSolved(sim);
   const tag = (rung: string, label: string) => <EvidenceTag label={label} onClick={() => { const e = matterRungEvidence(sim, rung); if (e) onEvidence(e); }} />;
   return (
     <div className="@container flex min-w-0 flex-col gap-3 p-3" aria-live="polite" aria-busy={busy}>
@@ -198,13 +199,13 @@ export function MatterCanvasView({ b, onEvidence }: { b: MatterBench; onEvidence
         </p>
       )}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 @3xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] [&>*]:min-w-0">
-        <Block title="Plate" aside={<span className="num text-[11.5px] text-ink-3">{sim.generator} · {sim.timings_ms} ms</span>} data-step="verify" tabIndex={-1}>
+        {solved ? <Block title="Plate" aside={<span className="num text-[11.5px] text-ink-3">{sim.generator} · {sim.timings_ms} ms</span>} data-step="verify" tabIndex={-1}>
           <div className="p-3">
             <PlateViewer sim={sim} />
           </div>
-        </Block>
+        </Block> : <Block title="Plate"><p className="px-4 py-8 text-center text-[13px] leading-snug text-ink-2" role="status">Nothing was solved: {sim.first_failure ?? "a rung"} rejected this geometry, so there is no temperature field to draw. The rungs show why.</p></Block>}
         <div className="flex min-w-0 flex-col gap-3">
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line text-[13px] [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2">
+          {solved && <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line text-[13px] [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2">
             <div>
               <dt className="flex items-center justify-between gap-1 text-[11.5px] text-ink-3">Peak {tag("M4", "peak temperature")}</dt>
               <dd className="num text-[18px] text-ink">{f1(sim.metrics.peak_temp_c)} °C</dd>
@@ -221,7 +222,7 @@ export function MatterCanvasView({ b, onEvidence }: { b: MatterBench; onEvidence
               <dt className="text-[11.5px] text-ink-3">Heat balance error</dt>
               <dd className="num text-[18px] text-ink">{sim.metrics.heat_balance_rel.toExponential(1)}</dd>
             </div>
-          </dl>
+          </dl>}
           <Block title="Ladder M1–M5" aside={<span className="num text-[11.5px] text-ink-3">{passN} of {sim.ladder.length} pass</span>}>
             <ul className="divide-y divide-line">
               {sim.ladder.map((r) => (
@@ -242,7 +243,7 @@ export function MatterCanvasView({ b, onEvidence }: { b: MatterBench; onEvidence
         </div>
       </div>
 
-      <Block title="Baselines (plain rectangular fins)">
+      {solved && <Block title="Baselines (plain rectangular fins)">
         <div className="min-w-0 overflow-x-auto p-3">
           <table className="w-full min-w-[300px] table-fixed border-collapse text-[12.5px]">
             <thead>
@@ -267,7 +268,7 @@ export function MatterCanvasView({ b, onEvidence }: { b: MatterBench; onEvidence
           </p>
           <p className="mt-1 text-[12px] leading-snug text-ink-3">{sim.verdict?.note ?? "2D steady-state model, stated h and k, no airflow CFD, not validated on a printed part."} Small margins are model estimates, not guarantees.</p>
         </div>
-      </Block>
+      </Block>}
 
       <Block title="Export" data-step="export" tabIndex={-1}>
         <div className="p-3 text-[12.5px] text-ink-2">

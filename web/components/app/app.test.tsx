@@ -191,6 +191,13 @@ describe("result summaries use only the real numbers", () => {
   });
 });
 
+describe("Matter result rejected at M2", () => {
+  it("is reported as nothing solved, without reading missing metrics", () => {
+    const sim = { metrics: {}, viewer: { field: null }, baselines: { equal_material: null, full_budget: null }, ladder: [{ status: "pass" }, { status: "fail" }], first_failure: "M2" } as unknown as MatterSimulation;
+    expect(summarizeSim(sim)).toBe("Nothing was solved: M2 rejected the geometry (1 of 2 rungs pass).");
+  });
+});
+
 describe("old /workstation links", () => {
   it("map a run id to the Silicon workbench and drop everything else", () => {
     expect(workstationRedirect({ run: "r_w1_final", evil: "x" })).toBe("/app?wb=silicon&run=r_w1_final");
