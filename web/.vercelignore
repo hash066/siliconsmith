@@ -11,4 +11,4 @@ qa
 .env.*
 **/__pycache__
 **/*.pyc
-api
+/api
