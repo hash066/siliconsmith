@@ -62,7 +62,7 @@ export function Solution({ session, chat, fault }: { session: RecordedAgent; cha
             </span>
           </div>
           <div className="mk-split">
-            <div className="mk-pane" aria-live="polite">
+            <div className="mk-pane" role="region" tabIndex={0} aria-label="Recorded answer, scrollable">
               <div className="mk-user">{session.question}</div>
               {verified ? (
                 <div key="v">
@@ -90,7 +90,7 @@ export function Solution({ session, chat, fault }: { session: RecordedAgent; cha
                 </div>
               )}
             </div>
-            <div className="mk-pane" style={{ background: "color-mix(in srgb, var(--hw-bg) 45%, transparent)" }}>
+            <div className="mk-pane" role="region" tabIndex={0} aria-label="Evidence panel, scrollable" style={{ background: "color-mix(in srgb, var(--hw-bg) 45%, transparent)" }}>
               {verified ? (
                 <div className="mk-meter mk-msg-in" key="rv">
                   <p className="hw-label">Evidence · {fault.template}</p>

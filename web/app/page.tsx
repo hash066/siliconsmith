@@ -8,6 +8,7 @@ import { Hero } from "@/components/marketing/Hero";
 import { How } from "@/components/marketing/How";
 import { Nav, Rail } from "@/components/marketing/Nav";
 import { Pipeline } from "@/components/marketing/Pipeline";
+import { RealStrip } from "@/components/marketing/RealStrip";
 import { Problem } from "@/components/marketing/Problem";
 import { Runtime } from "@/components/marketing/runtime";
 import { Solution } from "@/components/marketing/Solution";
@@ -45,6 +46,7 @@ export default function Landing() {
         <Solution session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
         <Demo sessions={f.recorded.agent} />
         <Compare session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
+        <RealStrip entryId={entry?.id ?? ""} />
         <Features facts={lite} />
         <Pipeline facts={lite} />
         <Bench />
