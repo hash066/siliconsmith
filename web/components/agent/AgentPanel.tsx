@@ -119,6 +119,12 @@ export const actionLabel = (a: UiAction): string => {
       return `Opened ${a.args.run_id}${a.args.node_id ? ` · ${a.args.node_id}` : ""}`;
     case "workflow.focus":
       return `Focused ${a.args.step}`;
+    case "silicon.run_live":
+      return `Started a live Silicon run (${a.args.workload})`;
+    case "board.design":
+      return "Started a Board design";
+    case "preview.tab":
+      return `Showed the ${a.args.tab} tab`;
   }
 };
 

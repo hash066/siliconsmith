@@ -87,7 +87,7 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
         {phase === "idle" ? <p className="rounded-lg border border-line bg-panel px-3 py-4 text-[13px] text-ink-3" role="status">Nothing has run yet.</p> : <StageList node={node} running={running} />}
         <p className="mt-1 text-[12.5px] text-ink-3">
           Want to see a long, full search instead of one candidate?{" "}
-          <Link href={recordedHref} className="text-signal-ink underline-offset-2 hover:underline" data-testid="recorded-link">
+          <Link href={recordedHref} className="text-signal-ink underline underline-offset-2" data-testid="recorded-link">
             See a full recorded search
           </Link>{" "}
           (a 19 minute recording of a real run, opens its own page).

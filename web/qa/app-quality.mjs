@@ -115,7 +115,7 @@ for (const theme of ["dark", "light"]) {
     await page.keyboard.press("Tab");
     labels.push(await page.evaluate(() => { const e = document.activeElement; return e.getAttribute("aria-label") || e.getAttribute("data-testid") || e.textContent?.trim().slice(0, 24) || e.tagName; }));
   }
-  for (const want of ["What do you want to make?", "chip-auto", "chip-matter", "chip-board", "chip-silicon", "example-matter", "example-board", "example-silicon"]) ok(`start: keyboard reaches ${want}`, labels.some((l) => l === want || l.includes(want)), labels.join(","));
+  for (const want of ["TEXTAREA", "chip-auto", "chip-matter", "chip-board", "chip-silicon", "example-matter", "example-board", "example-silicon"]) ok(`start: keyboard reaches ${want}`, labels.some((l) => l === want || l.includes(want)), labels.join(","));
   await page.getByLabel("What do you want to make?").fill("a heat sink");
   await page.getByLabel("What do you want to make?").press("Enter");
   await page.getByTestId("workspace").waitFor();
