@@ -1,3 +1,4 @@
+import type { CreditsSnapshot } from "./credits";
 // Agent panel protocol. The panel renders a conversation built from AgentEvents; a transport (a later `/api/agent`
 // route handler calling Nemotron on Nebius Token Factory) produces them. With no transport the panel is in its honest
 // "not connected" state and shows nothing that looks like a model answer.
@@ -127,6 +128,8 @@ export type AgentEvent =
   | { type: "ui.action"; id: string; action: UiAction }
   | { type: "cost"; id: string; usd: number; tokens_in: number; tokens_out: number; model: AgentModel }
   | { type: "action.proposed"; action: PendingAction }
+  /** Last event of a metered turn: the visitor's balance after it, and a signed receipt the browser posts to /api/credits to settle the cookie. */
+  | { type: "credits"; snapshot: CreditsSnapshot; receipt: string }
   | { type: "turn.done"; id: string; usage?: TurnUsage }
   | { type: "turn.error"; id: string; message: string };
 
@@ -174,6 +177,8 @@ export function applyAgentEvent(s: AgentState, e: AgentEvent): AgentState {
       }));
     case "action.proposed":
       return { ...s, pending: e.action };
+    case "credits":
+      return s;
     case "turn.done":
       return patch(s, e.id, (m) => ({ ...m, streaming: false, usage: e.usage ?? m.usage }));
     case "turn.error":

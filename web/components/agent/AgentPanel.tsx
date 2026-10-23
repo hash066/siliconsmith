@@ -24,7 +24,7 @@ import {
 import type { UiAction } from "@/lib/agent-actions";
 import { CreditsError, fetchAgentStatus, httpAgentTransport } from "@/lib/agent-client";
 import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
-import { formatUsd, useCredits, type CreditsSnapshot } from "@/lib/credits-client";
+import { formatBalance, formatUsd, useCredits, type CreditsSnapshot } from "@/lib/credits-client";
 import { Markdown } from "./Markdown";
 
 export const SUGGESTED_PROMPTS: Record<WorkbenchId, string[]> = {
@@ -209,7 +209,8 @@ export function MessageView({ m, onApply }: { m: AgentMessage; onApply?: (a: UiA
 export interface AgentPanelViewProps {
   state: AgentState;
   workbench: WorkbenchId;
-  connected: boolean;
+  /** null while the status probe is in flight: the panel reserves its space instead of flashing "not connected". */
+  connected: boolean | null;
   busy: boolean;
   model: ModelChoice;
   onModelChange: (m: ModelChoice) => void;
@@ -225,6 +226,8 @@ export interface AgentPanelViewProps {
   onApply?: (a: UiAction) => void;
 }
 
+const Skeleton = ({ className }: { className: string }) => <span aria-hidden="true" className={`block animate-pulse rounded bg-raised ${className}`} />;
+
 /** Presentational panel. `connected=false` is the honest state: nothing here looks like a model answer. */
 export function AgentPanelView(p: AgentPanelViewProps) {
   const { state, workbench, connected, busy, model, credits, creditsExhausted } = p;
@@ -234,7 +237,8 @@ export function AgentPanelView(p: AgentPanelViewProps) {
     const el = scrollRef.current;
     if (el && state.messages.length > 0) el.scrollTop = el.scrollHeight;
   }, [state.messages, state.pending]);
-  const blocked = !connected || creditsExhausted;
+  const checking = connected === null;
+  const blocked = connected !== true || creditsExhausted;
   const submit = () => {
     const t = draft.trim();
     if (!t || blocked || busy) return;
@@ -246,15 +250,26 @@ export function AgentPanelView(p: AgentPanelViewProps) {
       <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-3 py-2.5">
         <h2 className="mr-auto text-[13px] font-medium text-ink">Agent</h2>
         <ModelSelector value={model} onChange={p.onModelChange} active={state.activeModel} disabled={busy} />
-        {connected && credits && (
-          <span className="num text-[11.5px] text-ink-3" title={`Demo credits. Pool ${formatUsd(credits.pool.spentUsd)} of ${formatUsd(credits.pool.capUsd)}. Counted ${credits.scope}.`}>
-            {formatUsd(credits.remainingUsd)} left
+        {connected !== false && (credits ? (
+          <span className="num text-[11.5px] text-ink-3" title={`Demo credits. Pool ${formatUsd(credits.pool.spentUsd)} of ${formatUsd(credits.pool.capUsd)}. ${credits.scope}.`}>
+            {formatBalance(credits.remainingUsd)} left
           </span>
-        )}
+        ) : (
+          <Skeleton className="h-3.5 w-[68px]" />
+        ))}
       </div>
 
       <div ref={scrollRef} className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {!connected && state.messages.length === 0 ? (
+        {checking && state.messages.length === 0 ? (
+          <div role="status" aria-label="Checking the agent endpoint" className="min-h-[188px]">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="mt-2.5 h-3 w-full" />
+            <Skeleton className="mt-1.5 h-3 w-4/5" />
+            <Skeleton className="mt-4 h-9 w-full" />
+            <Skeleton className="mt-2 h-9 w-full" />
+            <Skeleton className="mt-2 h-9 w-full" />
+          </div>
+        ) : connected === false && state.messages.length === 0 ? (
           <div className="rounded-lg border border-line bg-sunken p-4" role="status">
             <h3 className="text-[14px] font-medium text-ink">Agent endpoint not connected yet</h3>
             <p className="mt-1.5 text-[13px] leading-snug text-ink-3">Nemotron on Nebius Token Factory will answer here. Until the server has a key, nothing in this panel is a model response, and no model is active.</p>
@@ -294,7 +309,7 @@ export function AgentPanelView(p: AgentPanelViewProps) {
       </div>
 
       <div className="shrink-0 border-t border-line p-3">
-        {creditsExhausted && connected && (
+        {creditsExhausted && connected === true && (
           <p className="mb-2 rounded-md bg-amber-dim px-2.5 py-1.5 text-[12px] leading-snug text-amber" role="status">
             Your demo credits are used up{credits && credits.pool.spentUsd >= credits.pool.capUsd ? " (the shared pool is empty)" : ""}. The free tools and the recorded runs keep working.
           </p>
@@ -333,7 +348,7 @@ export function AgentPanelView(p: AgentPanelViewProps) {
                 submit();
               }
             }}
-            placeholder={!connected ? "Agent endpoint not connected" : creditsExhausted ? "Demo credits used up" : "Ask or tell the agent what to do"}
+            placeholder={checking ? "Checking the agent endpoint" : !connected ? "Agent endpoint not connected" : creditsExhausted ? "Demo credits used up" : "Ask or tell the agent what to do"}
             className="min-h-[56px] min-w-0 flex-1 resize-none rounded-md border border-line-2 bg-sunken px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 disabled:cursor-not-allowed disabled:opacity-60"
           />
           {busy ? (
@@ -346,7 +361,7 @@ export function AgentPanelView(p: AgentPanelViewProps) {
             </button>
           )}
         </form>
-        <p className="mt-1.5 text-[11px] leading-snug text-ink-3">Demo credits.{credits ? ` Counted ${credits.scope}.` : ""}</p>
+        <p className="mt-1.5 min-h-[30px] text-[11px] leading-snug text-ink-3">Demo credits.{credits ? ` ${credits.scope[0].toUpperCase()}${credits.scope.slice(1)}.` : ""}</p>
       </div>
     </section>
   );
@@ -373,7 +388,7 @@ export interface AgentPanelProps {
 export function AgentPanel({ workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
   const [state, setState] = useState<AgentState>(initialAgentState);
   const [busy, setBusy] = useState(false);
-  const [connected, setConnected] = useState(!!transportProp);
+  const [connected, setConnected] = useState<boolean | null>(transportProp ? true : null);
   const [ownModel, setOwnModel] = useState<ModelChoice>("auto");
   const [connError, setConnError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);

@@ -6,7 +6,7 @@ import { AgentPanelView, ConfirmCard, SUGGESTED_PROMPTS, type AgentPanelViewProp
 import { Markdown } from "./Markdown";
 
 const noop = () => {};
-const credits: CreditsSnapshot = { allowanceUsd: 0.5, spentUsd: 0.02, remainingUsd: 0.48, pool: { capUsd: 25, spentUsd: 1.3 }, scope: "per server instance, in memory" };
+const credits: CreditsSnapshot = { allowanceUsd: 0.5, spentUsd: 0.02, remainingUsd: 0.48, pool: { capUsd: 25, spentUsd: 1.3 }, scope: "your balance is exact; the shared pool is per server instance, in memory until a durable store is added", scopes: { visitor: "exact (signed cookie)", pool: "per server instance, in memory" } };
 const view = (state: AgentState, over: Partial<AgentPanelViewProps> = {}) =>
   renderToStaticMarkup(
     <AgentPanelView state={state} workbench="matter" connected busy={false} model="auto" onModelChange={noop} credits={credits} creditsExhausted={false} onSend={noop} onStop={noop} onRun={noop} onCancel={noop} {...over} />,
@@ -14,6 +14,14 @@ const view = (state: AgentState, over: Partial<AgentPanelViewProps> = {}) =>
 const play = (events: AgentEvent[]) => events.reduce(applyAgentEvent, initialAgentState());
 
 describe("AgentPanel (server-rendered; fixtures exist only in this test)", () => {
+  it("reserves its space while the status probe is in flight: a skeleton, no 'not connected' flash, no balance yet", () => {
+    const html = view(initialAgentState(), { connected: null, credits: null });
+    expect(html).toContain("Checking the agent endpoint");
+    expect(html).not.toContain("not connected yet");
+    expect(html).toMatch(/<textarea[^>]*\sdisabled=""/);
+    expect(html).toContain("animate-pulse");
+  });
+
   it("is honest when no endpoint is connected: banner, disabled composer, no starters", () => {
     const html = view(initialAgentState(), { connected: false, credits: null });
     expect(html).toContain("Agent endpoint not connected yet");
@@ -34,7 +42,7 @@ describe("AgentPanel (server-rendered; fixtures exist only in this test)", () =>
     const html = view(initialAgentState(), { chips: [{ label: "Design", value: "clean_sensor" }] });
     for (const m of ["Auto", "Ultra", "Super", "Nano"]) expect(html).toContain(m);
     expect(html).toMatch(/aria-checked="true"[^>]*>Auto/);
-    expect(html).toContain("$0.48 left");
+    expect(html).toContain("$0.4800 left");
     expect(html).toContain("clean_sensor");
   });
 

@@ -1,7 +1,8 @@
 // Browser side of /api/agent: the status probe and the transport the Agent panel uses.
 
+import type { CreditsSnapshot } from "./credits";
 import type { AgentEvent, AgentRequest, AgentTransport } from "./agent";
-import { CREDITS_CHANGED } from "./credits-client";
+import { CREDITS_CHANGED, announceCredits } from "./credits-client";
 
 export interface AgentStatus {
   connected: boolean;
@@ -67,11 +68,31 @@ export const httpAgentTransport = (): AgentTransport => ({
       }
       throw new Error(message);
     }
+    let settled = false;
     try {
-      yield* parseEventStream(res.body);
+      for await (const e of parseEventStream(res.body)) {
+        if (e.type === "credits") {
+          // The balance after this turn: show it now, then settle the cookie with the signed receipt and show what the server confirms.
+          announceCredits(e.snapshot);
+          const confirmed = await settleReceipt(e.receipt);
+          settled = true;
+          announceCredits(confirmed ?? e.snapshot);
+        }
+        yield e;
+      }
     } finally {
-      // Whatever the turn spent is already charged; tell every credits pill to refresh.
-      if (typeof window !== "undefined") window.dispatchEvent(new Event(CREDITS_CHANGED));
+      // A turn that was stopped has no receipt: its cookie keeps the reserved estimate. Either way every credits pill re-reads the server.
+      if (!settled && typeof window !== "undefined") window.dispatchEvent(new Event(CREDITS_CHANGED));
     }
   },
 });
+
+/** Posts the turn's signed receipt so the credits cookie drops from the reserved estimate to the real cost. Null if refused. */
+async function settleReceipt(receipt: string): Promise<CreditsSnapshot | null> {
+  try {
+    const res = await fetch("/api/credits", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receipt }), cache: "no-store" });
+    return res.ok ? ((await res.json()) as CreditsSnapshot) : null;
+  } catch {
+    return null;
+  }
+}

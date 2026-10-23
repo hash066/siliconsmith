@@ -25,6 +25,9 @@ async function turn(label, body) {
     return null;
   }
   const events = (await res.text()).trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  // the stream ends with a signed receipt; posting it settles the cookie from the reserved estimate to the real cost
+  const receipt = events.find((e) => e.type === "credits")?.receipt;
+  if (receipt) await call("/api/credits", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receipt }) });
   const model = events.find((e) => e.type === "turn.started")?.model;
   const tools = events.filter((e) => e.type === "tool.call").map((e) => e.call.name);
   const ui = events.filter((e) => e.type === "ui.action").map((e) => e.action.name);
