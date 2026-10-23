@@ -144,6 +144,8 @@ export const MATTER_SPREADER = [
   { key: "budget_fraction", label: "Material limit", min: 0.05, max: 0.9, step: 0.05, def: 0.4, unit: "" },
   { key: "h", label: "Convection h", min: 2, max: 500, step: 1, def: 15, unit: "W/m²K" },
   { key: "k", label: "Conductivity k", min: 5, max: 500, step: 5, def: 200, unit: "W/mK" },
+  // one grid cell is 1 mm (dx_mm 1), so the plate is n mm on a side; the solver accepts 30 to 80
+  { key: "n", label: "Plate size", min: 30, max: 80, step: 1, def: 60, unit: "mm" },
 ] as const;
 
 type Raw = { ok?: boolean; error?: { code?: string; message?: string; field?: string; errors?: Array<{ path?: string; message?: string }> } } | null;

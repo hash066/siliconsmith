@@ -28,6 +28,10 @@ const RUN_ID = /^[A-Za-z0-9_.-]{1,64}$/;
 const NODE_ID = /^[A-Za-z0-9_.]{1,32}$/;
 const METRICS: EvidenceMetric[] = ["wall_speedup", "cycles", "area", "fmax"];
 
+/** The two live Silicon workloads. */
+export const SILICON_WORKLOADS = { w1: { title: "the TinyMaix int8 fully-connected layer" }, w2: { title: "the Monocypher ChaCha20 stream cipher" } } as const;
+export const SILICON_RUN_CAP_USD = 0.15;
+
 export interface ToolDef {
   name: string;
   description: string;
@@ -67,7 +71,7 @@ export const TOOL_DEFS: ToolDef[] = [
   {
     name: "matter_simulate",
     description:
-      "Simulate a heat-spreader plate with one of the built-in generators (rect_fins or radial_spokes) through the validated solver and the ladder M1 to M5. Returns peak temperature, both rectangular-fin baselines and the honest verdict. Numbers only; defaults are used for anything omitted.",
+      "Simulate a heat-spreader plate with one of the built-in generators (rect_fins or radial_spokes) through the validated solver and the ladder M1 to M5. Returns peak temperature, both rectangular-fin baselines and the honest verdict. Numbers only; defaults are used for anything omitted. Q is the chip power in watts, plate_mm the plate's side in millimetres (30 to 80, one cell is 1 mm; default 60), h the convection coefficient (15 is still air).",
     parameters: {
       type: "object",
       properties: {
@@ -77,6 +81,7 @@ export const TOOL_DEFS: ToolDef[] = [
         budget_fraction: { type: "number" },
         h: { type: "number" },
         k: { type: "number" },
+        plate_mm: { type: "number" },
       },
       additionalProperties: false,
     },
@@ -113,6 +118,12 @@ export const TOOL_DEFS: ToolDef[] = [
     description:
       "Propose a bounded live loop that SPENDS CREDITS: up to 6 simulations adjusting the generator's parameters toward a lower peak temperature, hard cap about $0.05 and 90 s. This only proposes: the user must click Run. Say that, and do not claim it ran.",
     parameters: { type: "object", properties: { generator: { type: "string", enum: ["rect_fins", "radial_spokes"] } }, additionalProperties: false },
+  },
+  {
+    name: "propose_silicon_run",
+    description:
+      "Propose a LIVE Silicon run that SPENDS CREDITS: the agent invents ONE custom RISC-V instruction for a workload (w1 = the TinyMaix int8 fully-connected layer (a dot product), w2 = the Monocypher ChaCha20 stream cipher), writes the hardware and the C rewrite, and the verifiers run in a sandbox (lint, a million random vectors, formal proof, whole-program output check, cycle count). Hard cap about $0.15 and 4 minutes. This only proposes: the user must click Run. Say that, and do not claim it ran.",
+    parameters: { type: "object", properties: { workload: { type: "string", enum: ["w1", "w2"] } }, required: ["workload"], additionalProperties: false },
   },
   {
     name: "run_explain_failure",
@@ -174,7 +185,7 @@ export function toolsFor(workbench?: WorkbenchId): ToolDef[] {
   const own: Record<WorkbenchId, string[]> = {
     board: ["board_check", "board_set_design", "propose_board_design"],
     matter: ["matter_simulate", "propose_matter_optimize"],
-    silicon: ["run_nodes_search", "run_explain_failure", "silicon_open_run"],
+    silicon: ["run_nodes_search", "run_explain_failure", "silicon_open_run", "propose_silicon_run"],
   };
   const names = workbench ? [...shared, ...own[workbench]] : TOOL_DEFS.map((t) => t.name);
   return TOOL_DEFS.filter((t) => names.includes(t.name));
@@ -274,7 +285,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       });
       const passN = rungs.filter((r) => r.status === "pass").length;
       ui.push({ name: "board.check", args: {} });
-      return { ok: true, ui, summary: `${label}: ${passN} of ${rungs.length} rungs pass${j.passed ? "" : "; unknown or failing rungs do not count"}`, data: { template: label, passed: !!j.passed, rungs, notice: j.notice, note: "Netlist-level check with author-curated facts; not a claim the board works." }, evidence: [...evidence] };
+      return { ok: true, ui, summary: `${label}: ${passN} of ${rungs.length} rungs pass${j.passed ? "" : "; unknown or failing rungs do not count"}`, data: { template: label, passed: !!j.passed, rungs, notice: j.notice, note: `Netlist-level check with author-curated facts; not a claim the board works.${a.template_id !== undefined ? " This is a built-in example design, NOT the user's own board: say so." : ""}` }, evidence: [...evidence] };
     }
     case "board_set_design": {
       const r = await runTool("board_check", { design_json: a.design_json }, loader, ctx);
@@ -297,6 +308,18 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       if (!brief) return { ok: false, error: "give a short brief" };
       return { ok: true, summary: "proposed a Board design loop (needs the user's click)", data: { status: "waiting for the user to click Run; nothing has been run or spent", cap_usd: 0.05 }, evidence: [], proposal: { tool: "board_design", summary: `Draft a Board design for: ${brief.slice(0, 120)}. The free checker judges it; up to 2 repairs.`, costEstimateUsd: 0.05, args: { brief } } };
     }
+    case "propose_silicon_run": {
+      const workload = String(a.workload) as "w1" | "w2";
+      const what = SILICON_WORKLOADS[workload];
+      return {
+        ok: true,
+        summary: "proposed a live Silicon run (needs the user's click)",
+        data: { status: "waiting for the user to click Run; nothing has been run or spent", cap_usd: SILICON_RUN_CAP_USD, workload: what.title },
+        evidence: [],
+        ui: [{ name: "workbench.open", args: { workbench: "silicon" } }],
+        proposal: { tool: "silicon_run", summary: `Invent and prove one custom instruction for ${what.title} (about 4 minutes at most).`, costEstimateUsd: SILICON_RUN_CAP_USD, args: { workload } },
+      };
+    }
     case "propose_matter_optimize": {
       const generator = (a.generator ?? "rect_fins") as MatterGenerator;
       return { ok: true, summary: "proposed a Matter optimisation loop (needs the user's click)", data: { status: "waiting for the user to click Run; nothing has been run or spent", cap_usd: 0.05 }, evidence: [], proposal: { tool: "matter_optimize", summary: `Search ${MATTER_GENERATORS[generator].label.toLowerCase()} parameters for a lower peak temperature: up to 6 simulations.`, costEstimateUsd: 0.05, args: { generator } } };
@@ -310,6 +333,11 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       const input: SimulateInput = defaultSimulateInput(generator);
       Object.assign(input.gen_params, gp);
       for (const k of ["Q", "budget_fraction", "h", "k"] as const) if (a[k] !== undefined) input.spreader[k] = a[k] as number;
+      if (a.plate_mm !== undefined) {
+        const n = Math.round(a.plate_mm as number);
+        if (n < 30 || n > 80) return { ok: false, error: "plate_mm must be between 30 and 80 (the solver's grid is 1 mm per cell)" };
+        input.spreader.n = n;
+      }
       const bad = validateLocally(input);
       if (bad.length) return { ok: false, error: bad.map((b) => `${b.path} ${b.message}`).join("; ") };
       const res = await ctx.hosted("/api/matter/simulate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
@@ -333,6 +361,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
           baselines: j.baselines,
           verdict: j.verdict ? { label: j.verdict.label, lower_bound_peak_c: j.verdict.lower_bound_peak_c, note: j.verdict.note } : null,
           note: "2D steady-state model; margins over the rectangular-fin baselines are small; not validated on a printed part.",
+          ...(j.metrics?.peak_temp_c === undefined ? { next_step: "Nothing was solved, so there is NO temperature yet. Do not quote one. Call matter_simulate again with fewer or thinner fins (a smaller n_fins or fin_len, or a larger budget_fraction), or tell the user it could not be solved." } : {}),
         },
         evidence: j.ladder.map((r) => `${id}#${r.id}`),
       };

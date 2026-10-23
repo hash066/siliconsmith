@@ -3,7 +3,8 @@
 // Credit-spending loops are only proposed here; they run from agent-loops.ts after an explicit click. The API key never leaves the server.
 
 import type { AgentContext, AgentEvent, AgentModel, ModelChoice } from "./agent";
-import { guardText } from "./agent-guard";
+import { guardNumbers, guardText } from "./agent-guard";
+import { PlainStream } from "./agent-plain";
 import { runTool, toolsFor, type ReplayLoader, type ToolContext } from "./agent-tools";
 import type { WorkbenchId } from "./brand";
 import { costUsd, estimateCallUsd } from "./credits";
@@ -64,21 +65,24 @@ export function routeModel(text: string, choice: ModelChoice | string | undefine
 /** Worst-case cost of starting a turn on this model (one call with a large prompt and the whole output cap). Used for the credit preflight. */
 export const turnEstimateUsd = (model: AgentModel, cfg: AgentConfig) => estimateCallUsd(model, 8000, cfg.turnMaxTokens);
 
-const BASE = `You are the agent inside Hardwright, an app where you design and check hardware with deterministic verifiers: Silicon (custom RISC-V instructions), Board (netlist-level board checks) and Matter (heat-spreader plates).
-You ACT in the app with your tools: when you call board_check, matter_simulate, board_set_design, workbench_open, silicon_open_run or workflow_focus the app shows it to the user at once. Prefer doing to describing.
-Rules:
-- You can only use the tools provided. You cannot start credit-spending loops: propose_board_design and propose_matter_optimize only PROPOSE them and the user must click Run. Never say they ran.
+export const BASE = `You are the assistant inside Hardwright. People describe what they want to make and you do it for them with real checkers, then explain the result in plain words. There are three workbenches: Matter (a heat sink: a metal plate with fins that cools a chip), Board (an electronics board checked against its firmware) and Silicon (a custom RISC-V instruction that makes a program loop faster).
+HOW TO TALK (important): the reader is a maker or student, not an expert. Be short and friendly. Before you use a tool, say in at most two short sentences what you are about to do. After the results, write ONE short paragraph: what worked, what did not, and what they could do next. Never use the words rung, ladder, netlist, RTL, counterexample, strapping or "formally"; say "check", "proved for every possible input", "wiring". Do not paste ids, JSON, file paths or tool names into your answer: the app shows the evidence behind a toggle. Plain sentences only: no markdown, no bold, no bullet or numbered lists, and never name checks as B1 to B5 or M1 to M5 (say what the check means: "the printability check"). Never think aloud and never mention tool names or parameter names (Q, plate_mm, gen_params, n_fins): speak to the user as a person would ("I'll model a 5 W chip on a 40 mm plate."). One short sentence like that before each tool call, then about 50 words after the last result. The shape of a good final answer (use the numbers the simulations returned, and only for cases you actually simulated): "I modelled a 5 W chip on a 40 mm plate. In still air it reaches about [the simulated peak] C, above your 70 C target, so I simulated the same plate with a small fan (I assumed airflow): [that simulated peak] C. It is a simple model, so treat it as an estimate." Never quote a temperature you did not simulate.
+YOU ACT in the app: when you call board_check, matter_simulate, board_set_design or workbench_open the app shows it to the user at once. Prefer doing to describing.
+ROUTING: from the user's goal pick the workbench. Heat, cooling, temperature, heat sink, fins, a chip getting hot, 3D printing -> Matter. A board, PCB, ESP32, sensor, pins, USB-C, firmware, wiring -> Board. Making a program or loop faster, a RISC-V instruction, cycles, TinyMaix, ChaCha -> Silicon. Call workbench_open FIRST when that workbench is not already open, then the tool for the job. If the goal could mean two workbenches and you cannot tell, ask ONE short question and call no tool.
+TRANSLATING PLAIN REQUESTS: "a heat sink for a 5 W chip, 40 mm square, under 70 C" -> workbench_open matter, then matter_simulate with Q 5 and plate_mm 40 (the room is 25 C). Compare the peak temperature the tool returns with the target and say so plainly. If the geometry is rejected (too much material), use fewer or thinner fins and simulate again. If the peak is over the target by less than 15 K, change the fins in the same turn and simulate again at most twice, or propose_matter_optimize. If it is far over (more than 15 K), do NOT propose the optimiser: physics, not fin shape, is the limit. Say that in still air (h 15) this plate cannot reach the target, then simulate the same plate with a small fan (h 60) and say plainly that you changed that assumption, and offer a bigger plate (plate_mm up to 80). "Make it cooler" -> start from the current parameters in the app state, adjust and simulate again. A request to MAKE a board ("a battery ESP32 sensor board with a BME280 and USB-C charging") -> propose_board_design with the brief. "Check my ESP32 board" with no design in the app state -> board_check on the example that fits (clean_sensor, fault_gpio12_vs_gpio14, fault_strapping_pin) and say clearly that it is a built-in example, not their own board, and that they can describe their board and you will draft and check it. With a design in the app state, check that design. "Fix it" -> if the failing check is a clear pin or value change, board_set_design with only that change; otherwise propose_board_design. "Make this loop faster" -> propose_silicon_run straight away (w1 is the TinyMaix neural-network layer, w2 the ChaCha20 encryption; if the user names neither, use w1 and say so in one sentence): say what it will do, that it costs credits and takes a few minutes, and that the user must click Run.
+RULES:
+- You can only use the tools provided. You cannot start the credit-spending loops: propose_board_design, propose_matter_optimize and propose_silicon_run only PROPOSE and the user must click Run. Never say they ran.
 - Library entries (library_search, evidence_get with entry_id) come with a "reproduce" string. Quote it VERBATIM and never construct, shorten or adapt a command: the only valid commands are the "reproduce" strings the tools returned, and they exist only for library entries (ids like dot4-tinymaix), never for run nodes. Say it was NOT run by you.
 - State only what tool results say. If a tool returns nothing or an error, say so. Never invent numbers, nodes, runs, parts, pins or tool versions.
-- You cannot declare anything verified or proven. Only the verifiers can. Report what a tool result says (a rung status, a stored manifest, a run event) and cite the evidence id it returned (for example run:r_w1_contree3/n1.2.1#wall_speedup, board:clean_sensor#B4, matter:rect_fins#M5, library:dot4-tinymaix, part:esp32.gpio12.strapping). Every sentence that says something passed, was verified or proven must include such an id.
-- Board facts are author-curated, not independently verified; never say a board will work. Matter is a 2D steady-state model, not validated on a printed part; its margins over the baselines are small.
-- Be brief: two to four short sentences. Details belong in the tool results the user can open. No headings, no long lists.`;
+- You cannot declare anything verified or proven on your own. Only say something passed or was proved when a tool result says so, and say which check said it in plain words ("the printability check passed").
+- Board facts are author-curated, not independently verified; never say a board will work. Matter is a 2D steady-state model, not validated on a printed part; its margins over the baselines are small, so never promise a real part will reach a temperature.`;
 
 const WORKBENCH_NOTES: Record<WorkbenchId, string> = {
   matter: "The user is in the Matter workbench: a heat-spreader plate from built-in generators rect_fins and radial_spokes. Use matter_simulate to try parameters (it sets them in the app and runs the simulation). If asked for the best parameters, propose_matter_optimize.",
-  board: "The user is in the Board workbench: a netlist-level design checked on rungs B1 to B5. Use board_check for a template (clean_sensor, fault_gpio12_vs_gpio14, fault_strapping_pin) and board_set_design to apply an edit to the CURRENT design from the app state: change only what was asked and send the whole design. If asked to draft a new design, propose_board_design.",
-  silicon: "The user is in the Silicon workbench: recorded runs of the agent that invents RISC-V instructions. Use run_nodes_search to find nodes, silicon_open_run to open one, run_explain_failure to explain a pruned node.",
+  board: "The user is in the Board workbench: a netlist-level design checked on five checks (B1 to B5). Use board_check for a template (clean_sensor, fault_gpio12_vs_gpio14, fault_strapping_pin) and board_set_design to apply an edit to the CURRENT design from the app state: change only what was asked and send the whole design. If asked to draft a new design, propose_board_design.",
+  silicon: "The user is in the Silicon workbench. A live run is proposed with propose_silicon_run; recorded runs can be searched with run_nodes_search, opened with silicon_open_run and explained with run_explain_failure.",
 };
+const START_NOTE = "The user is on the start screen: no workbench is open yet. Route the goal as described, and open the workbench first.";
 
 interface UpstreamToolCall {
   id: string;
@@ -146,12 +150,23 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
 
   const workbench = input.workbench;
   const ctxText = contextText(input.context, cfg.maxContextChars);
-  const system = [BASE, workbench ? WORKBENCH_NOTES[workbench] : "", ctxText ? `Current app state (what the user sees): ${ctxText}` : "", input.runId && !input.context?.silicon?.run_id ? `The user is viewing run ${input.runId}.` : ""].filter(Boolean).join("\n");
+  const system = [BASE, workbench ? WORKBENCH_NOTES[workbench] : START_NOTE, ctxText ? `Current app state (what the user sees): ${ctxText}` : "", input.runId && !input.context?.silicon?.run_id ? `The user is viewing run ${input.runId}.` : ""].filter(Boolean).join("\n");
   const history = (input.history ?? []).slice(-cfg.historyMessages).map((m) => ({ role: m.role, content: String(m.text).slice(0, 1200) }));
   const messages: ChatMsg[] = [{ role: "system", content: system }, ...history, { role: "user", content: input.text }];
   const toolDefs = toolsFor(workbench);
   const known = new Set<string>();
+  const ran: Array<{ name: string; ok: boolean; data: unknown }> = [];
+  let proposed = false;
+  // everything a temperature in the answer may legitimately come from: the user's words, the app state and the tool results
+  const sources: string[] = [input.text, ctxText];
+  const opened = new Set<string>();
   let fullText = "";
+  let wroteText = false;
+  let nudged = false;
+  const unsolved = () => {
+    const l = [...ran].reverse().find((r) => r.name === "matter_simulate");
+    return !!l && l.ok && (l.data as { peak_temp_c?: number } | null)?.peak_temp_c === undefined;
+  };
   let budget = cfg.turnMaxTokens;
   const usage = { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
   try {
@@ -182,6 +197,20 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
         return;
       }
       let text = "";
+      const plain = new PlainStream();
+      // After a simulation that could not be solved the model sometimes stops and tells the user to try again by hand. Hold its text back
+      // for that case: if it did stop, it is asked once to try a smaller geometry and the premature answer is dropped.
+      const hold = unsolved() && !nudged && round < cfg.maxToolRounds;
+      const held: AgentEvent[] = [];
+      const say = function* (t: string): Generator<AgentEvent> {
+        if (!t) return;
+        const e: AgentEvent = { type: "text.delta", id: turnId, text: t };
+        if (hold) held.push(e);
+        else {
+          wroteText = true;
+          yield e;
+        }
+      };
       let finish = "";
       let used = 0;
       let callIn = 0;
@@ -205,8 +234,10 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
         if (ch.finish_reason) finish = ch.finish_reason;
         const d = ch.delta;
         if (d?.content) {
+          // the text before a tool and the verdict after it are separate paragraphs
+          const lead = text === "" && wroteText ? "\n\n" : "";
           text += d.content;
-          yield { type: "text.delta", id: turnId, text: d.content };
+          yield* say(plain.push(lead + d.content));
         }
         for (const tc of d?.tool_calls ?? []) {
           const idx = tc.index ?? 0;
@@ -217,7 +248,15 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
           calls.set(idx, cur);
         }
       }
-      fullText += text;
+      yield* say(plain.flush());
+      const nudge = hold && calls.size === 0;
+      if (!nudge) {
+        for (const e of held) {
+          wroteText = true;
+          yield e;
+        }
+        fullText += text;
+      }
       const callCost = costUsd(model, callIn, callOut);
       usage.calls += 1;
       usage.tokensIn += callIn;
@@ -227,6 +266,11 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
       yield { type: "cost", id: turnId, usd: callCost, tokens_in: callIn, tokens_out: callOut, model };
       budget -= used || Math.ceil((text.length + [...calls.values()].reduce((n, c) => n + c.args.length, 0)) / 3);
 
+      if (nudge) {
+        nudged = true;
+        messages.push({ role: "assistant", content: text }, { role: "user", content: "Nothing was solved yet, so there is no temperature to report. Call matter_simulate again now with fewer or thinner fins (for example n_fins 4 and fin_len 8, or a larger budget_fraction), then answer." });
+        continue;
+      }
       if (calls.size === 0) {
         if (finish === "length") yield { type: "text.delta", id: turnId, text: "\n[The answer was cut off by the per-turn token cap.]" };
         break;
@@ -249,9 +293,19 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
         const offered = toolDefs.some((t) => t.name === c.name);
         const result = parseError ? ({ ok: false, error: parseError } as const) : !offered ? ({ ok: false, error: `${c.name} is not available here` } as const) : await runTool(c.name, parsed, loader, input.tools);
         if (result.ok) for (const e of result.evidence) known.add(e);
+        ran.push({ name: c.name, ok: result.ok, data: result.ok ? result.data : null });
+        sources.push(result.ok ? `${result.summary} ${JSON.stringify(result.data ?? "")}` : result.error);
+        if (result.ok && result.proposal) proposed = true;
         yield { type: "tool.result", id: turnId, callId, ok: result.ok, summary: result.ok ? result.summary : result.error };
         if (result.ok) {
-          for (const a of result.ui ?? []) yield { type: "ui.action", id: turnId, action: a };
+          for (const a of result.ui ?? []) {
+            // the model often opens a workbench and then calls a tool that opens it again: show it once
+            if (a.name === "workbench.open") {
+              if (opened.has(a.args.workbench)) continue;
+              opened.add(a.args.workbench);
+            }
+            yield { type: "ui.action", id: turnId, action: a };
+          }
           if (result.proposal) yield { type: "action.proposed", action: { id: `p_${turnId}_${callId}`, ...result.proposal } };
         }
         made.push({ id: callId, type: "function", function: { name: c.name, arguments: c.args || "{}" } });
@@ -261,11 +315,16 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
       if (round === cfg.maxToolRounds) break;
     }
     // A sentence-ending full stop is not part of an id (node ids contain dots).
+    // The answer no longer carries ids in its prose (the app shows them behind a toggle), so the evidence is what this turn's tools returned,
+    // with the ids the model did cite first.
     const cited = [...new Set((fullText.match(EVIDENCE_ID) ?? []).map((id) => id.replace(/\.+$/, "")))].filter((id) => known.has(id));
-    if (cited.length) yield { type: "evidence", id: turnId, ids: cited };
+    const shown = [...new Set([...cited, ...known])].slice(0, 12);
+    if (shown.length) yield { type: "evidence", id: turnId, ids: shown };
+    const chips = followUps(workbench, ran, proposed);
+    if (chips.length) yield { type: "suggest", id: turnId, chips };
     // Post-check: a verify-entry command for an id that is not a library entry is invented. The text is already streamed, so flag it.
     const entryIds = (await input.tools?.manifests?.ids()) ?? [];
-    for (const f of guardText(fullText, entryIds)) yield { type: "flag", id: turnId, kind: f.kind, message: f.message };
+    for (const f of [...guardText(fullText, entryIds), ...guardNumbers(fullText, sources)]) yield { type: "flag", id: turnId, kind: f.kind, message: f.message };
     yield { type: "turn.done", id: turnId, usage };
   } catch (err) {
     if ((err as { name?: string }).name === "AbortError") {
@@ -274,4 +333,23 @@ export async function* runAgentTurn(input: TurnInput): AsyncGenerator<AgentEvent
     }
     yield { type: "turn.error", id: turnId, message: "The agent connection failed." };
   }
+}
+
+/** Follow-up prompts, from what the turn actually did. Deterministic: the model does not write these. */
+export function followUps(workbench: WorkbenchId | undefined, ran: ReadonlyArray<{ name: string; ok: boolean; data: unknown }>, proposed: boolean): string[] {
+  const ok = ran.filter((r) => r.ok);
+  const last = (n: string) => [...ok].reverse().find((r) => r.name === n);
+  const board = last("board_check") ?? last("board_set_design");
+  if (board) {
+    const passed = (board.data as { passed?: boolean } | null)?.passed;
+    return passed === false ? ["Fix the failing check", "Explain the failing check"] : ["Try the board with a wrong pin", "What does this not prove?"];
+  }
+  const sim = last("matter_simulate");
+  if (sim) {
+    const peak = (sim.data as { peak_temp_c?: number } | null)?.peak_temp_c;
+    return peak === undefined ? ["Try fewer fins", "Use radial spokes instead"] : ["Make it cooler", "Use radial spokes instead", "How much material does it use?"];
+  }
+  if (proposed) return [];
+  if (!workbench) return [];
+  return workbench === "silicon" ? ["Make this loop faster with a custom instruction"] : [];
 }

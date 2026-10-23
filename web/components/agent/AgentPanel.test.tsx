@@ -67,7 +67,8 @@ describe("AgentPanel (server-rendered; fixtures exist only in this test)", () =>
     expect(html).toContain("Ran the simulation");
     expect(html).toContain("· Apply");
     expect(html).toContain("<strong");
-    expect(html).toContain("Cites: matter:rect_fins#M5");
+    expect(html).toContain("Show the evidence behind this (1)");
+    expect(html).toContain("matter:rect_fins#M5");
     expect(html).toContain("≈ $0.002");
     expect(html).toContain("6,200 in");
     expect(html).not.toContain("without citing evidence");
