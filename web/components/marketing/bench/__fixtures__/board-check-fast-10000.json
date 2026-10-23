@@ -1,0 +1,689 @@
+{
+ "ok": true,
+ "passed": false,
+ "ladder": [
+  {
+   "id": "B1",
+   "label": "Netlist is well formed",
+   "tool": "board.checks.run_b1"
+  },
+  {
+   "id": "B2",
+   "label": "Electrical limits respected (curated facts)",
+   "tool": "board.checks.run_b2"
+  },
+  {
+   "id": "B3",
+   "label": "Bus and connector rules satisfied (curated facts)",
+   "tool": "board.checks.run_b3"
+  },
+  {
+   "id": "B4",
+   "label": "Firmware matches the netlist",
+   "tool": "board.checks.run_b4"
+  },
+  {
+   "id": "B5",
+   "label": "Battery estimate meets target (model, not measured)",
+   "tool": "board.checks.run_b5"
+  }
+ ],
+ "rungs": [
+  {
+   "rung": "B1",
+   "status": "pass",
+   "label": "Netlist is well formed",
+   "detail": "pins exist: every connected pin exists in its part's pin table; required pins connected: every required pin is connected; one net per pin: no pin is on two nets; single driver per net: no net has two output drivers; MCU assignments exist: every MCU pin assignment names a real pin",
+   "evidence": [
+    "part:batt.bat_p",
+    "part:ldo33.vin",
+    "part:mcp73831.vbat",
+    "part:batt.bat_n",
+    "part:ldo33.gnd",
+    "part:esp32.gnd1",
+    "part:esp32.gnd2",
+    "part:esp32.gnd3",
+    "part:mcp73831.vss",
+    "part:res.2",
+    "part:bme280.gnd1",
+    "part:bme280.gnd2",
+    "part:bme280.sdo",
+    "part:usbc.gnd",
+    "part:btn.2",
+    "part:led.k",
+    "part:ldo33.vout",
+    "part:esp32.3v3",
+    "part:bme280.vdd",
+    "part:bme280.vddio",
+    "part:bme280.csb",
+    "part:res.1",
+    "part:usbc.vbus",
+    "part:mcp73831.vdd",
+    "part:mcp73831.prog",
+    "part:usbc.cc1",
+    "part:usbc.cc2",
+    "part:esp32.gpio21",
+    "part:bme280.sdi",
+    "part:esp32.gpio22",
+    "part:bme280.sck",
+    "part:esp32.en",
+    "part:esp32.gpio14",
+    "part:btn.1",
+    "part:esp32.gpio4",
+    "part:led.a"
+   ]
+  },
+  {
+   "rung": "B2",
+   "status": "pass",
+   "label": "Electrical limits respected (curated facts)",
+   "detail": "supply voltages: every supply pin is within its voltage limits; signal pin domains: no signal pin is over-driven for its voltage domain; regulator current: U2 rail 3V3: U1 500 + U3 0.714 = 500.714 mA vs limit 600 mA",
+   "evidence": [
+    "part:ldo33.vin",
+    "part:batt.bat_p",
+    "part:esp32.3v3",
+    "part:ldo33.vout",
+    "part:bme280.vdd",
+    "part:bme280.vddio",
+    "part:mcp73831.vdd",
+    "part:usbc.vbus",
+    "part:ldo33.iout_max_ma",
+    "part:esp32.supply_current_min_ma",
+    "part:bme280.iddp_ma"
+   ]
+  },
+  {
+   "rung": "B3",
+   "status": "fail",
+   "label": null,
+   "detail": "SCL: Rp 10000 ohm (R2) with 100 pF gives rise time 847 ns, over the 300 ns fast-mode limit; SDA: Rp 10000 ohm (R1) with 100 pF gives rise time 847 ns, over the 300 ns fast-mode limit",
+   "evidence": [
+    "part:std_i2c.tr_max_fast_ns",
+    "part:std_i2c.rise_time_k",
+    "part:std_i2c.vol_max_v",
+    "part:std_i2c.iol_ma",
+    "part:std_i2c.cb_max_pf"
+   ],
+   "findings": [
+    {
+     "check": "I2C pull-ups",
+     "status": "fail",
+     "detail": "SCL: Rp 10000 ohm (R2) with 100 pF gives rise time 847 ns, over the 300 ns fast-mode limit; SDA: Rp 10000 ohm (R1) with 100 pF gives rise time 847 ns, over the 300 ns fast-mode limit",
+     "evidence": [
+      "part:std_i2c.tr_max_fast_ns",
+      "part:std_i2c.rise_time_k",
+      "part:std_i2c.vol_max_v",
+      "part:std_i2c.iol_ma",
+      "part:std_i2c.cb_max_pf"
+     ]
+    },
+    {
+     "check": "I2C addresses",
+     "status": "pass",
+     "detail": "device addresses on the bus are unique: U3 at 0x76",
+     "evidence": [
+      "part:bme280.i2c_addr_sdo_low"
+     ]
+    },
+    {
+     "check": "USB-C CC pull-downs",
+     "status": "pass",
+     "detail": "every USB-C CC pin has its sink Rd pull-down to ground",
+     "evidence": [
+      "part:usbc.sink_rd_ohm"
+     ]
+    }
+   ]
+  },
+  {
+   "rung": "B4",
+   "status": "pass",
+   "label": "Firmware matches the netlist",
+   "detail": "firmware matches netlist: firmware and netlist agree on every function, pin and use; assigned pins wired: every assigned pin sits on the net its assignment names; pin hazards: no input-only pin is driven, and no flash or strapping pin is used",
+   "evidence": [
+    "part:esp32.gpio22",
+    "part:esp32.gpio21",
+    "part:esp32.gpio4",
+    "part:esp32.gpio14"
+   ],
+   "findings": [
+    {
+     "check": "firmware matches netlist",
+     "status": "pass",
+     "detail": "firmware and netlist agree on every function, pin and use",
+     "evidence": [
+      "part:esp32.gpio22",
+      "part:esp32.gpio21",
+      "part:esp32.gpio4",
+      "part:esp32.gpio14"
+     ]
+    },
+    {
+     "check": "assigned pins wired",
+     "status": "pass",
+     "detail": "every assigned pin sits on the net its assignment names",
+     "evidence": [
+      "part:esp32.gpio22",
+      "part:esp32.gpio21",
+      "part:esp32.gpio4",
+      "part:esp32.gpio14"
+     ]
+    },
+    {
+     "check": "pin hazards",
+     "status": "pass",
+     "detail": "no input-only pin is driven, and no flash or strapping pin is used",
+     "evidence": [
+      "part:esp32.gpio21",
+      "part:esp32.gpio22",
+      "part:esp32.gpio14",
+      "part:esp32.gpio4"
+     ]
+    }
+   ]
+  },
+  {
+   "rung": "B5",
+   "status": "pass",
+   "label": "Battery estimate meets target (model, not measured)",
+   "detail": "battery model: active 240.764 mA for 5 s (U1 esp32 240 + U2 ldo33 0.05 + U3 bme280 0.714), sleep 0.0601 mA for 595 s; average 2.066 mA; life = 2000 mAh x 0.8 / 2.066 mA = 774 h vs target 48 h (model, not measured)",
+   "evidence": [
+    "part:esp32.wifi_tx_typ_ma",
+    "part:esp32.deep_sleep_ua",
+    "part:ldo33.iq_ua",
+    "part:bme280.iddp_ma",
+    "part:bme280.sleep_ua"
+   ]
+  }
+ ],
+ "labels": [
+  "Netlist is well formed",
+  "Electrical limits respected (curated facts)",
+  "Firmware matches the netlist",
+  "Battery estimate meets target (model, not measured)"
+ ],
+ "evidence": {
+  "part:batt.bat_p": {
+   "id": "part:batt.bat_p",
+   "part": "batt",
+   "origin": "author_defined",
+   "text": "Li-ion cell connector (placeholder) pin BAT_P (pad 1), power_out, capabilities: power",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:ldo33.vin": {
+   "id": "part:ldo33.vin",
+   "part": "ldo33",
+   "origin": "author_defined",
+   "text": "Generic 3.3 V LDO (reference class, author-defined values) pin VIN (pad 1), power_in, capabilities: power",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:mcp73831.vbat": {
+   "id": "part:mcp73831.vbat",
+   "part": "mcp73831",
+   "origin": "datasheet",
+   "text": "MCP73831-class single-cell Li-ion charger (SOT-23-5) pin VBAT (pad 3), bidir, capabilities: power",
+   "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+   "section": "3.0 Pin Description (Table 3-1: Pin Function Tables) and the SOT-23-5 package diagram",
+   "citation_checked": true,
+   "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+  },
+  "part:batt.bat_n": {
+   "id": "part:batt.bat_n",
+   "part": "batt",
+   "origin": "author_defined",
+   "text": "Li-ion cell connector (placeholder) pin BAT_N (pad 2), ground, capabilities: ground",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:ldo33.gnd": {
+   "id": "part:ldo33.gnd",
+   "part": "ldo33",
+   "origin": "author_defined",
+   "text": "Generic 3.3 V LDO (reference class, author-defined values) pin GND (pad 2), ground, capabilities: ground",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:esp32.gnd1": {
+   "id": "part:esp32.gnd1",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GND1 (pad 1), ground, capabilities: ground",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:esp32.gnd2": {
+   "id": "part:esp32.gnd2",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GND2 (pad 15), ground, capabilities: ground",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:esp32.gnd3": {
+   "id": "part:esp32.gnd3",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GND3 (pad 38), ground, capabilities: ground",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:mcp73831.vss": {
+   "id": "part:mcp73831.vss",
+   "part": "mcp73831",
+   "origin": "datasheet",
+   "text": "MCP73831-class single-cell Li-ion charger (SOT-23-5) pin VSS (pad 2), ground, capabilities: ground",
+   "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+   "section": "3.0 Pin Description (Table 3-1: Pin Function Tables) and the SOT-23-5 package diagram",
+   "citation_checked": true,
+   "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+  },
+  "part:res.2": {
+   "id": "part:res.2",
+   "part": "res",
+   "origin": "author_defined",
+   "text": "Resistor (placeholder) pin 2 (pad 2), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:bme280.gnd1": {
+   "id": "part:bme280.gnd1",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin GND1 (pad 1), ground, capabilities: ground",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:bme280.gnd2": {
+   "id": "part:bme280.gnd2",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin GND2 (pad 7), ground, capabilities: ground",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:bme280.sdo": {
+   "id": "part:bme280.sdo",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin SDO (pad 5), input",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:usbc.gnd": {
+   "id": "part:usbc.gnd",
+   "part": "usbc",
+   "origin": "author_defined",
+   "text": "USB-C receptacle, power only (placeholder) pin GND (pad 2), ground, capabilities: ground",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:btn.2": {
+   "id": "part:btn.2",
+   "part": "btn",
+   "origin": "author_defined",
+   "text": "Push button (placeholder) pin 2 (pad 2), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:led.k": {
+   "id": "part:led.k",
+   "part": "led",
+   "origin": "author_defined",
+   "text": "LED (placeholder) pin K (pad 2), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:ldo33.vout": {
+   "id": "part:ldo33.vout",
+   "part": "ldo33",
+   "origin": "author_defined",
+   "text": "Generic 3.3 V LDO (reference class, author-defined values) pin VOUT (pad 3), power_out, capabilities: power",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:esp32.3v3": {
+   "id": "part:esp32.3v3",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin 3V3 (pad 2), power_in, capabilities: power",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "5.1 Absolute Maximum Ratings (Table 12) and 5.2 Recommended Operating Conditions (Table 13)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:bme280.vdd": {
+   "id": "part:bme280.vdd",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin VDD (pad 8), power_in, capabilities: power",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "1.1 General electrical specification (Table 1)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:bme280.vddio": {
+   "id": "part:bme280.vddio",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin VDDIO (pad 6), power_in, capabilities: power",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "1.1 General electrical specification (Table 1)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:bme280.csb": {
+   "id": "part:bme280.csb",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin CSB (pad 2), input",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:res.1": {
+   "id": "part:res.1",
+   "part": "res",
+   "origin": "author_defined",
+   "text": "Resistor (placeholder) pin 1 (pad 1), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:usbc.vbus": {
+   "id": "part:usbc.vbus",
+   "part": "usbc",
+   "origin": "author_defined",
+   "text": "USB-C receptacle, power only (placeholder) pin VBUS (pad 1), power_out, capabilities: power",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:mcp73831.vdd": {
+   "id": "part:mcp73831.vdd",
+   "part": "mcp73831",
+   "origin": "datasheet",
+   "text": "MCP73831-class single-cell Li-ion charger (SOT-23-5) pin VDD (pad 4), power_in, capabilities: power",
+   "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+   "section": "1.0 Electrical Characteristics (Absolute Maximum Ratings: VDD 7.0 V; DC Characteristics: Supply Input VDD 3.75 to 6 V)",
+   "citation_checked": true,
+   "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+  },
+  "part:mcp73831.prog": {
+   "id": "part:mcp73831.prog",
+   "part": "mcp73831",
+   "origin": "datasheet",
+   "text": "MCP73831-class single-cell Li-ion charger (SOT-23-5) pin PROG (pad 5), input",
+   "source": "MCP73831/2 Data Sheet DS20001984H (Microchip Technology)",
+   "section": "3.0 Pin Description (Table 3-1: Pin Function Tables) and the SOT-23-5 package diagram",
+   "citation_checked": true,
+   "url": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP73831-Family-Data-Sheet-DS20001984H.pdf"
+  },
+  "part:usbc.cc1": {
+   "id": "part:usbc.cc1",
+   "part": "usbc",
+   "origin": "author_defined",
+   "text": "USB-C receptacle, power only (placeholder) pin CC1 (pad 3), passive, capabilities: usb_cc",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:usbc.cc2": {
+   "id": "part:usbc.cc2",
+   "part": "usbc",
+   "origin": "author_defined",
+   "text": "USB-C receptacle, power only (placeholder) pin CC2 (pad 4), passive, capabilities: usb_cc",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:esp32.gpio21": {
+   "id": "part:esp32.gpio21",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GPIO21 (pad 33), bidir, capabilities: gpio, i2c",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:bme280.sdi": {
+   "id": "part:bme280.sdi",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin SDI (pad 3), bidir, capabilities: i2c",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:esp32.gpio22": {
+   "id": "part:esp32.gpio22",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GPIO22 (pad 36), bidir, capabilities: gpio, i2c",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:bme280.sck": {
+   "id": "part:bme280.sck",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "BME280-class humidity/pressure/temperature sensor pin SCK (pad 4), input, capabilities: i2c",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "7.1 Pin-out (Table 35: Pin description)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:esp32.en": {
+   "id": "part:esp32.en",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin EN (pad 3), input, capabilities: enable",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:esp32.gpio14": {
+   "id": "part:esp32.gpio14",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GPIO14 (pad 13), bidir, capabilities: gpio, adc, i2c",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:btn.1": {
+   "id": "part:btn.1",
+   "part": "btn",
+   "origin": "author_defined",
+   "text": "Push button (placeholder) pin 1 (pad 1), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:esp32.gpio4": {
+   "id": "part:esp32.gpio4",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "ESP32-WROOM-32-class module pin GPIO4 (pad 26), bidir, capabilities: gpio, adc, i2c",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:led.a": {
+   "id": "part:led.a",
+   "part": "led",
+   "origin": "author_defined",
+   "text": "LED (placeholder) pin A (pad 1), passive",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "pin table",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:ldo33.iout_max_ma": {
+   "id": "part:ldo33.iout_max_ma",
+   "part": "ldo33",
+   "origin": "author_defined",
+   "text": "Maximum continuous output current.",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "ratings",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:esp32.supply_current_min_ma": {
+   "id": "part:esp32.supply_current_min_ma",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "The supply should be able to deliver at least 500 mA to the module.",
+   "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+   "section": "5.2 Recommended Operating Conditions (Table 13, current delivered by external power supply, 0.5 A min)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "part:bme280.iddp_ma": {
+   "id": "part:bme280.iddp_ma",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "Current during pressure measurement, the largest of the three per-measurement currents in Table 1 (humidity 340 uA, pressure 714 uA, temperature 350 uA).",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "1.1 General electrical specification (Table 1)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  },
+  "part:std_i2c.tr_max_fast_ns": {
+   "id": "part:std_i2c.tr_max_fast_ns",
+   "part": "std_i2c",
+   "origin": "datasheet",
+   "text": "Maximum rise time of SDA and SCL, fast mode.",
+   "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+   "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+   "citation_checked": true,
+   "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "part:std_i2c.rise_time_k": {
+   "id": "part:std_i2c.rise_time_k",
+   "part": "std_i2c",
+   "origin": "datasheet",
+   "text": "Rise time between 30% and 70% of VCC: tr = 0.8473 x Rp x Cb.",
+   "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+   "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+   "citation_checked": true,
+   "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "part:std_i2c.vol_max_v": {
+   "id": "part:std_i2c.vol_max_v",
+   "part": "std_i2c",
+   "origin": "datasheet",
+   "text": "Maximum low-level output voltage at a 3 mA sink current (VCC above 2 V); used for the minimum pull-up Rp(min) = (VCC - VOL) / IOL.",
+   "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+   "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+   "citation_checked": true,
+   "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "part:std_i2c.iol_ma": {
+   "id": "part:std_i2c.iol_ma",
+   "part": "std_i2c",
+   "origin": "datasheet",
+   "text": "Sink current at which VOL(max) applies.",
+   "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+   "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+   "citation_checked": true,
+   "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "part:std_i2c.cb_max_pf": {
+   "id": "part:std_i2c.cb_max_pf",
+   "part": "std_i2c",
+   "origin": "datasheet",
+   "text": "Maximum capacitive load per bus line, standard and fast mode.",
+   "source": "I2C Bus Pullup Resistor Calculation, SLVA689A (Texas Instruments application note quoting the I2C-bus specification)",
+   "section": "2 Pullup Resistor Calculation (Table 2-1, equations 1, 5 and 6)",
+   "citation_checked": true,
+   "url": "https://www.ti.com/lit/an/slva689/slva689.pdf"
+  },
+  "part:esp32.wifi_tx_typ_ma": {
+   "id": "part:esp32.wifi_tx_typ_ma",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "Typical current, Wi-Fi transmit 802.11b DSSS 1 Mbps at +19.5 dBm; measured at 3.3 V, 25 C, 50% transmit duty cycle (so not a peak value).",
+   "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+   "section": "5.4 RF Current Consumption in Active Mode (Table 5-4)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+  },
+  "part:esp32.deep_sleep_ua": {
+   "id": "part:esp32.deep_sleep_ua",
+   "part": "esp32",
+   "origin": "datasheet",
+   "text": "Chip power consumption in Deep-sleep mode is 10 uA (RTC memory kept on). This is the chip figure from the series datasheet, not a module measurement.",
+   "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+   "section": "Features (low-power management bullet)",
+   "citation_checked": true,
+   "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+  },
+  "part:ldo33.iq_ua": {
+   "id": "part:ldo33.iq_ua",
+   "part": "ldo33",
+   "origin": "author_defined",
+   "text": "Quiescent current, a generic-class value chosen by the author for the template, not from a datasheet.",
+   "source": "author-defined placeholder (no datasheet; not a real product)",
+   "section": "ratings",
+   "citation_checked": false,
+   "url": null
+  },
+  "part:bme280.sleep_ua": {
+   "id": "part:bme280.sleep_ua",
+   "part": "bme280",
+   "origin": "datasheet",
+   "text": "Sleep current, typical.",
+   "source": "BME280 Data sheet rev 1.6, BST-BME280-DS002-15 (Bosch Sensortec)",
+   "section": "1.1 General electrical specification (Table 1)",
+   "citation_checked": true,
+   "url": "https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf"
+  }
+ },
+ "header": "/* Generated by siliconsmith.board.export from the design's firmware pin table. Do not edit.\n * Design: Battery environmental sensor (reference, clean)\n * Rung B4 compares this table with the netlist; this file alone proves nothing. */\n#ifndef SS_BOARD_PINS_H\n#define SS_BOARD_PINS_H\n\n#define SS_PIN_I2C_SDA 21  /* bidir */\n#define SS_PIN_I2C_SCL 22  /* bidir */\n#define SS_PIN_WAKE_BTN 14  /* input */\n#define SS_PIN_STATUS_LED 4  /* output */\n\n#endif /* SS_BOARD_PINS_H */\n",
+ "notice": "Netlist-level check only: no layout, routing or fabrication, and no claim that a board will work. Part facts are author-curated; a fact with citation_checked=false was not cross-checked against its source document. The battery figure is a model, not a measurement."
+}
