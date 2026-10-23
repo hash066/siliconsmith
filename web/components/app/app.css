@@ -13,7 +13,7 @@
   --grid-major: color-mix(in srgb, var(--hw-border) 70%, transparent);
   --ink: var(--hw-ink);
   --ink-2: var(--hw-ink-2);
-  --ink-3: var(--hw-ink-3);
+  --ink-3: color-mix(in srgb, var(--hw-ink-3) 80%, #fff);
   --signal: var(--wb);
   --signal-ink: var(--wb);
   --signal-dim: color-mix(in srgb, var(--wb) 15%, transparent);
@@ -29,8 +29,11 @@
   color: var(--hw-ink);
 }
 :root[data-theme="light"] .hw-app {
+  --ink-3: color-mix(in srgb, var(--hw-ink-3) 85%, #000);
   --sunken: color-mix(in srgb, var(--hw-bg) 80%, var(--hw-border));
 }
+/* Light theme: deeper accents so text and white-on-accent buttons reach 4.5:1. */
+:root[data-theme="light"] .hw-app { --hw-ember: #b8430d; --hw-pcb: #136b52; --hw-steel: #2a58c2; }
 .hw-app[data-wb="silicon"] { --wb: var(--hw-steel); }
 .hw-app[data-wb="board"] { --wb: var(--hw-pcb); }
 .hw-app[data-wb="matter"] { --wb: var(--hw-ember); }
@@ -53,7 +56,7 @@
   transition: background 0.15s var(--hw-ease), inset 0.15s var(--hw-ease);
 }
 .hw-split:hover::after, .hw-split:focus-visible::after, .hw-split[data-drag="1"]::after { background: var(--wb); inset: 0 2px; }
-.hw-split:focus-visible { outline: none; }
+.hw-split:focus-visible { outline: 2px solid var(--wb); outline-offset: -2px; border-radius: 4px; }
 
 /* Tooltips for the icon rail: CSS only, shown on hover and keyboard focus. */
 .hw-tip { position: relative; }

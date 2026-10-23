@@ -3,6 +3,7 @@ import { defaultSimulateInput, type BoardCheck, type MatterSimulation } from "@/
 import { LOADING_CREDITS, NO_CREDITS, pillText, usd2, viewCredits } from "./credits";
 import { clampLayout, DEFAULT_LAYOUT, gridTemplate, keyDelta, LIMITS, parseLayout } from "./layout-state";
 import { workstationRedirect } from "./redirect";
+import { groupOf, layoutGrouped } from "./FunctionGraph";
 import { holePath, placeCard, TOUR_STEPS } from "./tour-steps";
 import { parseUiAction } from "./ui-actions";
 import { summarizeCheck } from "./useBoardBench";
@@ -192,6 +193,40 @@ describe("Matter result rejected at M2", () => {
   it("is reported as nothing solved, without reading missing metrics", () => {
     const sim = { metrics: {}, viewer: { field: null }, baselines: { equal_material: null, full_budget: null }, ladder: [{ status: "pass" }, { status: "fail" }], first_failure: "M2" } as unknown as MatterSimulation;
     expect(summarizeSim(sim)).toBe("Nothing was solved: M2 rejected the geometry (1 of 2 rungs pass).");
+  });
+});
+
+describe("grouped connection graph", () => {
+  const design = {
+    mcu_ref: "U1",
+    instances: [{ ref: "U1", part: "esp32" }, { ref: "U2", part: "ldo33" }, { ref: "U3", part: "bme280" }, { ref: "J1", part: "usbc" }, { ref: "R1", part: "res" }, { ref: "SW1", part: "btn" }],
+    nets: [{ name: "GND", pins: ["U1.GND", "U2.GND", "R1.2"] }, { name: "3V3", pins: ["U2.VOUT", "U1.3V3", "U3.VDD", "R1.1", "SW1.1"] }, { name: "SDA", pins: ["U1.GPIO21", "U3.SDI", "R1.2"] }, { name: "NC", pins: ["U3.NC"] }],
+  };
+  it("groups parts by function", () => {
+    expect(groupOf("esp32", "U1")).toBe("mcu");
+    expect(groupOf("ldo33", "U2")).toBe("power");
+    expect(groupOf("bme280", "U3")).toBe("sensor");
+    expect(groupOf("usbc", "J1")).toBe("usb");
+    expect(groupOf("res", "R1")).toBe("passive");
+    expect(groupOf("custom_mcu_part", "U9", "U9")).toBe("mcu");
+  });
+  it("is deterministic and places every part exactly once inside its group box", () => {
+    const a = layoutGrouped(design);
+    expect(JSON.stringify(layoutGrouped(design))).toBe(JSON.stringify(a));
+    expect(a.parts.map((p) => p.ref).sort()).toEqual(["J1", "R1", "SW1", "U1", "U2", "U3"]);
+    for (const p of a.parts) {
+      const box = a.boxes.find((b) => b.id === p.group)!;
+      expect(p.x - 22).toBeGreaterThanOrEqual(box.x);
+      expect(p.x + 22).toBeLessThanOrEqual(box.x + box.w + 1);
+      expect(p.y + 11).toBeLessThanOrEqual(box.y + box.h + 1);
+    }
+  });
+  it("draws signal nets, lists power rails instead of drawing them, and marks ground", () => {
+    const a = layoutGrouped(design);
+    expect(a.edges.map((e) => e.net)).toEqual(["SDA", "SDA"]);
+    expect(a.edges.every((e) => e.a === "U1")).toBe(true);
+    expect(a.rails).toEqual(["3V3"]);
+    expect([...a.ground].sort()).toEqual(["R1", "U1", "U2"]);
   });
 });
 

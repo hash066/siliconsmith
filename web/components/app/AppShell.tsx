@@ -89,8 +89,8 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
   const { layout, raw, setLayout, reset: resetLayout } = usePaneLayout(panesRef);
 
   // Handlers registered once read the latest state through this ref.
-  const live = useRef({ matter, board, silicon, wb, runId, pane, raw, wide, runs: siliconRuns });
-  live.current = { matter, board, silicon, wb, runId, pane, raw, wide, runs: siliconRuns };
+  const live = useRef({ matter, board, silicon, wb, runId, pane, raw, wide, runs: siliconRuns, autoDone: { matter: false, board: false } });
+  live.current = { matter, board, silicon, wb, runId, pane, raw, wide, runs: siliconRuns, autoDone: live.current.autoDone };
 
   const log = useCallback((text: string, ok: boolean) => setHistory((h) => [...h.slice(-49), { at: Date.now(), text, ok }]), []);
 
@@ -202,18 +202,23 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
           goWb(a.args.workbench);
           return { ok: true, summary: `Opened the ${WORKBENCHES[a.args.workbench].name} workbench.` };
         case "board.load_template":
+          L.autoDone.board = true;
           goWb("board");
           return L.board.loadTemplate(a.args.template_id);
         case "board.set_design":
+          L.autoDone.board = true;
           goWb("board");
           return L.board.setDesign(a.args.design);
         case "board.check":
+          L.autoDone.board = true;
           goWb("board");
           return L.board.check();
         case "matter.set_params":
+          L.autoDone.matter = true;
           goWb("matter");
           return L.matter.setParams(a.args);
         case "matter.simulate":
+          L.autoDone.matter = true;
           goWb("matter");
           return L.matter.simulate();
         case "silicon.open_run": {
@@ -273,6 +278,8 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
     void (async () => {
       const L = live.current;
       if (link.wb === "board") {
+        // a bare ?wb=board is a plain "open the workbench": the default first-open check still runs
+        if (link.template || link.autorun) L.autoDone.board = true;
         goWb("board");
         if (link.template) {
           const r = await L.board.loadTemplate(link.template);
@@ -280,6 +287,7 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
           if (r.ok && link.autorun) await userCheck();
         }
       } else if (link.wb === "matter") {
+        if (link.params || link.autorun) L.autoDone.matter = true;
         goWb("matter");
         if (link.params) {
           const r = L.matter.setParams(link.params);
@@ -292,6 +300,20 @@ export function AppShell({ runs }: { runs: RunIndexEntry[] }) {
       }
     })();
   }, [goWb, selectRun, log, userCheck, userSimulate]);
+
+  // First open of Matter or Board shows one real default result (free) unless the visitor came with a link or already acted.
+  const boardReady = board.designText.trim() !== "" && board.templateId !== null && board.busy === "idle" && !board.tplLoading && !board.result;
+  useEffect(() => {
+    const L = live.current;
+    if (wb === "matter" && !L.autoDone.matter) {
+      L.autoDone.matter = true;
+      void L.matter.simulate().then((r) => log(`Matter simulate (default parameters, run on first open): ${r.summary}`, r.ok));
+    }
+    if (wb === "board" && !L.autoDone.board && boardReady) {
+      L.autoDone.board = true;
+      void L.board.check().then((r) => log(`Board check (default template, run on first open): ${r.summary}`, r.ok));
+    }
+  }, [wb, boardReady, log]);
 
   // --- evidence
   const openEvidence = useCallback((e: AnyEvidence) => {

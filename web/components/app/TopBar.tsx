@@ -57,7 +57,7 @@ function CreditsPill({ credits }: { credits: CreditsView }) {
         aria-expanded={open}
         aria-haspopup="dialog"
         data-testid="credits-pill"
-        className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 text-[12px] text-ink transition-colors hover:border-line-2 sm:px-3"
+        className="flex h-9 min-w-[88px] items-center justify-center gap-1.5 rounded-full border border-line bg-raised px-2.5 text-[12px] text-ink transition-colors hover:border-line-2 sm:min-w-[190px] sm:px-3"
         title="Demo credits: what is left of your visitor allowance"
       >
         <IconCoin size={15} className="shrink-0" />
@@ -110,7 +110,7 @@ export function TopBar({ project, wb, runLabel, model, onModel, credits, onShare
       <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px]">
         <span className="hidden truncate text-ink-3 md:inline" title="Project">{project}</span>
         <IconChevron size={13} className="hidden shrink-0 text-ink-3 md:block" />
-        <span className="shrink-0 font-medium" style={{ color: w.accent }}>{w.name}</span>
+        <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink"><span className="h-2 w-2 rounded-full" style={{ background: w.accent }} aria-hidden="true" />{w.name}</span>
         {runLabel && (
           <>
             <IconChevron size={13} className="hidden shrink-0 text-ink-3 sm:block" />

@@ -5,7 +5,8 @@ import { boardRungEvidence, buildFactEvidence } from "@/lib/evidence";
 import { ApiErrorView } from "../domain/ApiErrorView";
 import type { DrawerRef } from "../domain/BoardCheckPanel";
 import { CellGlyph } from "../domain/RungMatrix";
-import { isDesignJson, SchematicGraph, type DesignJson } from "../domain/SchematicGraph";
+import { isDesignJson, type DesignJson } from "../domain/SchematicGraph";
+import { FunctionGraph } from "./FunctionGraph";
 import type { BoardBench } from "./useBoardBench";
 import { Block, btnGhost, btnPrimary, ScopeRow } from "./ui";
 
@@ -126,11 +127,11 @@ function CopyButton({ text }: { text: string }) {
 export function BoardCanvasView({ b, onEvidence }: { b: BoardBench; onEvidence: (r: DrawerRef) => void }) {
   const check = b.result?.check;
   const passN = check ? check.rungs.filter((r) => r.status === "pass").length : 0;
-  const parsed = useMemo<{ design: DesignJson | null; error: string | null }>(() => {
+  const parsed = useMemo<{ design: (DesignJson & { mcu_ref?: string }) | null; error: string | null }>(() => {
     if (!b.designText.trim()) return { design: null, error: null };
     try {
       const j: unknown = JSON.parse(b.designText);
-      return isDesignJson(j) ? { design: j, error: null } : { design: null, error: "The JSON parses but has no instances and nets, so there is no graph to draw." };
+      return isDesignJson(j) ? { design: { ...j, mcu_ref: ((m) => (typeof m === "string" ? m : undefined))(Reflect.get(j, "mcu_ref")) }, error: null } : { design: null, error: "The JSON parses but has no instances and nets, so there is no graph to draw." };
     } catch (e) {
       return { design: null, error: `The design is not valid JSON yet: ${e instanceof Error ? e.message : "parse error"}` };
     }
@@ -154,18 +155,18 @@ export function BoardCanvasView({ b, onEvidence }: { b: BoardBench; onEvidence: 
         <Block title="Connection graph" aside={parsed.design ? <span className="num text-[11.5px] text-ink-3">{parsed.design.instances.length} parts · {parsed.design.nets.length} nets</span> : undefined}>
           {parsed.design ? (
             <div className="p-3">
-              <SchematicGraph design={parsed.design} highlight={cited} />
-              <p className="mt-1 text-[11.5px] leading-snug text-ink-3">Parts are boxes, nets are dots: a connection graph, not a laid-out schematic{cited.size ? "; amber parts are cited by a failing rung" : ""}.</p>
+              <FunctionGraph design={parsed.design} highlight={cited} />
+              <p className="mt-1 text-[11.5px] leading-snug text-ink-3">Grouped by function. A connection graph, not a laid-out schematic{cited.size ? "; amber parts are cited by a failing rung" : ""}.</p>
             </div>
           ) : (
-            <p className="px-4 py-8 text-center text-[13px] leading-snug text-ink-3" role="status">
+            <p className="grid place-items-center px-4 text-center text-[13px] leading-snug text-ink-3 [aspect-ratio:480/300]" role="status">
               {parsed.error ?? (b.templates.state === "loading" ? "Loading a template…" : "Pick a template or paste a design to see its connection graph.")}
             </p>
           )}
         </Block>
 
         <Block title="Check matrix B1–B5" data-step="verify" tabIndex={-1} aside={check && <span className="num text-[11.5px] text-ink-3">{passN} of {check.rungs.length} pass</span>}>
-          <div className="flex flex-col gap-2 p-3">
+          <div className="flex min-h-[300px] flex-col gap-2 p-3">
             {b.failure && <ApiErrorView failure={b.failure} onRetry={() => void b.check()} />}
             {!check && !b.failure && b.busy === "idle" && (
               <div role="status" className="py-5 text-center">
@@ -264,7 +265,7 @@ export function BoardCanvasView({ b, onEvidence }: { b: BoardBench; onEvidence: 
       <Block title="C header: generated pin map" data-step="export" tabIndex={-1} aside={check ? <CopyButton text={check.header} /> : undefined}>
         {check ? (
           <>
-            <pre className="scroll-quiet num max-h-60 overflow-auto p-3 text-[12px] leading-relaxed text-ink">{check.header}</pre>
+            <pre tabIndex={0} aria-label="Generated C pin header" className="scroll-quiet num max-h-60 overflow-auto p-3 text-[12px] leading-relaxed text-ink">{check.header}</pre>
             <p className="border-t border-line px-3 py-2 text-[11.5px] leading-snug text-ink-3">Written by our own code from the design&apos;s firmware pins. {check.notice}</p>
           </>
         ) : (

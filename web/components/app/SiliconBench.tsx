@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReplayOptions } from "@/lib/controller";
 import { buildEvidence, type EvidenceMetric, type EvidenceRef } from "@/lib/evidence";
 import { useMediaQuery, useRunSource, useSnapshot } from "@/lib/hooks";
@@ -21,12 +21,14 @@ export const SILICON_RUNS = ["r_w1_contree3", "r_w1_final", "r_w2_final3", "r_w1
 export const DEFAULT_RUN = SILICON_RUNS[0];
 const EMPTY = initialRunState();
 
+/** The first view is the finished run (stable, nothing moving); `?t=<s>` or the play button replays it. */
 function replayOptions(): ReplayOptions {
-  if (typeof window === "undefined") return { autoplay: true, speed: 8, start: 0 };
+  if (typeof window === "undefined") return { autoplay: false, speed: 8, start: "end" };
   const q = new URLSearchParams(window.location.search);
   const t = q.get("t");
   const speed = Number(q.get("speed"));
-  return { autoplay: t !== "end", speed: [1, 2, 4, 8, 16].includes(speed) ? speed : 8, start: t === "end" ? "end" : t && Number.isFinite(Number(t)) ? Number(t) * 1000 : 0 };
+  const fromStart = t !== null && t !== "end" && Number.isFinite(Number(t));
+  return { autoplay: fromStart, speed: [1, 2, 4, 8, 16].includes(speed) ? speed : 8, start: fromStart ? Number(t) * 1000 : "end" };
 }
 
 export function useSiliconBench(runId: string) {
@@ -125,18 +127,31 @@ export function SiliconInputs({ runs, b, onPick }: { runs: RunIndexEntry[]; b: S
   );
 }
 
+/** Same block heights as the loaded console (title, finding, player, metrics, tree) so nothing jumps when the run arrives. */
 function Skeleton() {
   return (
-    <div className="flex flex-col gap-3 p-4" role="status" aria-label="Loading the run">
-      <div className="h-6 w-2/3 animate-pulse rounded bg-raised" />
-      <div className="h-20 animate-pulse rounded-lg bg-raised" />
-      <div className="h-72 animate-pulse rounded-lg bg-raised" />
+    <div className="flex flex-col gap-3 p-3" role="status" aria-label="Loading the run">
+      <div className="h-[66px] animate-pulse rounded-lg bg-raised" />
+      <div className="h-[68px] animate-pulse rounded-lg bg-raised" />
+      <div className="h-[206px] animate-pulse rounded-lg bg-raised" />
+      <div className="h-11 animate-pulse rounded-lg bg-raised" />
+      <div className="h-[446px] animate-pulse rounded-lg bg-raised" />
     </div>
   );
 }
 
 export function SiliconCanvasView({ b, onEvidence }: { b: SiliconBench; onEvidence: (r: EvidenceRef) => void }) {
   const { src, snap, controller, s, focus, runId } = b;
+  // The run console sizes its metric grid from a width it measures after mounting; keep it invisible for those two frames so the
+  // first visible paint is already in its final layout (no layout shift).
+  const [settled, setSettled] = useState(false);
+  const mounted = !!controller && !!snap;
+  useEffect(() => {
+    if (!mounted) return;
+    setSettled(false);
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setSettled(true)));
+    return () => cancelAnimationFrame(id);
+  }, [mounted, runId]);
   const openMetric = (metric: EvidenceMetric) => {
     if (!s.best) return;
     const e = buildEvidence(s, s.best, metric, snap?.mode ?? "replay");
@@ -152,7 +167,7 @@ export function SiliconCanvasView({ b, onEvidence }: { b: SiliconBench; onEviden
     );
   if (!snap || !controller) return <Skeleton />;
   return (
-    <div className="flex min-w-0 flex-col gap-3 p-3" data-step="verify" tabIndex={-1}>
+    <div className={`flex min-w-0 flex-col gap-3 p-3 ${settled ? "" : "invisible"}`} data-step="verify" tabIndex={-1}>
       <RunCanvas embedded c={controller} snap={snap} focus={focus} reportHref={`/runs/${runId}/report`} onEvidence={openMetric} />
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel px-3 py-2" data-step="export" tabIndex={-1}>
         <span className="hw-label !text-[10.5px]">Export</span>
