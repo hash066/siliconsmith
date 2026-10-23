@@ -43,8 +43,8 @@ const hosted = REAL ? hostedReal : scripted;
 const ctx = { manifests, hosted };
 
 describe("library tools (real manifests)", () => {
-  it("library_lookup finds an entry and returns the reproduce command, marked as not run", async () => {
-    const r = await runTool("library_lookup", { query: "dot4" }, loader, ctx);
+  it("library_search returns real library entries (not run nodes) and the exact reproduce command and returns the reproduce command, marked as not run", async () => {
+    const r = await runTool("library_search", { query: "dot4" }, loader, ctx);
     expect(r.ok && r.evidence).toContain("library:dot4-tinymaix");
     const data = r.ok ? (r.data as Array<{ reproduce: string; reproduce_note: string; not_claimed: string[] }>) : [];
     expect(data[0].reproduce).toBe("siliconsmith verify-entry dot4-tinymaix");
@@ -103,7 +103,7 @@ describe("board_check and matter_simulate", () => {
   });
 
   it("every advertised tool is read-only and has a validator entry", () => {
-    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "evidence_get", "library_lookup", "library_search", "matter_simulate", "run_explain_failure"]);
+    expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(["board_check", "evidence_get", "library_search", "matter_simulate", "run_explain_failure", "run_nodes_search"]);
     expect(validateArgs("matter_simulate", { gen_params: { a: "x" } }).ok).toBe(false);
     expect(validateArgs("matter_simulate", { Q: "2" }).ok).toBe(false);
   });

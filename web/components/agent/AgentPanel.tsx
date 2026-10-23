@@ -112,6 +112,16 @@ export function MessageView({ m }: { m: AgentMessage }) {
           Cites: {m.evidence.join(", ")}
         </p>
       )}
+      {m.usage && m.usage.tokensIn + m.usage.tokensOut > 0 && (
+        <p className="num text-[11px] text-ink-3" title="Summed over this turn's model calls; list prices, so an estimate">
+          {m.usage.calls} call{m.usage.calls === 1 ? "" : "s"} · {m.usage.tokensIn.toLocaleString("en-US")} in · {m.usage.tokensOut.toLocaleString("en-US")} out · ≈ ${m.usage.costUsd.toFixed(4)}
+        </p>
+      )}
+      {(m.flags ?? []).map((f, i) => (
+        <p key={i} className="rounded-md bg-red-dim px-2.5 py-1.5 text-[12px] leading-snug text-red" role="note">
+          {f.message}
+        </p>
+      ))}
       {m.error && <p className="text-[12.5px] text-red">{m.error}</p>}
     </li>
   );

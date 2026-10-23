@@ -2,6 +2,7 @@
 // The API key is read from the server environment and never leaves it. Nothing here runs in the browser.
 
 import type { AgentEvent, AgentModel } from "./agent";
+import { guardText } from "./agent-guard";
 import { runTool, TOOL_DEFS, type ReplayLoader, type ToolContext } from "./agent-tools";
 
 export interface AgentConfig {
@@ -80,7 +81,8 @@ export function pickModel(text: string, override?: string): AgentModel {
 const SYSTEM = `You are the assistant inside SiliconSmith Workstation, a tool where Nemotron agents design custom RISC-V instructions that deterministic verifiers then check.
 Rules:
 - You can only use the tools provided. They read recorded runs and the evidence library, run the free deterministic Board checker and Matter simulator, and nothing else. You cannot start agent runs or change anything.
-- Library entries come with a reproduce command (siliconsmith verify-entry <id>). You may show it, and you must say it was NOT run by you.
+- Library entries (library_search, evidence_get with entry_id) come with a "reproduce" string. Quote it VERBATIM and never construct, shorten or adapt a command: the only valid commands are the "reproduce" strings the tools returned, and they exist only for library entries (ids like dot4-tinymaix), never for run nodes (ids like run:r_w1_final/n1.1). Say it was NOT run by you.
+- "Which instruction has the biggest speedup in the library" is answered from library_search (compare the entries' speedup), not from run nodes.
 - State only what tool results say. If a tool returns nothing or an error, say so plainly. Never invent numbers, nodes, runs or tool versions.
 - You cannot declare anything verified or proven. Only the verifiers can. You may report what a tool result says (a run's event log, a rung status from the checker, a stored manifest) and you must cite the evidence id the tool returned (for example run:r_w1_contree3/n1.2.1#wall_speedup, board:clean_sensor#B4, matter:rect_fins#M5, library:dot4-tinymaix, part:esp32.gpio12.strapping).
 - Board facts are author-curated, not independently verified; never say a board will work. Matter is a 2D steady-state model, not validated on a printed part.
@@ -113,6 +115,9 @@ async function* sseLines(body: ReadableStream<Uint8Array>): AsyncGenerator<strin
   if (rest.startsWith("data:")) yield rest.slice(5).trim();
 }
 
+// Token Factory list prices (USD per million tokens, in / out), the same figures the run console uses for its estimate.
+const PRICE: Record<AgentModel, [number, number]> = { ultra: [1, 3], super: [0.3, 0.9], nano: [0.06, 0.24] };
+
 export interface TurnInput {
   text: string;
   model?: string;
@@ -144,6 +149,7 @@ The user is currently viewing run ${input.runId}.` : SYSTEM },
   const known = new Set<string>();
   let fullText = "";
   let budget = cfg.turnMaxTokens;
+  const usage = { calls: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
   try {
     for (let round = 0; round <= cfg.maxToolRounds; round++) {
       if (budget <= 0) {
@@ -174,16 +180,22 @@ The user is currently viewing run ${input.runId}.` : SYSTEM },
       let text = "";
       let finish = "";
       let used = 0;
+      let callIn = 0;
+      let callOut = 0;
       const calls = new Map<number, UpstreamToolCall>();
       for await (const data of sseLines(res.body)) {
         if (data === "[DONE]") break;
-        let chunk: { choices?: Array<{ delta?: { content?: string | null; tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }> }; finish_reason?: string | null }>; usage?: { completion_tokens?: number } };
+        let chunk: { choices?: Array<{ delta?: { content?: string | null; tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }> }; finish_reason?: string | null }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
         try {
           chunk = JSON.parse(data);
         } catch {
           continue;
         }
         if (chunk.usage?.completion_tokens) used = chunk.usage.completion_tokens;
+        if (chunk.usage) {
+          callIn = chunk.usage.prompt_tokens ?? callIn;
+          callOut = chunk.usage.completion_tokens ?? callOut;
+        }
         const ch = chunk.choices?.[0];
         if (!ch) continue;
         if (ch.finish_reason) finish = ch.finish_reason;
@@ -202,6 +214,10 @@ The user is currently viewing run ${input.runId}.` : SYSTEM },
         }
       }
       fullText += text;
+      usage.calls += 1;
+      usage.tokensIn += callIn;
+      usage.tokensOut += callOut;
+      usage.costUsd += (callIn * PRICE[model][0] + callOut * PRICE[model][1]) / 1e6;
       budget -= used || Math.ceil((text.length + [...calls.values()].reduce((n, c) => n + c.args.length, 0)) / 3);
 
       if (calls.size === 0) {
@@ -233,7 +249,10 @@ The user is currently viewing run ${input.runId}.` : SYSTEM },
     // A sentence-ending full stop is not part of an id (node ids contain dots).
     const cited = [...new Set((fullText.match(EVIDENCE_ID) ?? []).map((id) => id.replace(/\.+$/, "")))].filter((id) => known.has(id));
     if (cited.length) yield { type: "evidence", id: turnId, ids: cited };
-    yield { type: "turn.done", id: turnId };
+    // Post-check: a verify-entry command for an id that is not a library entry is invented. The text is already streamed, so flag it.
+    const entryIds = (await input.tools?.manifests?.ids()) ?? [];
+    for (const f of guardText(fullText, entryIds)) yield { type: "flag", id: turnId, kind: f.kind, message: f.message };
+    yield { type: "turn.done", id: turnId, usage };
   } catch (err) {
     if ((err as { name?: string }).name === "AbortError") {
       yield { type: "turn.error", id: turnId, message: "Stopped." };

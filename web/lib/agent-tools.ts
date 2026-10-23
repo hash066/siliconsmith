@@ -34,8 +34,9 @@ export interface ToolDef {
 /** OpenAI-style function definitions. Read-only: no tool starts a run or changes anything. */
 export const TOOL_DEFS: ToolDef[] = [
   {
-    name: "library_search",
-    description: "Find verified instructions (feasible, proven nodes) across the recorded runs by mnemonic or title text. Empty query lists the best ones.",
+    name: "run_nodes_search",
+    description:
+      "Find scored candidate nodes in the RECORDED RUNS by mnemonic or title (these are run nodes, not library entries, and they have no reproduce command). Use library_search for the evidence library.",
     parameters: { type: "object", properties: { query: { type: "string", maxLength: 80 } }, required: ["query"], additionalProperties: false },
   },
   {
@@ -49,8 +50,9 @@ export const TOOL_DEFS: ToolDef[] = [
     },
   },
   {
-    name: "library_lookup",
-    description: "Search the evidence library (stored manifests of proven instructions) by id, title or mnemonic. Returns each entry's manifest summary and the exact reproduce command (shown, not run). Empty query lists all.",
+    name: "library_search",
+    description:
+      "Search the EVIDENCE LIBRARY (stored manifests of proven instructions) by id, title or mnemonic; an empty query lists every entry. Returns each entry's id, mnemonic, workload, metrics, ladder, claims, not_claimed, tool versions and the exact `reproduce` string. Quote `reproduce` verbatim; commands exist only for these entries.",
     parameters: { type: "object", properties: { query: { type: "string", maxLength: 80 } }, required: ["query"], additionalProperties: false },
   },
   {
@@ -124,7 +126,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
   if (!v.ok) return { ok: false, error: v.error };
   const a = v.args;
   switch (name) {
-    case "library_search": {
+    case "run_nodes_search": {
       const q = String(a.query).trim().toLowerCase();
       const hits: Array<{ run_id: string; node_id: string; mnemonic: string; title: string; wall_speedup: number; area_delta_pct: number }> = [];
       for (const id of await loader.list()) {
@@ -166,7 +168,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
         evidence: [id],
       };
     }
-    case "library_lookup": {
+    case "library_search": {
       const store = ctx.manifests;
       if (!store) return { ok: false, error: "the evidence library is not installed on this deployment" };
       const q = String(a.query).trim().toLowerCase();
@@ -177,7 +179,7 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
         const text = `${m.id} ${m.title} ${m.instruction.mnemonic} ${m.instruction.cpu_carries.join(" ")}`.toLowerCase();
         if (!q || text.includes(q)) out.push(m);
       }
-      if (out.length === 0) return { ok: true, summary: "no library entry matches", data: [], evidence: [] };
+      if (out.length === 0) return { ok: true, summary: "no library entry matches; there is no reproduce command for anything else", data: [], evidence: [] };
       return { ok: true, summary: `${out.length} library entr${out.length === 1 ? "y" : "ies"}`, data: out.map(manifestSummary), evidence: out.map((m) => `library:${m.id}`) };
     }
     case "board_check": {
@@ -272,6 +274,8 @@ function manifestSummary(m: LibraryManifest) {
     id: m.id,
     title: m.title,
     instruction: m.instruction.mnemonic,
+    workload: m.source.workload,
+    speedup: m.metrics.speedup,
     cpu_carries: m.instruction.cpu_carries,
     kind: m.kind,
     source: m.source,

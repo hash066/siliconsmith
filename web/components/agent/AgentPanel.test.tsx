@@ -55,3 +55,17 @@ describe("AgentPanel starters", () => {
     expect(view(initialAgentState(), false)).not.toContain("Ask about what is on this site");
   });
 });
+
+describe("AgentPanel server flags and usage", () => {
+  it("shows an invented-command flag and the turn's token usage", () => {
+    const events: AgentEvent[] = [
+      { type: "turn.started", id: "a1", model: "super" },
+      { type: "text.delta", id: "a1", text: "Run siliconsmith verify-entry run:r_w1_final/n1.1.1" },
+      { type: "flag", id: "a1", kind: "invented_command", message: "That command does not exist. The real entries are: dot4-tinymaix." },
+      { type: "turn.done", id: "a1", usage: { calls: 2, tokensIn: 4500, tokensOut: 400, costUsd: 0.00171 } },
+    ];
+    const html = view(events.reduce(applyAgentEvent, initialAgentState()), true);
+    expect(html).toContain("That command does not exist");
+    expect(html).toContain("2 calls · 4,500 in · 400 out · ≈ $0.0017");
+  });
+});

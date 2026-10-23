@@ -6,7 +6,7 @@ export type AgentModel = "ultra" | "super" | "nano";
 export const AGENT_MODELS: readonly AgentModel[] = ["ultra", "super", "nano"];
 
 /** Read-only tools run automatically; actions need a click and show a cost estimate first (plan section 8). */
-export const READ_TOOLS = ["library_search", "library_lookup", "evidence_get", "run_explain_failure", "board_check", "matter_simulate"] as const;
+export const READ_TOOLS = ["library_search", "run_nodes_search", "evidence_get", "run_explain_failure", "board_check", "matter_simulate"] as const;
 export const ACTION_TOOLS = ["run_start", "verify_run", "artifact_export"] as const;
 export type ToolName = (typeof READ_TOOLS)[number] | (typeof ACTION_TOOLS)[number];
 
@@ -30,6 +30,19 @@ export interface PendingAction {
   costEstimateUsd: number | null;
 }
 
+export interface MessageFlag {
+  kind: "invented_command" | "claims_run";
+  message: string;
+}
+
+/** Tokens and an estimated cost for one turn, summed over its model calls. The cost uses list prices, so it is an estimate. */
+export interface TurnUsage {
+  calls: number;
+  tokensIn: number;
+  tokensOut: number;
+  costUsd: number;
+}
+
 export interface AgentMessage {
   id: string;
   role: "user" | "assistant";
@@ -38,7 +51,10 @@ export interface AgentMessage {
   toolCalls: ToolCall[];
   /** Evidence ids the answer cites (for example "run:r_w1_contree3/n1" or "part:esp32.gpio12.strapping"). */
   evidence: string[];
+  /** Server post-check findings about the final text (an invented command, a claim that a command was run). */
+  flags?: MessageFlag[];
   streaming?: boolean;
+  usage?: TurnUsage;
   error?: string;
 }
 
@@ -55,8 +71,9 @@ export type AgentEvent =
   | { type: "tool.call"; id: string; call: Omit<ToolCall, "status" | "result" | "error"> }
   | { type: "tool.result"; id: string; callId: string; ok: boolean; summary: string }
   | { type: "evidence"; id: string; ids: string[] }
+  | { type: "flag"; id: string; kind: MessageFlag["kind"]; message: string }
   | { type: "action.proposed"; action: PendingAction }
-  | { type: "turn.done"; id: string }
+  | { type: "turn.done"; id: string; usage?: TurnUsage }
   | { type: "turn.error"; id: string; message: string };
 
 /** The seam for `/api/agent`: send the user's text, get events back. */
@@ -94,10 +111,12 @@ export function applyAgentEvent(s: AgentState, e: AgentEvent): AgentState {
       }));
     case "evidence":
       return patch(s, e.id, (m) => ({ ...m, evidence: [...new Set([...m.evidence, ...e.ids])] }));
+    case "flag":
+      return patch(s, e.id, (m) => ({ ...m, flags: [...(m.flags ?? []), { kind: e.kind, message: e.message }] }));
     case "action.proposed":
       return { ...s, pending: e.action };
     case "turn.done":
-      return patch(s, e.id, (m) => ({ ...m, streaming: false }));
+      return patch(s, e.id, (m) => ({ ...m, streaming: false, usage: e.usage ?? m.usage }));
     case "turn.error":
       return patch(s, e.id, (m) => ({ ...m, streaming: false, error: e.message }));
   }
