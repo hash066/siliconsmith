@@ -131,7 +131,7 @@ export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "pr
           </dl>
         </>
       ) : (
-        <p className="rounded-xl border border-line bg-panel px-4 py-6 text-center text-[13.5px] leading-snug text-ink-2" role="status">
+        <p className="grid min-h-[539px] place-items-center rounded-xl border border-line bg-panel px-4 py-6 text-center text-[13.5px] leading-snug text-ink-2" role="status">
           Nothing was solved: this shape was rejected before the simulation, so there is no heat picture. See the Proof tab for why.
         </p>
       )}
