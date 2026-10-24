@@ -101,6 +101,6 @@ Done since: projects + sidebar; /connect + the open-source `hardwright` package 
 
 WSL tooling now installed in distro `siliconsmith`: KiCad 7.0.11 (kicad-cli, pcbnew via system python3), openjdk-21-jre, xvfb, /opt/freerouting/freerouting.jar (v1.9.0). Regenerate boards: `wsl.exe -d siliconsmith -e /bin/bash /mnt/e/Winter/siliconsmith/runs/build_boards.sh` (about 5 minutes, writes web/public/boards). Layout tests: runs/pytest_layout.sh (about 2 minutes). Never put code through shell heredocs or node -e one-liners: use the editor tools (backslashes and backticks get eaten).
 
-Still open (ordered): README/Devpost/video rewrite; push + public (owner OK, reword merge messages first); CI never ran on GitHub; Board layout for agent-drafted designs (needs KiCad+Java+Freerouting in a Sandbox image); Board schematic view; Matter baseline side-by-side; outside testers; durable credit pool; hardware demo; rotate old Nebius key.
+Done later the same day: Board layout for ANY design via the Sandbox image siliconsmith-kicad (rebuild: python -m siliconsmith.board.layout.build_sandbox_image from WSL; code in board/layout/{runner,sandbox,sandbox_worker,http}.py), Board schematic view, Matter baseline side-by-side (see docs/EVALUATION.md section 9). Still open (ordered): README/Devpost/video rewrite; push + public (owner OK, reword merge messages first); CI never ran on GitHub; .kicad_sch export; outside testers; durable credit pool; hardware demo; rotate old Nebius key.
 
 Usage at this refresh: weekly 79% (resets Mon Oct 26 10:00 IST).

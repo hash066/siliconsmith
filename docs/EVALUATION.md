@@ -95,3 +95,15 @@ Still open: README and Devpost for Hardwright, video, outside testers, push and 
 Bugs found by looking: live Silicon bundle files carried `name` while the app read `path` (Silicon Files and anything built on them were empty in production); the first Board layout exported silkscreen as nothing (KiCad 7 calls footprint shapes `MGRAPHIC`); KiCad 7 has no `kicad-cli pcb drc` (DRC runs through pcbnew); Freerouting needs a full JRE and a virtual display.
 
 Measured: axe 0 violations and CLS 0.03 at 1440 and 390; tests: engine 631 passed (14 skipped), web 328 passed.
+
+## 9. Update, Oct 24 2026 (evening): the three gaps from section 8 are closed
+
+| Item | State | Evidence |
+|---|---|---|
+| Routed board for a design the agent drafts or the user edits | DONE | KiCad, Java, Xvfb and Freerouting live in a Token Factory Sandbox image (`siliconsmith-kicad:latest`, built by `board/layout/build_sandbox_image.py`, Freerouting jar SHA-256 checked). The host places the parts, ships the job, and the Sandbox routes and checks. Measured through the public site: custom design -> fully routed 40 x 44 mm board, **KiCad 0 errors, 107 s**, Gerbers downloadable. Endpoint `POST /api/board/layout` streams progress and heartbeats; costs no model tokens; limited per visitor and overall (in memory); cached by netlist. 15 new tests (host, errors, endpoint) run without KiCad by replaying a real board |
+| Board schematic view | DONE (SVG, symbols and net labels from the netlist, firmware/netlist mismatch marked on the MCU, "Download as SVG") | tests on the real template netlists: every connection appears as a labelled pin, no symbol overlaps. NOT done: a `.kicad_sch` file |
+| Matter baseline side by side | DONE | the engine now returns the equal-material plain-fin plate as a viewer artifact; its peak equals the reported baseline peak (tested); both plates share one colour scale |
+
+Found while doing it: Sandboxes start with HOME empty and KiCad refuses to run without one (set HOME in the image build and in the worker command). Layout files are served from the API host's cache of the last 8 boards; nothing is stored.
+
+Measured: engine 640 passed (14 skipped), web 339 passed.
