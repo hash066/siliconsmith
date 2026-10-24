@@ -18,17 +18,19 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install with only the light dependencies plus the heat solver
-        run: pip install -e "engine[matter,dev]"
+        run: pip install -e "./engine[matter,dev]"
       - name: Package, CLI and MCP server tests
         run: pytest -q engine/tests/test_hardwright_pkg.py
-      - name: Board and Matter checkers
-        run: pytest -q engine/tests/test_board_*.py engine/tests/test_matter_*.py engine/tests/test_board_serverless.py
       - name: The library does not pull in a model client
         run: python -c "import hardwright, sys; hardwright.board_check(template='clean_sensor'); assert 'openai' not in sys.modules and 'httpx' not in sys.modules"
       - name: The CLI is a CI gate (exit 1 on the faulty example)
         run: |
           hardwright board check --template clean_sensor
           ! hardwright board check --template fault_gpio12_vs_gpio14
+      - name: Add the agent and server extras for the remaining engine tests
+        run: pip install -e "./engine[matter,agent,server,dev]"
+      - name: Board, Matter and layout tests (no toolchain; the KiCad run is skipped without KiCad)
+        run: pytest -q engine/tests/test_board_*.py engine/tests/test_matter_*.py engine/tests/test_board_layout_sandbox.py
 
   mcp-protocol:
     name: MCP server speaks the protocol (official client)
@@ -38,7 +40,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install mcp "engine[matter]"
+      - run: pip install mcp "./engine[matter]"
       - name: Connect with the official MCP client
         run: |
           cat > /tmp/client.py <<'PY'
