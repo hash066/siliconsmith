@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { hex32, layerNetlist, matches, type InstructionViews } from "@/lib/silicon-views";
+import { hex32, layerNetlist, matches, stripLeadingComment, type InstructionViews } from "@/lib/silicon-views";
 
 const NW = 132;
 const NH = 46;
@@ -160,6 +160,8 @@ function CodeBlock({ title, code, mark, note }: { title: string; code: string; m
 /** The loop before and after: what the agent changed in the code, with the new instruction called out. */
 export function BeforeAfter({ before, after, mnemonic }: { before: string; after: string; mnemonic: string }) {
   const call = /\bss_\w+\s*\(/;
+  before = stripLeadingComment(before);
+  after = stripLeadingComment(after);
   const count = (s: string) => s.replace(/\n$/, "").split("\n").length;
   return (
     <section aria-label="The loop before and after" className="min-w-0 rounded-xl border border-line bg-panel p-3" data-testid="before-after">

@@ -90,6 +90,12 @@ export interface LEdge {
 
 const isNet = (b: Bit): b is number => typeof b === "number";
 
+/** Yosys writes numeric parameters as binary text ("00000000000000000000000000001000" is 8). */
+export const paramNum = (v: unknown): number | undefined => (typeof v === "number" ? v : typeof v === "string" && /^[01]+$/.test(v) ? parseInt(v, 2) : undefined);
+
+/** Source text without its leading block comment (licence and notes), so a view opens on the code. */
+export const stripLeadingComment = (code: string): string => code.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, "");
+
 /** Cells as boxes in columns by depth (inputs on the left, the result on the right), joined by the nets they share. */
 export function layerNetlist(v: InstructionViews): { nodes: LNode[]; edges: LEdge[]; layers: number } {
   const driver = new Map<number, string>();
@@ -145,8 +151,9 @@ export function layerNetlist(v: InstructionViews): { nodes: LNode[]; edges: LEdg
   for (const c of v.cells) {
     const [sym, word] = CELL_WORDS[c.type] ?? [c.type.replace(/^\$/, ""), c.type.replace(/^\$/, "")];
     const p = c.params;
-    const w = [p.A_WIDTH, p.B_WIDTH].filter((x) => x !== undefined);
-    nodes.push({ id: c.name, kind: "cell", label: `${sym}  ${word}`, sub: p.Y_WIDTH !== undefined ? `${w.length ? w.join(" and ") + " bits → " : ""}${p.Y_WIDTH} bits` : "", layer: depth(c.name), row: 0 });
+    const w = [paramNum(p.A_WIDTH), paramNum(p.B_WIDTH)].filter((x) => x !== undefined);
+    const yw = paramNum(p.Y_WIDTH);
+    nodes.push({ id: c.name, kind: "cell", label: `${sym}  ${word}`, sub: yw !== undefined ? `${w.length ? w.join(" and ") + " bits → " : ""}${yw} bits` : "", layer: depth(c.name), row: 0 });
   }
   const outLayer = 1 + Math.max(0, ...nodes.filter((n) => n.kind === "cell").map((n) => n.layer));
   for (const [name, p] of Object.entries(v.ports)) if (p.dir === "output") nodes.push({ id: `out:${name}`, kind: "out", label: name, sub: `${p.bits.length} bits out`, layer: outLayer, row: 0 });

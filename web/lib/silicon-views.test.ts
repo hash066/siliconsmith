@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { hex32, layerNetlist, matches, parseViews } from "./silicon-views";
+import { hex32, layerNetlist, matches, paramNum, parseViews, stripLeadingComment } from "./silicon-views";
 
 // A real file: views/instruction.json from a live run on the public site (TinyMaix dot product, Nemotron-proposed dot4).
 const real = readFileSync(join(__dirname, "__fixtures__", "silicon-views-live.json"), "utf8");
@@ -50,6 +50,20 @@ describe("parseViews is strict about what it accepts", () => {
   it("a netlist loop does not hang the layout", () => {
     const v = parseViews(JSON.stringify({ name: "x", ports: { a: { dir: "input", bits: [2] }, y: { dir: "output", bits: [4] } }, rows: [], cells: [{ name: "c1", type: "$add", params: {}, dirs: { A: "input", Y: "output" }, conn: { A: [3], Y: [4] } }, { name: "c2", type: "$add", params: {}, dirs: { A: "input", Y: "output" }, conn: { A: [4], Y: [3] } }] }))!;
     expect(layerNetlist(v).nodes.length).toBe(4);
+  });
+});
+
+describe("readable labels", () => {
+  it("turns Yosys binary parameters into numbers and labels the real boxes with bit widths", () => {
+    expect(paramNum("00000000000000000000000000001000")).toBe(8);
+    expect(paramNum(16)).toBe(16);
+    expect(paramNum("abc")).toBeUndefined();
+    const g = layerNetlist(parseViews(real)!);
+    expect(g.nodes.filter((n) => n.label.includes("multiply")).every((n) => /^\d+ and \d+ bits → \d+ bits$/.test(n.sub))).toBe(true);
+  });
+  it("drops the licence comment so a code view opens on the code", () => {
+    expect(stripLeadingComment("/* a\n * b */\n#pragma once\nint x;")).toBe("#pragma once\nint x;");
+    expect(stripLeadingComment("int x; /* keep */")).toBe("int x; /* keep */");
   });
 });
 
