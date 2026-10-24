@@ -104,3 +104,7 @@ WSL tooling now installed in distro `siliconsmith`: KiCad 7.0.11 (kicad-cli, pcb
 Done later the same day: Board layout for ANY design via the Sandbox image siliconsmith-kicad (rebuild: python -m siliconsmith.board.layout.build_sandbox_image from WSL; code in board/layout/{runner,sandbox,sandbox_worker,http}.py), Board schematic view, Matter baseline side-by-side (see docs/EVALUATION.md section 9). Still open (ordered): README/Devpost/video rewrite; push + public (owner OK, reword merge messages first); CI never ran on GitHub; .kicad_sch export; outside testers; durable credit pool; hardware demo; rotate old Nebius key.
 
 Usage at this refresh: weekly 79% (resets Mon Oct 26 10:00 IST).
+
+## 11. Reference study (Oct 24, late)
+
+The owner added competitor demos in refernce/ (git-ignored, 106 MB). They are analysed in docs/REFERENCE_PLAN.md with a 10-item additive replication plan and build order. Status: plan written and pushed; implementation starts with the 3D board view and Studio split. Rule: never remove existing features, add depth.
