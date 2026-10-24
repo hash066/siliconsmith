@@ -7,7 +7,7 @@ import type { CheckCard } from "./verdict";
 import { btnGhost } from "./ui";
 
 /** One card per check: a tick or a cross, the plain title, one plain sentence. Failing cards can ask the agent to fix it; facts open on demand. */
-export function CheckCards({ cards, facts, detail, onFix, busy }: { cards: CheckCard[]; facts?: Record<string, BoardFact>; detail?: Record<string, string>; onFix?: (c: CheckCard) => void; busy?: boolean }) {
+export function CheckCards({ cards, facts, detail, onFix, busy, onShow, showable }: { cards: CheckCard[]; facts?: Record<string, BoardFact>; detail?: Record<string, string>; onFix?: (c: CheckCard) => void; busy?: boolean; onShow?: (c: CheckCard) => void; showable?: Set<string> }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <ul className="flex flex-col gap-2" aria-label="Checks">
@@ -31,8 +31,13 @@ export function CheckCards({ cards, facts, detail, onFix, busy }: { cards: Check
                 {c.id}
               </span>
             </div>
-            {(ids.length > 0 || detail?.[c.id] || (c.state === "fail" && onFix)) && (
+            {(ids.length > 0 || detail?.[c.id] || (c.state === "fail" && onFix) || (onShow && showable?.has(c.id))) && (
               <div className="mt-2 flex flex-wrap items-center gap-2 pl-[26px]">
+                {onShow && showable?.has(c.id) && (
+                  <button type="button" onClick={() => onShow(c)} className={`${btnGhost} !h-8`} data-testid={`show-${c.id}`}>
+                    Show on the board
+                  </button>
+                )}
                 {c.state === "fail" && onFix && (
                   <button type="button" onClick={() => onFix(c)} disabled={busy} className={`${btnGhost} !h-8 !border-[var(--hw-bad)] !text-ink`} data-testid={`fix-${c.id}`}>
                     Fix it

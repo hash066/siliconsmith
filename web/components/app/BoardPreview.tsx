@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { markersFor, type Marker } from "@/lib/layout";
+import { PcbView } from "./PcbView";
+import type { LayoutState } from "./useBoardLayout";
 import { ApiErrorView } from "../domain/ApiErrorView";
 import { isDesignJson, type DesignJson } from "../domain/SchematicGraph";
 import { blockDiagram, BLOCK_H, BLOCK_VIEW, BLOCK_W } from "./blocks";
@@ -64,7 +67,10 @@ function BlockDiagram({ design, hot }: { design: DesignJson & { mcu_ref?: string
   );
 }
 
-export function BoardPreview({ b, tab, onFix }: { b: BoardBench; tab: "preview" | "proof"; onFix: (c: CheckCard) => void }) {
+type Layout = LayoutState & { design: Parameters<typeof markersFor>[0] };
+
+export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "preview" | "proof"; onFix: (c: CheckCard) => void; layout: Layout }) {
+  const [focus, setFocus] = useState<Marker | null>(null);
   const check = b.result?.check ?? null;
   const cards = useMemo(() => (check ? boardChecks(check) : []), [check]);
   const parsed = useMemo(() => parseDesign(b.designText), [b.designText]);
@@ -73,6 +79,10 @@ export function BoardPreview({ b, tab, onFix }: { b: BoardBench; tab: "preview" 
     if (check) for (const r of check.rungs) if (r.status !== "pass") for (const id of r.evidence) s.add(check.evidence[id]?.part ?? id.replace(/^part:/, "").split(".")[0]);
     return s;
   }, [check]);
+
+  const markers = useMemo(() => (layout.status === "ready" ? markersFor(layout.design, layout.summary, check) : []), [layout, check]);
+  const showable = useMemo(() => new Set(markers.map((m) => m.rung)), [markers]);
+  const onShow = (c: CheckCard) => setFocus(markers.find((m) => m.rung === c.id && m.kind !== "wired") ?? markers.find((m) => m.rung === c.id) ?? null);
 
   if (b.failure && !check) return <div className="p-4"><ApiErrorView failure={b.failure} onRetry={() => void b.check()} /></div>;
   if (!check) {
@@ -110,12 +120,53 @@ export function BoardPreview({ b, tab, onFix }: { b: BoardBench; tab: "preview" 
     <div className="flex min-w-0 flex-col gap-4 p-4" aria-live="polite">
       {stale}
       {b.failure && <ApiErrorView failure={b.failure} />}
-      <section aria-label="Block diagram" className="rounded-xl border border-line bg-panel p-3">
-        <h3 className="hw-label mb-1 !text-[10.5px]">What is on the board</h3>
-        {parsed.design ? <BlockDiagram design={parsed.design} hot={hot} /> : <p className="py-6 text-center text-[13px] text-ink-3">{parsed.error}</p>}
-        <p className="mt-1 text-[11.5px] leading-snug text-ink-3">Blocks and the signals between them, from your design. Dashed lines are power. Not a schematic or a layout.</p>
+      <section aria-label="Your board" className="min-w-0 rounded-xl border border-line bg-panel p-3">
+        <h3 className="hw-label mb-2 !text-[10.5px]">Your board</h3>
+        {layout.status === "ready" ? (
+          <>
+            <PcbView geom={layout.geom} markers={markers} focus={focus} onFocusMarker={setFocus} />
+            <p className="mt-2 text-[12.5px] leading-snug text-ink-2" data-testid="layout-status">
+              {layout.summary.stats.fully_routed ? "Fully routed" : `${layout.summary.stats.unrouted_connections} connection(s) not routed`} · {layout.summary.stats.board_mm[0]} × {layout.summary.stats.board_mm[1]} mm, 2 layers · KiCad design-rule check: {layout.summary.drc.errors} errors, {layout.summary.drc.warnings} warnings (silkscreen).
+            </p>
+            {markers.length > 0 && (
+              <ul className="mt-2 flex flex-col gap-1.5" aria-label="Findings on the board">
+                {markers.map((m, i) => (
+                  <li key={i}>
+                    <button type="button" onClick={() => setFocus(m)} className="flex w-full items-start gap-2 rounded-lg bg-sunken px-2.5 py-2 text-left text-[12.5px] leading-snug text-ink-2 hover:text-ink">
+                      <span aria-hidden="true" className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: m.kind === "fail" ? "#ff4d4d" : m.kind === "wired" ? "#5fd38d" : "#ffb020" }} />
+                      <span>
+                        <span className="num text-ink-3">
+                          {m.ref} pad {m.pad} ·{" "}
+                        </span>
+                        {m.text}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <details className="mt-2 text-[12px] text-ink-3">
+              <summary className="cursor-pointer">What this is, and what it is not</summary>
+              <p className="mt-1 leading-snug">
+                {layout.summary.tool_note} Made with KiCad {layout.summary.generated_with.kicad} and {layout.summary.generated_with.router}; {layout.summary.generated_with.rules}. {layout.summary.notes.join(" ")}
+              </p>
+            </details>
+          </>
+        ) : layout.status === "loading" ? (
+          <div role="status" className="grid h-[420px] place-items-center rounded-xl bg-sunken text-[13px] text-ink-3">
+            Loading the board…
+          </div>
+        ) : (
+          <>
+            {parsed.design ? <BlockDiagram design={parsed.design} hot={hot} /> : <p className="py-6 text-center text-[13px] text-ink-3">{parsed.error}</p>}
+            <p className="mt-1 text-[11.5px] leading-snug text-ink-3">
+              {layout.status === "failed" ? `The routed board could not be loaded (${layout.message}). ` : "No routed board has been generated for this exact design yet; boards for the built-in examples are ready. "}
+              This block diagram is drawn from your design. It is not a schematic or a layout.
+            </p>
+          </>
+        )}
       </section>
-      <CheckCards cards={cards} onFix={onFix} busy={b.busy !== "idle"} />
+      <CheckCards cards={cards} onFix={onFix} busy={b.busy !== "idle"} onShow={layout.status === "ready" ? onShow : undefined} showable={showable} />
     </div>
   );
 }

@@ -94,3 +94,8 @@
 /* A brief ring on the part of the app a workflow step just focused. */
 .hw-app [data-flash="1"] { outline: 2px solid var(--wb); outline-offset: 2px; border-radius: 12px; }
 .hw-app [data-step]:focus { outline: none; }
+
+/* a check marker on the board: a ring that pulses (and holds still under reduced motion) */
+.hw-marker { transform-box: fill-box; transform-origin: center; animation: hw-marker-pulse 1.6s ease-in-out infinite; }
+@keyframes hw-marker-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .hw-marker { animation: none; } }

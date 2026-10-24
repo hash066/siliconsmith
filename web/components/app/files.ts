@@ -6,9 +6,12 @@ export interface ProductFile {
   note: string;
   text?: string;
   base64?: string;
+  /** A file the app serves (the routed board's Gerbers, KiCad board, BOM). Downloaded by link, not built in the browser. */
+  href?: string;
+  bytes?: number;
 }
 
-export const bytesOf = (f: ProductFile): number => (f.text !== undefined ? new TextEncoder().encode(f.text).length : f.base64 ? Math.floor((f.base64.length * 3) / 4) : 0);
+export const bytesOf = (f: ProductFile): number => (f.bytes !== undefined ? f.bytes : f.text !== undefined ? new TextEncoder().encode(f.text).length : f.base64 ? Math.floor((f.base64.length * 3) / 4) : 0);
 
 export function toBlob(f: ProductFile): Blob {
   if (f.text !== undefined) return new Blob([f.text], { type: f.mime });
@@ -20,6 +23,15 @@ export function toBlob(f: ProductFile): Blob {
 
 /** Browser download of one file. Safe to call only from a click handler. */
 export function downloadFile(f: ProductFile) {
+  if (f.href) {
+    const a = document.createElement("a");
+    a.href = f.href;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
   const url = URL.createObjectURL(toBlob(f));
   const a = document.createElement("a");
   a.href = url;

@@ -370,7 +370,7 @@ def extract(in_pcb: str, out_json: str) -> None:
             pads.append({"name": p.GetNumber(), "net": p.GetNetname(), "x": round(tomm(pp.x) - OX, 3), "y": round(tomm(pp.y) - OY, 3), "w": round(tomm(sz.x), 3), "h": round(tomm(sz.y), 3), "rot": round(p.GetOrientationDegrees(), 2), "shape": {pcbnew.PAD_SHAPE_CIRCLE: "circle", pcbnew.PAD_SHAPE_OVAL: "oval", pcbnew.PAD_SHAPE_ROUNDRECT: "roundrect"}.get(p.GetShape(), "rect"), "through": p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH, "npth": p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH, "drill": round(tomm(dr.x), 3) if dr.x else 0, "side": "B" if p.IsOnLayer(pcbnew.B_Cu) and not p.IsOnLayer(pcbnew.F_Cu) else "F"})
         silk = []
         for g in fp.GraphicalItems():
-            if g.GetLayer() not in (pcbnew.F_SilkS, pcbnew.F_CrtYd) or g.GetClass() != "PCB_SHAPE":
+            if g.GetLayer() not in (pcbnew.F_SilkS, pcbnew.F_CrtYd) or g.GetClass() not in ("PCB_SHAPE", "FP_SHAPE", "MGRAPHIC"):
                 continue
             kind = {pcbnew.SHAPE_T_SEGMENT: "line", pcbnew.SHAPE_T_RECT: "rect", pcbnew.SHAPE_T_CIRCLE: "circle", pcbnew.SHAPE_T_ARC: "arc", pcbnew.SHAPE_T_POLY: "poly"}.get(g.GetShape())
             if kind in ("line", "rect"):

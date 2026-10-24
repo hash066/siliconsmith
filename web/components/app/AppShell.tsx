@@ -22,6 +22,7 @@ import { StartScreen, type StartPick } from "./StartScreen";
 import type { Chip } from "./route";
 import { UI_ACTION_EVENT, type UiActionDetail } from "./ui-actions";
 import { useBoardBench } from "./useBoardBench";
+import { useBoardLayout } from "./useBoardLayout";
 import { useCredits } from "./useCredits";
 import { solvedOf, useMatterBench } from "./useMatterBench";
 import { useSiliconLive } from "./useSiliconLive";
@@ -205,6 +206,7 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
 
   const matter = useMatterBench();
   const board = useBoardBench();
+  const boardLayout = useBoardLayout(board.designText);
   const live = useSiliconLive();
   const credits = useCredits();
 
@@ -465,11 +467,24 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
         out.push({ name: "netlist.net", mime: "text/plain", note: "KiCad-format netlist, no footprints", text: kicadNetlist(parsedDesign.design) });
       }
       out.push({ name: "design.json", mime: "application/json", note: "The design that was checked", text: board.result?.design ?? board.designText });
+      if (boardLayout.status === "ready") {
+        const base = `/boards/${boardLayout.dir}`;
+        const f = boardLayout.summary.files;
+        const remote: Array<[string, string, string, string | undefined]> = [
+          ["gerbers-and-drill.zip", "application/zip", "Gerber and drill files: what a board maker needs", f.gerber_zip],
+          ["routed.kicad_pcb", "application/octet-stream", "The routed board, opens in KiCad 7", f.kicad_pcb],
+          ["positions.csv", "text/csv", "Pick-and-place positions", f.positions],
+          ["board-all-layers.svg", "image/svg+xml", "The whole board as a picture", f["svg_all-layers"]],
+          ["board-bom.csv", "text/csv", "Parts list including the bypass capacitors the layout added", f.bom],
+          ["drc.txt", "text/plain", "KiCad design-rule check report", f.drc_report],
+        ];
+        for (const [name, mime, note, src] of remote) if (src) out.push({ name, mime, note, href: `${base}/${src}` });
+      }
       return out;
     }
     if (wb === "silicon") return live.files.map((f) => ({ name: f.path.split("/").pop() ?? f.path, mime: "text/plain", note: f.path, text: f.text, base64: f.base64 }));
     return [];
-  }, [wb, matter.sim, bd, parsedDesign.design, board.result?.design, board.designText, live.files]);
+  }, [wb, matter.sim, bd, parsedDesign.design, board.result?.design, board.designText, live.files, boardLayout]);
 
   const agentContext = useMemo<AgentContext>(() => {
     if (wb === "matter") {
@@ -508,7 +523,7 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
     ) : wb === "matter" ? (
       <MatterPreview b={matter} tab={tab} />
     ) : wb === "board" ? (
-      <BoardPreview b={board} tab={tab} onFix={fix} />
+      <BoardPreview b={board} tab={tab} onFix={fix} layout={boardLayout} />
     ) : (
       <SiliconLivePreview live={live} tab={tab} blocked={blocked} recordedHref={`/runs/${recordedRun}`} />
     );
