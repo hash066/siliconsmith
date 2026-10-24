@@ -1,0 +1,24 @@
+#pragma once
+#include <stdint.h>
+#include "ss_intrinsics.h"
+
+typedef int8_t  mtype_t;
+typedef int32_t sumtype_t;
+#define TM_INLINE __attribute__((always_inline)) static inline
+
+TM_INLINE void tm_dot_prod(mtype_t* sptr, mtype_t* kptr, uint32_t size, sumtype_t* result)
+{
+    sumtype_t sum = 0;
+    uint32_t i = 0;
+    uint32_t cnt = (size >> 2) << 2; // round down to multiple of 4
+    for (; i < cnt; i += 4) {
+        uint32_t w1 = *((const uint32_t*)(sptr + i));
+        uint32_t w2 = *((const uint32_t*)(kptr + i));
+        int32_t partial = (int32_t)ss_dot4(w1, w2);
+        sum += partial;
+    }
+    for (; i < size; i++) {
+        sum += sptr[i] * kptr[i];
+    }
+    *result = sum;
+}

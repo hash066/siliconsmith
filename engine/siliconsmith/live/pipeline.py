@@ -15,6 +15,7 @@ The baseline is not re-measured: it is read from baselines/<id>.json (measured o
 from __future__ import annotations
 
 import hashlib
+import json
 import itertools
 import os
 import secrets
@@ -235,6 +236,15 @@ class LiveSearch(Search):
             files["include/ss_intrinsics.h"] = hwgen.render_intrinsics(cfg)
             for name, text in best.patch.items():
                 files[f"src/{name}"] = text if text.endswith("\n") else text + "\n"
+                for cand in (self.wl.dir / name, self.wl.dir / "src" / name):  # the original, for a before/after view
+                    if cand.is_file():
+                        files[f"src/original/{name}"] = cand.read_text(encoding="utf-8")
+                        break
+            viz = getattr(self.backend, "viz", None)
+            if viz is not None and deadline.remaining() >= 50:
+                data = viz(ins.name, ins.rtl, ins.c_ref)
+                if data:
+                    files["views/instruction.json"] = json.dumps(data, separators=(",", ":")) + "\n"
             report = render_report(self.wl, self.base, best, self.bus.events)
         else:
             report = self._failure_report(result, node)

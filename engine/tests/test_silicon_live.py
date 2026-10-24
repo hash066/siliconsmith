@@ -160,7 +160,7 @@ def test_bundle_files_hashes_and_honest_scope():
     b = ev[-1]
     names = {f["name"] for f in b["files"]}
     assert names == {"rtl/ss_insn_dot4_s8.v", "rtl/ss_pcpi.v", "proof/ss_spec_dot4_s8.v", "include/ss_intrinsics.h",
-                     "src/tm_dot.h", "REPORT.md"}
+                     "src/tm_dot.h", "src/original/tm_dot.h", "REPORT.md"}  # the original kernel rides along for a before/after view
     for f in b["files"]:
         assert hashlib.sha256(f["content"].encode("utf-8")).hexdigest() == f["sha256"]
     assert b["verdict"] == "verified_faster" and set(b["totals"]) == {"cost_usd", "tokens", "wall_s"}
@@ -510,3 +510,50 @@ def test_http_concurrency_cap(client, monkeypatch):
     assert g.acquire("a", 0.1)[0] and not g.acquire("b", 0.1)[0]
     g.release("a", 0.05)
     assert g.acquire("b", 0.1)[0]
+
+
+def test_bundle_carries_the_instruction_views_when_the_backend_can_make_them():
+    VIZ = {"name": "dot4_s8", "ok": True, "cells": [{"type": "$mul"}], "rows": [[1, 1, 1, 1]], "gates": {"AND": 2}, "gate_total": 2, "depth": 3}
+
+    class VizBackend(FakeBackend):
+        def viz(self, name, rtl, c_ref):
+            self.viz_args = (name, "module" in rtl, bool(c_ref))
+            return VIZ
+
+    be = VizBackend()
+    ev, *_ = run(backend=be)
+    b = ev[-1]
+    f = {x["name"]: x for x in b["files"]}
+    assert json.loads(f["views/instruction.json"]["content"]) == VIZ
+    assert hashlib.sha256(f["views/instruction.json"]["content"].encode()).hexdigest() == f["views/instruction.json"]["sha256"]
+    assert be.viz_args == ("dot4_s8", True, True)
+
+
+def test_a_failed_or_missing_views_run_leaves_the_bundle_without_it():
+    class NoViz(FakeBackend):
+        def viz(self, name, rtl, c_ref):
+            return None
+
+    ev, *_ = run(backend=NoViz())
+    assert "views/instruction.json" not in {x["name"] for x in ev[-1]["files"]}
+    assert ev[-1]["verdict"] == "verified_faster"  # the views are optional: the result stands
+
+
+def test_live_backend_viz_parses_the_worker_line_and_swallows_failures():
+    from siliconsmith.live.backend import LiveBackend, SandboxCapReached
+
+    be = object.__new__(LiveBackend)
+    be.base_image = "img"
+    out = {"stdout": "noise\nSS_VIZ " + json.dumps({"name": "x", "rows": []}) + "\n"}
+    be._live_run = lambda image, command, files: types.SimpleNamespace(stdout=out["stdout"])
+    assert be.viz("x", "module m; endmodule", "return rs1;") == {"name": "x", "rows": []}
+    out["stdout"] = "SS_VIZ {not json\n"
+    assert be.viz("x", "r", "c") is None
+    out["stdout"] = "nothing useful\n"
+    assert be.viz("x", "r", "c") is None
+
+    def boom(*a, **k):
+        raise SandboxCapReached("no time")
+
+    be._live_run = boom
+    assert be.viz("x", "r", "c") is None

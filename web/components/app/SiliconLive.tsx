@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { STAGES } from "@/lib/events";
 import type { NodeState, RunState } from "@/lib/run-state";
 import { usd } from "@/lib/format";
@@ -10,6 +10,8 @@ import { SILICON_STAGE_WORDS } from "./verdict";
 import { RUN_CAP, WORKLOADS, type SiliconLive, type Workload } from "./useSiliconLive";
 import { btnGhost, btnPrimary } from "./ui";
 import { Ledger } from "./Ledger";
+import { BeforeAfter, HardwareView, ProofExplainer, WaveView } from "./SiliconViews";
+import { parseViews } from "@/lib/silicon-views";
 import { siliconLedger } from "@/lib/ledger";
 
 /** The node that carries the one proposed instruction: the best scored one, else the latest with a proposal. */
@@ -81,6 +83,10 @@ function Picker({ live, blocked }: { live: SiliconLive; blocked: string | null }
 export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live: SiliconLive; tab: "preview" | "proof"; blocked: string | null; recordedHref: string }) {
   const { phase, run, error } = live;
   const node = mainNode(run);
+  const fileText = (test: (p: string) => boolean) => live.files.find((f) => test(f.path))?.text;
+  const views = useMemo(() => parseViews(fileText((p) => p === "views/instruction.json")), [live.files]); // eslint-disable-line react-hooks/exhaustive-deps
+  const original = fileText((p) => p.startsWith("src/original/"));
+  const patched = fileText((p) => p.startsWith("src/") && !p.startsWith("src/original/"));
   const running = phase === "running";
   if (tab === "proof") {
     return (
@@ -88,6 +94,7 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
         <p className="text-[12.5px] leading-snug text-ink-2">Every proposed instruction has to pass all of these before it counts. Proved means true for every possible input, not just the ones we tried.</p>
         {phase === "idle" ? <p className="rounded-lg border border-line bg-panel px-3 py-4 text-[13px] text-ink-3" role="status">Nothing has run yet.</p> : <StageList node={node} running={running} />}
         {phase !== "idle" && <Ledger rows={siliconLedger(node, run.toolVersions)} />}
+        <ProofExplainer />
         <p className="mt-1 text-[12.5px] text-ink-3">
           Want to see a long, full search instead of one candidate?{" "}
           <Link href={recordedHref} className="text-signal-ink underline underline-offset-2" data-testid="recorded-link">
@@ -141,6 +148,9 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
         </div>
       </dl>
       <p className="text-[11.5px] leading-snug text-ink-3">Cycle count measured on the simulated core. Clock speed was not measured, so this is not a wall-clock claim.</p>
+      {views && <HardwareView views={views} />}
+      {views && views.rows.length > 0 && <WaveView views={views} />}
+      {original && patched && prop && <BeforeAfter before={original} after={patched} mnemonic={prop.mnemonic} />}
 
       {error && (
         <p className="rounded-lg border border-red/40 bg-red-dim px-3 py-2 text-[12.5px] leading-snug text-ink" role="alert">

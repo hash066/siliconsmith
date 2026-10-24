@@ -66,6 +66,22 @@ class LiveBackend(ContreeBackend):
                 return False, o.get("message", "spec failed"), o.get("log", "")
         return False, "the Sandbox spec check ended without a result", (res.stdout or "")[-1500:]
 
+    def viz(self, name: str, rtl: str, c_ref: str) -> dict | None:
+        """The instruction as the tools see it (word-level netlist, gate counts, a few simulated operand pairs). One short Sandbox run;
+        None if it could not run (out of time or the tools said no): the views are then simply absent, nothing else changes."""
+        job = json.dumps({"name": name, "rtl": rtl, "c_ref": normalize_c_ref(c_ref)}).encode()
+        try:
+            res = self._live_run(self.base_image, f"{SHELL} viz /tmp/ss_viz.json", {"/tmp/ss_viz.json": job})
+        except Exception:  # noqa: BLE001 - SandboxCapReached, a transport error: the views are optional
+            return None
+        for line in (res.stdout or "").splitlines():
+            if line.startswith("SS_VIZ "):
+                try:
+                    return json.loads(line[len("SS_VIZ "):])
+                except ValueError:
+                    return None
+        return None
+
     def evaluate(self, job: EvalJob, on_stage: StageCb, work: Path) -> EvalResult:
         t_op = self.bus.elapsed_ms() if self.bus else 0
         on_stage("lint", "running", "starting the Sandbox run", None)  # the worker's first rung
