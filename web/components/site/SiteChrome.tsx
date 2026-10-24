@@ -6,6 +6,7 @@ const NAV = [
   { href: "/workstation", label: "Workstation" },
   { href: "/#how", label: "How it works" },
   { href: "/runs/r_w1_contree3/report", label: "Report" },
+  { href: "/connect", label: "Connect" },
   { href: "/app", label: "Open the app" },
 ];
 

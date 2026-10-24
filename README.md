@@ -8,7 +8,7 @@ area, and hands you a reviewable bundle (or pull request). Nemotron is the archi
 every candidate CPU is built and verified in its own isolated workspace.
 
 ```bash
-pip install -e 'engine[sandboxes]'          # from this repo (see "Run it locally")
+pip install -e 'engine[sandboxes,matter]'          # from this repo (see "Run it locally")
 siliconsmith accelerate w1 --area-budget 5
 #  run r_20261021_101500 on local
 #  -> siliconsmith-out/r_20261021_101500/{rtl/, include/, src/, REPORT.md}
