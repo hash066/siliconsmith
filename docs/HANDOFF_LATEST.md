@@ -1,6 +1,6 @@
 # Handoff: Hardwright (Nebius x NVIDIA hackathon entry) - read this first
 
-Written Oct 24 2026 (IST). Supersedes `docs/HANDOFF.md` (the Oct 21 takeover) for everything about the product. Deadline: **Oct 30 2026 10:00 PT (22:30 IST)**; aim to submit **Oct 29**.
+Written Oct 24 2026 (IST), refreshed later the same day (see section 10). Supersedes `docs/HANDOFF.md` (the Oct 21 takeover) for everything about the product. Deadline: **Oct 30 2026 10:00 PT (22:30 IST)**; aim to submit **Oct 29**.
 
 ## 1. What this is
 
@@ -94,3 +94,13 @@ Token Factory is OpenAI-compatible: Ultra $1/$3, Super $0.30/$0.90, Nano $0.06/$
 ## 9. Memory and notes
 
 Auto-memory: `C:\Users\asus\.claude\projects\E--Winter-siliconsmith\memory\` (`MEMORY.md` index, `siliconsmith-hackathon-state.md`, `no-claude-attribution.md`, `handoff-at-95-percent.md`). Planning docs: `docs/WORKSTATION_PLAN.md`, `docs/APP_UX_V2.md`, `docs/BRAND_AND_APP_PLAN.md`, `docs/EVALUATION.md`.
+
+## 10. Refresh (later on Oct 24): what changed since section 3
+
+Done since: projects + sidebar; /connect + the open-source  package (CLI, MCP, library; official-MCP-client verified); **docs/OUTCOME_PLAN.md implemented** (see docs/EVALUATION.md section 8): routed KiCad board pipeline (engine/siliconsmith/board/layout/*, engine/scripts/build_boards.py, web/public/boards/*), PCB viewer with markers (web/components/app/PcbView.tsx), Workflow tab (web/lib/workflow.ts, WorkflowView.tsx), Verified-by ledger (web/lib/ledger.ts), project zip (web/lib/zip.ts), Silicon hardware views (sandbox_worker.py cmd_viz, web/lib/silicon-views.ts, SiliconViews.tsx).
+
+WSL tooling now installed in distro : KiCad 7.0.11 (kicad-cli, pcbnew via system python3), openjdk-21-jre, xvfb, /opt/freerouting/freerouting.jar (v1.9.0). Regenerate boards:  (about 5 minutes, writes web/public/boards). Layout tests: runs/pytest_layout.sh (about 2 minutes). Never put code through shell heredocs or node -e one-liners: use the editor tools (backslashes and backticks get eaten).
+
+Still open (ordered): README/Devpost/video rewrite; push + public (owner OK, reword merge messages first); CI never ran on GitHub; Board layout for agent-drafted designs (needs KiCad+Java+Freerouting in a Sandbox image); Board schematic view; Matter baseline side-by-side; outside testers; durable credit pool; hardware demo; rotate old Nebius key.
+
+Usage at this refresh: weekly 79% (resets Mon Oct 26 10:00 IST).

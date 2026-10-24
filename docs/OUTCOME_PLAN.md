@@ -101,16 +101,7 @@ Acceptance: displayed temperatures equal the solver output (test), and the indep
   ESP32 on the desk if the hardware demo happens), then Silicon (live run, proof fails then repairs, gate view, PR), then Matter (3D result).
   Keep each under 55 s.
 
-## 7. Schedule (today Oct 24, submit Oct 29)
-
-| Day | Work | Gate to pass before moving on |
-|---|---|---|
-| Oct 24 | install KiCad 7 + JRE + Freerouting in WSL; pad maps for all 11 parts with tests; generator places `clean_sensor` | board file opens in `kicad-cli`; round-trip test passes |
-| Oct 25 | routing + DRC + Gerber export; B1 to B5 mapped onto pads; evidence entries for 3 templates | `clean_sensor` 0 DRC errors, fault template marker on correct pad |
-| Oct 26 | web PCB viewer (layers, nets, check markers, schematic view); Deliverables panel | screenshots look like a PCB at 1440 and 390; axe clean |
-| Oct 27 | Silicon gate view + waveform + before/after; Matter 3D viewer | cell counts and temperatures equal the tool output |
-| Oct 28 | full first-time-user pass, evals rerun, README/Devpost/video script updated, deploy | no console errors; load test; all numbers re-quoted from artifacts |
-| Oct 29 | record video, push (after rewording merge messages, with your OK), make repo public, submit | submission checklist |
+ |
 
 ## 8. What we will not claim
 Not fabricated or tested electrically; not an auto-order flow; 2 layers only; 3D is approximate if shown; the Board checker predicts
@@ -119,4 +110,4 @@ documented hazards and does not measure boards (see `docs/hardware-demo.md`); re
 ## 9. What I need from you
 * Go-ahead to install KiCad 7, a JRE and Freerouting inside the `siliconsmith` WSL distro (E:, about 2 GB).
 * The ESP32 board photo and serial output if you buy the board (separate, optional).
-* Your decision on whether to cut the 3D tab and the `.kicad_sch` schematic if Oct 26 is behind.
+

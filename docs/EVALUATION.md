@@ -77,3 +77,21 @@ Host fixes found by this pass: the pasted key carried whitespace (stripped in co
 Measured (Chrome headless, desktop 1440 and phone 390): axe wcag2a/aa/22aa 0 violations on start and workspace; no horizontal overflow; no console errors; CLS 0.064 desktop and 0.061 phone (was 0.134 and 0.248 before reserving header and result space).
 
 Still open: README and Devpost for Hardwright, video, outside testers, push and public repo, durable credit pool, ESP32 footage. Known newcomer friction: the agent's first board reply says "you need to click Run" and also asks permission (clumsy wording); on a phone the first-visit tip covers part of the chat until dismissed.
+
+## 8. Update, Oct 24 2026 (later): outcome work from docs/OUTCOME_PLAN.md, measured on production
+
+| Plan item | State | Evidence |
+|---|---|---|
+| Board: a real routed PCB | DONE for the three built-in examples; not for a new design drafted by the agent | 48 x 36 mm, 2 layers, fully routed, **KiCad 7.0.11 DRC 0 errors** (15 silkscreen warnings); B4 marker on the right ESP32 pad (14 vs 13). Pipeline: deterministic placement, Freerouting 1.9.0, KiCad exports (Gerber/drill zip, positions, BOM, SVG, `.kicad_pcb`). 23 layout tests including a full KiCad run with a pad-for-pad round trip and rotation maths checked against KiCad. Pin tables cross-checked against KiCad's own symbol library |
+| Board: viewer with markers | DONE | layers, ground pour, net highlight, check markers on pads, zoom to the failing pad, layout files in Downloads |
+| Silicon: show the hardware | DONE for live runs | real run on the public site: `views/instruction.json` made in the Sandbox (Yosys word-level netlist: 4 multipliers + 3 adders; 2,047 simple gates, longest path 43; 8 operand pairs simulated against the C reference), before/after loop, proof explainer |
+| Matter: 3D | already present (rotatable extruded plate with temperature colours); baseline side-by-side NOT added | |
+| Workflow tab (ComfyUI-style) | DONE for all three workbenches | cards with real status; full graph over the window |
+| Deliverables and Verified-by | DONE | "Everything as one zip" (opens in standard unzip, 12 files for a board project); Verified-by ledger on each Proof tab |
+| Board: schematic view, `.kicad_sch` | NOT DONE (stretch) | |
+| Board: layout for a design the agent drafts live | NOT DONE: KiCad cannot run on Vercel; would need a Sandbox image with KiCad, Java and Freerouting | |
+| Silicon: waveform from a VCD | Replaced by a table-waveform of simulated operand pairs (real Verilator runs); no VCD file | |
+
+Bugs found by looking: live Silicon bundle files carried `name` while the app read `path` (Silicon Files and anything built on them were empty in production); the first Board layout exported silkscreen as nothing (KiCad 7 calls footprint shapes `MGRAPHIC`); KiCad 7 has no `kicad-cli pcb drc` (DRC runs through pcbnew); Freerouting needs a full JRE and a virtual display.
+
+Measured: axe 0 violations and CLS 0.03 at 1440 and 390; tests: engine 631 passed (14 skipped), web 328 passed.
