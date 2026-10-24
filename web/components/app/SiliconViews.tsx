@@ -13,6 +13,7 @@ const PAD = 12;
 export function HardwareView({ views }: { views: InstructionViews }) {
   const g = useMemo(() => layerNetlist(views), [views]);
   const [hot, setHot] = useState<string | null>(null);
+  const hotNode = hot ? g.nodes.find((n) => n.id === hot) : null;
   const rows = Math.max(...g.nodes.map((n) => n.row)) + 1;
   const width = PAD * 2 + g.layers * NW + (g.layers - 1) * LG;
   const height = PAD * 2 + rows * NH + (rows - 1) * RG;
@@ -34,7 +35,7 @@ export function HardwareView({ views }: { views: InstructionViews }) {
             const x2 = pb.x;
             const y2 = pb.y + NH / 2;
             const on = hot === e.from || hot === e.to;
-            return <path key={`${e.from}>${e.to}`} d={`M${x1} ${y1} C${x1 + LG * 0.55} ${y1}, ${x2 - LG * 0.55} ${y2}, ${x2} ${y2}`} fill="none" stroke={on ? "var(--hw-steel)" : "var(--line-2)"} strokeWidth={Math.min(5, 0.8 + e.width / 14)} opacity={on ? 0.95 : 0.7}><title>{`${e.width} signal bits`}</title></path>;
+            return <path key={`${e.from}>${e.to}`} d={`M${x1} ${y1} C${x1 + LG * 0.55} ${y1}, ${x2 - LG * 0.55} ${y2}, ${x2} ${y2}`} fill="none" stroke={on ? "var(--hw-steel)" : "var(--line-2)"} strokeWidth={Math.min(5, 0.8 + e.width / 14)} opacity={on ? 0.95 : 0.7} />;
           })}
           {g.nodes.map((n) => {
             const p = at(n);
@@ -53,6 +54,7 @@ export function HardwareView({ views }: { views: InstructionViews }) {
           })}
         </svg>
       </div>
+      <p className="mt-1.5 min-h-[18px] text-[12px] text-ink-3" aria-live="polite">{hotNode ? `${hotNode.label.replace(/ {2,}/g, " ")}: ${hotNode.sub}` : "Hover a box to see its width. Wire thickness shows how many signal bits it carries."}</p>
       <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line text-[13px] [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2">
         <div>
           <dt className="text-[11.5px] text-ink-3">Simple gates (after mapping)</dt>
