@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { boundsOf, type BoardGeometry, type FootprintGeom, type Marker, type PadGeom } from "@/lib/layout";
+import { formatMm, onBoard, pointerToBoard, zoomPercent } from "@/lib/pcb-status";
 
 // Colours follow what people expect from KiCad's board view: green mask, red top copper, blue bottom copper, gold pads, cream silkscreen.
 const C = {
@@ -74,6 +75,7 @@ export function PcbView({ geom, markers, focus, onFocusMarker, focusAt }: PcbVie
   const [view, setView] = useState(full);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ top: true, bottom: true, pour: true, silk: true, labels: true });
   const [net, setNet] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const box = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   useEffect(() => setView(full), [full]);
@@ -173,10 +175,13 @@ export function PcbView({ geom, markers, focus, onFocusMarker, focusAt }: PcbVie
           (e.target as Element).setPointerCapture?.(e.pointerId);
           drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
         }}
+        onPointerLeave={() => setCursor(null)}
         onPointerMove={(e) => {
-          const d = drag.current;
-          if (!d || !box.current) return;
+          if (!box.current) return;
           const r = box.current.getBoundingClientRect();
+          setCursor(pointerToBoard(view, r, e.clientX, e.clientY));
+          const d = drag.current;
+          if (!d) return;
           setView((v) => ({ ...v, x: d.vx - ((e.clientX - d.x) / r.width) * v.w, y: d.vy - ((e.clientY - d.y) / r.height) * v.h }));
         }}
         onPointerUp={() => (drag.current = null)}
@@ -262,9 +267,14 @@ export function PcbView({ geom, markers, focus, onFocusMarker, focusAt }: PcbVie
           );
         })}
       </svg>
-      <p className="mt-1.5 min-h-[18px] text-[12px] text-ink-3" aria-live="polite">
-        {net ? `Net ${net}` : "Hover a pad or track to see its net. Drag to pan; use + and −, or Ctrl and scroll, to zoom."}
-      </p>
+      <div className="num mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 rounded-lg border border-line bg-sunken px-3 py-1.5 text-[11.5px] text-ink-2" data-testid="pcb-status">
+        <span>{formatMm(cursor)}</span>
+        <span>Zoom {zoomPercent(full, view)}%</span>
+        <span>Units mm</span>
+        <span>{[layers.top && "F.Cu", layers.bottom && "B.Cu", layers.silk && "Silk"].filter(Boolean).join(" · ") || "No layers shown"}</span>
+        <span>{net ? `Net ${net}` : cursor && !onBoard(cursor, geom) ? "Off the board" : "Net –"}</span>
+      </div>
+      <p className="mt-1 text-[12px] text-ink-3">Hover a pad or track to see its net. Drag to pan; use + and −, or Ctrl and scroll, to zoom.</p>
     </div>
   );
 }
