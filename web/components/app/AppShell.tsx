@@ -481,7 +481,8 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
           ["board-bom.csv", "text/csv", "Parts list including the bypass capacitors the layout added", f.bom],
           ["drc.txt", "text/plain", "KiCad design-rule check report", f.drc_report],
         ];
-        for (const [name, mime, note, src] of remote) if (src) out.push({ name, mime, note, href: `${base}/${src}` });
+        if (boardLayout.downloads) for (const d of boardLayout.downloads) out.push({ name: d.name, mime: d.mime, note: d.note, base64: d.base64 });
+        else for (const [name, mime, note, src] of remote) if (src) out.push({ name, mime, note, href: `${base}/${src}` });
       }
       return out;
     }

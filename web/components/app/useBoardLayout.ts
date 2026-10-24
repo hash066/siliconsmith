@@ -1,18 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canonicalNetlist, findLayout, LAYOUT_BASE, type BoardGeometry, type LayoutIndex, type LayoutSummary } from "@/lib/layout";
+
+export interface GeneratedFile {
+  name: string;
+  mime: string;
+  note: string;
+  base64: string;
+}
 
 export type LayoutState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "none" }
   | { status: "failed"; message: string }
-  | { status: "ready"; dir: string; summary: LayoutSummary; geom: BoardGeometry };
+  | { status: "ready"; dir: string; summary: LayoutSummary; geom: BoardGeometry; /** present when the board was made on request (its files travel in the response, not on disk) */ downloads?: GeneratedFile[] };
+
+export interface Generation {
+  status: "idle" | "running" | "failed";
+  /** What the server last said it was doing. */
+  step: string;
+  seconds: number;
+  message?: string;
+}
 
 // one fetch per file for the whole visit
 let indexPromise: Promise<LayoutIndex | null> | null = null;
 const loaded = new Map<string, Promise<{ summary: LayoutSummary; geom: BoardGeometry }>>();
+// boards made on request, by netlist (kept for the visit so going back to a design does not repeat two minutes of work)
+const generated = new Map<string, { summary: LayoutSummary; geom: BoardGeometry; downloads: GeneratedFile[] }>();
 
 const getJson = async <T,>(url: string): Promise<T> => {
   const r = await fetch(url);
@@ -30,8 +47,41 @@ const loadLayout = (dir: string) => {
   return p;
 };
 
-/** The routed board for the design in the editor, if the engine has made one for its netlist. Looks the design up by its parts and connections. */
-export function useBoardLayout(designText: string): LayoutState & { design: Parameters<typeof canonicalNetlist>[0] | null } {
+/** Reads a layout stream (NDJSON): progress and heartbeat lines, then one result or error. */
+export async function readLayoutStream(
+  body: ReadableStream<Uint8Array>,
+  on: { progress: (message: string) => void; heartbeat: (seconds: number) => void },
+): Promise<{ summary: LayoutSummary; board: BoardGeometry; downloads: GeneratedFile[] }> {
+  const reader = body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  const take = (line: string) => {
+    if (!line.trim()) return null;
+    const e = JSON.parse(line) as Record<string, unknown>;
+    if (e.type === "progress") on.progress(String(e.message ?? ""));
+    else if (e.type === "heartbeat") on.heartbeat(Number(e.seconds ?? 0));
+    else if (e.type === "error") throw new Error(String(e.message ?? "the board could not be made"));
+    else if (e.type === "result") return e as unknown as { summary: LayoutSummary; board: BoardGeometry; downloads: GeneratedFile[] };
+    return null;
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const r = take(buf.slice(0, i));
+      buf = buf.slice(i + 1);
+      if (r) return r;
+    }
+  }
+  const last = take(buf);
+  if (last) return last;
+  throw new Error("The connection ended before the board was finished.");
+}
+
+/** The routed board for the design in the editor: a stored one if the engine made one for its netlist, or one made on request in a Sandbox. */
+export function useBoardLayout(designText: string): LayoutState & { design: Parameters<typeof canonicalNetlist>[0] | null; generation: Generation; generate: () => void; cancel: () => void } {
   const design = useMemo(() => {
     try {
       const j: unknown = JSON.parse(designText);
@@ -45,6 +95,9 @@ export function useBoardLayout(designText: string): LayoutState & { design: Para
   const designRef = useRef(design);
   designRef.current = design;
   const [state, setState] = useState<LayoutState>({ status: "idle" });
+  const [gen, setGen] = useState<Generation>({ status: "idle", step: "", seconds: 0 });
+  const abort = useRef<AbortController | null>(null);
+
   useEffect(() => {
     const d = designRef.current;
     if (!d || !key) {
@@ -57,7 +110,12 @@ export function useBoardLayout(designText: string): LayoutState & { design: Para
       try {
         const idx = await loadIndex();
         const hit = findLayout(idx, d);
-        if (!hit) return !dead && setState({ status: "none" });
+        if (!hit) {
+          const made = generated.get(key);
+          if (dead) return;
+          setState(made ? { status: "ready", dir: "", summary: made.summary, geom: made.geom, downloads: made.downloads } : { status: "none" });
+          return;
+        }
         const { summary, geom } = await loadLayout(hit.dir);
         if (!dead) setState({ status: "ready", dir: hit.dir, summary, geom });
       } catch (e) {
@@ -68,5 +126,38 @@ export function useBoardLayout(designText: string): LayoutState & { design: Para
       dead = true;
     };
   }, [key]);
-  return { ...state, design };
+
+  // a design that changes while a board is being made no longer wants that board
+  useEffect(() => () => abort.current?.abort(), [key]);
+
+  const generate = useCallback(() => {
+    const d = designRef.current;
+    if (!d || !key || abort.current) return;
+    const ctl = new AbortController();
+    abort.current = ctl;
+    const t0 = Date.now();
+    setGen({ status: "running", step: "Starting", seconds: 0 });
+    const tick = setInterval(() => setGen((g) => (g.status === "running" ? { ...g, seconds: Math.round((Date.now() - t0) / 1000) } : g)), 1000);
+    void (async () => {
+      try {
+        const r = await fetch("/api/board/layout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ design: d }), signal: ctl.signal });
+        if (!r.ok || !r.body) {
+          const j = (await r.json().catch(() => null)) as { error?: { message?: string } } | null;
+          throw new Error(j?.error?.message ?? `The board service answered ${r.status}.`);
+        }
+        const res = await readLayoutStream(r.body, { progress: (m) => setGen((g) => ({ ...g, step: m })), heartbeat: () => undefined });
+        generated.set(key, { summary: res.summary, geom: res.board, downloads: res.downloads });
+        setState({ status: "ready", dir: "", summary: res.summary, geom: res.board, downloads: res.downloads });
+        setGen({ status: "idle", step: "", seconds: 0 });
+      } catch (e) {
+        if ((e as { name?: string }).name === "AbortError") setGen({ status: "idle", step: "", seconds: 0 });
+        else setGen({ status: "failed", step: "", seconds: 0, message: e instanceof Error ? e.message : "The board could not be made." });
+      } finally {
+        clearInterval(tick);
+        abort.current = null;
+      }
+    })();
+  }, [key]);
+  const cancel = useCallback(() => abort.current?.abort(), []);
+  return { ...state, design, generation: gen, generate, cancel };
 }

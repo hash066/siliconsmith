@@ -54,6 +54,7 @@ from fastapi.responses import JSONResponse  # noqa: E402
 from siliconsmith.board.api import router as board_router  # noqa: E402
 from siliconsmith.matter.api import make_router as make_matter_router  # noqa: E402
 from siliconsmith.live.http import make_router as make_silicon_router  # noqa: E402
+from siliconsmith.board.layout.http import make_router as make_layout_router  # noqa: E402
 
 app = FastAPI(title="SiliconSmith workbenches (hosted)", docs_url=None, redoc_url=None, openapi_url=None)
 BLOCKED = {"/api/board/run", "/api/matter/run"}
@@ -69,6 +70,7 @@ async def block_model_routes(request: Request, call_next):
 app.include_router(board_router)
 app.include_router(make_matter_router())
 app.include_router(make_silicon_router())
+app.include_router(make_layout_router())
 
 
 @app.get("/api/health")

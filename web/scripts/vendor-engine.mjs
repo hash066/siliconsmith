@@ -20,8 +20,8 @@ mkdirSync(dest, { recursive: true });
 cpSync(join(src, "__init__.py"), join(dest, "__init__.py"));
 
 // Matched against the path relative to the engine package, with forward slashes.
-const SKIP_DIRS = new Set(["__pycache__", "evidence", "tests", "test"]);
-const SKIP_FILES = new Set(["evals.py", "heldout.py", "build_sandbox_image.py"]);
+const SKIP_DIRS = new Set(["__pycache__", "evidence", "tests", "test", "logs"]);
+const SKIP_FILES = new Set(["evals.py", "heldout.py", "build_sandbox_image.py", "pcbnew_pads.py"]);
 const SKIP_EXT = [".md", ".sh", ".pyc"];
 const SKIP = { test: (rel) => rel.split("/").some((seg) => SKIP_DIRS.has(seg) || SKIP_FILES.has(seg)) || SKIP_EXT.some((e) => rel.endsWith(e)) };
 for (const pkg of ["board", "matter"]) {
