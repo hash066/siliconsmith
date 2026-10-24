@@ -61,3 +61,19 @@ the repo is private, the README and Devpost text still describe the old product,
 * Then: merge, redeploy, re-run this audit (target: 0 serious axe, CLS below 0.1, credits decreasing across turns, all links 200 once public).
 * Then: docs (README, Devpost, feedback), video, outside testers (one engineer on Board, one designer on Matter), push, public, submit.
 * Optional upgrade that would raise the Technology and Impact scores: Nebius compute (judges start a live Silicon search); a durable credit store (Vercel KV or Upstash); one outside tester's real task and quote with permission.
+
+## 7. Update, Oct 24 2026: first-time-user pass on the merged build (live production)
+
+Merged the app redesign, the web agent panel and live Silicon into `workstation`; engine 590 passed (14 skipped), web 274 passed, `tsc` and `next build` clean. Then ran newcomer tasks against https://siliconsmith.vercel.app.
+
+| Acceptance task | Result |
+|---|---|
+| 1. Heat sink and STL | PASS. Prompt card, real agent turn (about $0.005), honest verdict ("no better than plain fins"), `heat-sink.stl` 124,884 bytes downloaded at 1440 and 390 |
+| 2. Board fault found and fixed by the agent | FAILED first, then fixed. The fix turn resent a 2 KB design, hit invalid JSON and the 1,200-token cap, and ended with no answer. Added a small-argument `board_fix_pin` tool and a 2,400-token turn cap. Retest: found 4 of 5, moved wake_btn GPIO12 to GPIO14, 5 of 5, said it was a built-in example, $0.016 |
+| 3. Live Silicon | PASS after three host fixes. w1 TinyMaix: 3.32x cycles, +4.8% area, 103 s, $0.04 model cost, bit-identical, formally proven. w2 ChaCha20: 1.14x, +2.3% area, 112 s, $0.07. Streaming works through the site proxy |
+
+Host fixes found by this pass: the pasted key carried whitespace (stripped in config), the Sandbox SDK also needs `NEBIUS_PROJECT_ID` in the API project (without it every Sandbox call is `ForbiddenError`), and models sometimes put raw control characters in JSON strings (parser now tolerant).
+
+Measured (Chrome headless, desktop 1440 and phone 390): axe wcag2a/aa/22aa 0 violations on start and workspace; no horizontal overflow; no console errors; CLS 0.064 desktop and 0.061 phone (was 0.134 and 0.248 before reserving header and result space).
+
+Still open: README and Devpost for Hardwright, video, outside testers, push and public repo, durable credit pool, ESP32 footage. Known newcomer friction: the agent's first board reply says "you need to click Run" and also asks permission (clumsy wording); on a phone the first-visit tip covers part of the chat until dismissed.
