@@ -64,3 +64,11 @@ def test_event_bus_contract(tmp_path):
     while (item := q.get(timeout=1)) is not None:
         got.append(json.loads(item)["type"])
     assert got == ["run.started", "log"]
+
+
+def test_extract_json_tolerates_raw_control_characters_in_strings():
+    """Models sometimes put a literal newline or tab inside a JSON string (code in a field); that must still parse."""
+    from siliconsmith.llm import extract_json
+    raw = '{"rtl": "module m;\n\tendmodule", "n": 1}'
+    assert extract_json(raw) == {"rtl": "module m;\n\tendmodule", "n": 1}
+    assert extract_json("```json\n" + raw + "\n```")["n"] == 1
