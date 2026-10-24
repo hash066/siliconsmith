@@ -146,10 +146,10 @@ describe("/api/agent: credits", () => {
   });
 
   it("many fresh cookies behind one IP hit the IP backstop", async () => {
-    const c = new Credits(memoryStore(), { allowanceUsd: 0.5, poolCapUsd: 25, ipCapUsd: 0.004 });
+    const c = new Credits(memoryStore(), { allowanceUsd: 0.5, poolCapUsd: 25, ipCapUsd: 0.008 });
     setCreditsForTest(c);
-    expect((await post({ text: "simulate" })).status).toBe(200); // worst-case estimate for Super is about $0.0035
-    await c.charge("7.7.7.7", 0.004);
+    expect((await post({ text: "simulate" })).status).toBe(200); // worst-case estimate for Super is about $0.007 with the 2,400-token turn cap
+    await c.charge("7.7.7.7", 0.008);
     const blocked = await post({ text: "simulate" });
     expect(blocked.status).toBe(402);
     expect((await blocked.json()).reason).toBe("ip");

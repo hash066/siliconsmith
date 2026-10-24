@@ -57,6 +57,20 @@ describe("agent turn: the server performs free tools and streams UI actions", ()
     expect(ui[1].name).toBe("board.check");
   });
 
+  it("board_fix_pin changes one firmware pin on the canvas design with tiny arguments and re-checks", async () => {
+    const design = { name: "mine", instances: [], nets: [], firmware_pins: [{ function: "wake_btn", pin: "GPIO12", use: "input" }, { function: "status_led", pin: "GPIO4", use: "output" }] };
+    const { events } = await run({
+      workbench: "board",
+      context: { board: { design } },
+      replies: [toolCall("board_fix_pin", { function: "wake_btn", pin: "GPIO14" }), answer("moved")],
+    });
+    const ui = events.filter((e) => e.type === "ui.action").map((e) => (e as Extract<AgentEvent, { type: "ui.action" }>).action);
+    expect(ui[0]).toMatchObject({ name: "board.set_design", args: { design: { firmware_pins: [{ function: "wake_btn", pin: "GPIO14" }, { function: "status_led", pin: "GPIO4" }] } } });
+    expect(events.find((e) => e.type === "tool.result")).toMatchObject({ ok: true });
+    const bad = await run({ workbench: "board", context: { board: { design } }, replies: [toolCall("board_fix_pin", { function: "nope", pin: "GPIO14" }), answer("could not")] });
+    expect(bad.events.find((e) => e.type === "tool.result")).toMatchObject({ ok: false });
+  });
+
   it("matter_simulate sets the exact simulated parameters in the app and runs it", async () => {
     const { events } = await run({ workbench: "matter", replies: [toolCall("matter_simulate", { generator: "rect_fins", gen_params: { n_fins: 10 } }), answer("done")] });
     const ui = events.filter((e) => e.type === "ui.action").map((e) => (e as Extract<AgentEvent, { type: "ui.action" }>).action);

@@ -17,6 +17,8 @@ export type HostedCaller = (path: string, init?: RequestInit) => Promise<Respons
 export interface ToolContext {
   manifests?: ManifestStore;
   hosted?: HostedCaller;
+  /** The design currently on the Board canvas, from the app state (absent when the app sent none). */
+  boardDesign?: unknown;
 }
 
 export type ReplayLoader = {
@@ -91,6 +93,17 @@ export const TOOL_DEFS: ToolDef[] = [
     description:
       "Put a full design JSON on the Board canvas and check it (rungs B1 to B5). Use it to apply an edit to the user's current design (change a pin or a value): copy the current design from the app context, change only what was asked, send the whole object.",
     parameters: { type: "object", properties: { design_json: { type: "string", maxLength: 12000 } }, required: ["design_json"], additionalProperties: false },
+  },
+  {
+    name: "board_fix_pin",
+    description:
+      "Fix a pin mix-up with a tiny edit instead of resending the design: set the firmware pin for one function (for example wake_btn) to a different GPIO, then re-check. Edits the design on the canvas, or a built-in example when template_id is given. Use it for 'fix it' when a check says the firmware pin and the netlist pin disagree or a pin is unsafe.",
+    parameters: {
+      type: "object",
+      properties: { function: { type: "string", maxLength: 40 }, pin: { type: "string", pattern: "^[A-Za-z0-9_]{1,16}$" }, template_id: { type: "string", maxLength: 64 } },
+      required: ["function", "pin"],
+      additionalProperties: false,
+    },
   },
   {
     name: "workbench_open",
@@ -183,7 +196,7 @@ function parseObject(text: string): Record<string, unknown> | null {
 export function toolsFor(workbench?: WorkbenchId): ToolDef[] {
   const shared = ["library_search", "evidence_get", "workbench_open", "workflow_focus"];
   const own: Record<WorkbenchId, string[]> = {
-    board: ["board_check", "board_set_design", "propose_board_design"],
+    board: ["board_check", "board_set_design", "board_fix_pin", "propose_board_design"],
     matter: ["matter_simulate", "propose_matter_optimize"],
     silicon: ["run_nodes_search", "run_explain_failure", "silicon_open_run", "propose_silicon_run"],
   };
@@ -286,6 +299,27 @@ export async function runTool(name: string, raw: unknown, loader: ReplayLoader, 
       const passN = rungs.filter((r) => r.status === "pass").length;
       ui.push({ name: "board.check", args: {} });
       return { ok: true, ui, summary: `${label}: ${passN} of ${rungs.length} rungs pass${j.passed ? "" : "; unknown or failing rungs do not count"}`, data: { template: label, passed: !!j.passed, rungs, notice: j.notice, note: `Netlist-level check with author-curated facts; not a claim the board works.${a.template_id !== undefined ? " This is a built-in example design, NOT the user's own board: say so." : ""}` }, evidence: [...evidence] };
+    }
+    case "board_fix_pin": {
+      if (!ctx.hosted) return { ok: false, error: "the Board checker is not available here" };
+      let design: unknown = ctx.boardDesign;
+      if (typeof design === "string") design = parseObject(design);
+      if (a.template_id !== undefined) {
+        const id = String(a.template_id);
+        if (!/^[a-z0-9_]{1,64}$/.test(id)) return { ok: false, error: "template_id is not valid" };
+        const tr = await ctx.hosted(`/api/board/templates/${id}`);
+        if (!tr.ok) return { ok: false, error: `unknown template ${id}` };
+        design = ((await tr.json()) as { design: unknown }).design;
+      }
+      const d = design as { firmware_pins?: Array<{ function?: string; pin?: string }> } | null;
+      if (!d || !Array.isArray(d.firmware_pins)) return { ok: false, error: "no design with a firmware pin table to edit; check a design first" };
+      const row = d.firmware_pins.find((p) => p.function === String(a.function));
+      if (!row) return { ok: false, error: `the firmware pin table has no function ${String(a.function)}; it has: ${d.firmware_pins.map((p) => p.function).join(", ")}` };
+      const before = row.pin;
+      row.pin = String(a.pin);
+      const r = await runTool("board_check", { design_json: JSON.stringify(d) }, loader, ctx);
+      if (!r.ok) return r;
+      return { ...r, summary: `moved firmware ${String(a.function)} from ${before} to ${row.pin}; ${r.summary}` };
     }
     case "board_set_design": {
       const r = await runTool("board_check", { design_json: a.design_json }, loader, ctx);
