@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main, workstation]
+  pull_request:
+
+jobs:
+  hardwright:
+    name: hardwright package (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install with only the light dependencies plus the heat solver
+        run: pip install -e "./engine[matter,dev]"
+      - name: Package, CLI and MCP server tests
+        run: pytest -q engine/tests/test_hardwright_pkg.py
+      - name: The library does not pull in a model client
+        run: python -c "import hardwright, sys; hardwright.board_check(template='clean_sensor'); assert 'openai' not in sys.modules and 'httpx' not in sys.modules"
+      - name: The CLI is a CI gate (exit 1 on the faulty example)
+        run: |
+          hardwright board check --template clean_sensor
+          ! hardwright board check --template fault_gpio12_vs_gpio14
+      - name: Add the agent and server extras for the remaining engine tests
+        run: pip install -e "./engine[matter,agent,server,dev]"
+      - name: Board, Matter and layout tests (no toolchain; the KiCad run is skipped without KiCad)
+        run: pytest -q engine/tests/test_board_*.py engine/tests/test_matter_*.py engine/tests/test_board_layout_sandbox.py
+
+  mcp-protocol:
+    name: MCP server speaks the protocol (official client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install mcp "./engine[matter]"
+      - name: Connect with the official MCP client
+        run: |
+          cat > /tmp/client.py <<'PY'
+          import asyncio
+          from mcp import ClientSession, StdioServerParameters
+          from mcp.client.stdio import stdio_client
+
+          async def main():
+              params = StdioServerParameters(command="hardwright", args=["mcp"])
+              async with stdio_client(params) as (r, w):
+                  async with ClientSession(r, w) as s:
+                      await s.initialize()
+                      names = {t.name for t in (await s.list_tools()).tools}
+                      assert {"board_check", "board_fix_pin", "matter_simulate"} <= names, names
+                      res = await s.call_tool("board_check", {"template_id": "fault_gpio12_vs_gpio14"})
+                      assert not res.is_error and "B4 FAIL" in res.content[0].text
+                      bad = await s.call_tool("board_check", {"template_id": "nope"})
+                      assert bad.is_error
+          asyncio.run(main())
+          PY
+          python /tmp/client.py
+
+  web:
+    name: web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build

@@ -1,0 +1,68 @@
+{
+ "workload": "w2_monocypher_chacha20",
+ "measured": {
+  "cycles": 133255,
+  "hash": "4c7a06b8",
+  "area": {
+   "luts": 1993,
+   "alus": 574,
+   "ffs": 923,
+   "dsps": 1,
+   "bram": 32,
+   "cells": 11334
+  },
+  "hotspots": [
+   {
+    "function": "rotl32",
+    "file": "chacha_core.h",
+    "line_start": 15,
+    "line_end": 15,
+    "pct": 48.58,
+    "fetches": 15360
+   },
+   {
+    "function": "chacha20_rounds",
+    "file": "chacha_core.h",
+    "line_start": 26,
+    "line_end": 44,
+    "pct": 36.27,
+    "fetches": 11468
+   },
+   {
+    "function": "chacha20_encrypt",
+    "file": "main.c",
+    "line_start": 34,
+    "line_end": 45,
+    "pct": 9.43,
+    "fetches": 2983
+   },
+   {
+    "function": "store32_le",
+    "file": "main.c",
+    "line_start": 30,
+    "line_end": 30,
+    "pct": 5.67,
+    "fetches": 1792
+   },
+   {
+    "function": "ss_rdcycle64",
+    "file": "runtime.h",
+    "line_start": 37,
+    "line_end": 40,
+    "pct": 0.02,
+    "fetches": 7
+   }
+  ],
+  "disasm": "00000254 <main+0x21c>:\n     160  254:\tadd\tt0,t0,a2\n     160  258:\tadd\tt6,t6,a5\n     160  25c:\tadd\tt5,t5,a3\n     160  260:\tadd\tt1,t1,a4\n     160  264:\txor\ta7,t0,a7\n     160  268:\txor\ta6,t6,a6\n     160  26c:\txor\ta0,t5,a0\n     160  270:\txor\ta1,t1,a1\n     160  274:\tslli\ts9,a7,0x10\n     160  278:\tslli\ts6,a6,0x10\n     160  27c:\tslli\ts2,a0,0x10\n     160  280:\tslli\ts1,a1,0x10\n     160  284:\tsrli\ta7,a7,0x10\n     160  288:\tsrli\ta6,a6,0x10\n     160  28c:\tsrli\ta0,a0,0x10\n     160  290:\tsrli\ta1,a1,0x10\n     160  294:\tor\ta7,a7,s9\n     160  298:\tor\ta0,a0,s2\n     160  29c:\tor\ta6,a6,s6\n     160  2a0:\tor\ta1,a1,s1\n     160  2a4:\tadd\tt3,a7,t3\n     160  2a8:\tadd\tt4,a6,t4\n     160  2ac:\tadd\ts0,a0,s0\n     160  2b0:\tadd\tt2,a1,t2\n     160  2b4:\txor\ta2,t3,a2\n     160  2b8:\txor\ts1,s0,a3\n     160  2bc:\txor\ta5,t4,a5\n     160  2c0:\txor\ta4,t2,a4\n     160  2c4:\tslli\ts9,a2,0xc\n     160  2c8:\tslli\ts6,a5,0xc\n     160  2cc:\tslli\ta3,a4,0xc\n     160  2d0:\tsrli\ts2,a2,0x14\n     160  2d4:\tsrli\ta5,a5,0x14\n     160  2d8:\tslli\ta2,s1,0xc\n     160  2dc:\tsrli\ta4,a4,0x14\n     160  2e0:\tsrli\ts1,s1,0x14\n     160  2e4:\tor\ts2,s2,s9\n     160  2e8:\tor\ta5,a5,s6\n     160  2ec:\tor\ts1,s1,a2\n     160  2f0:\tor\ta4,a4,a3\n     160  2f4:\tadd\tt0,t0,s2\n     160  2f8:\tadd\tt6,t6,a5\n     160  2fc:\tadd\tt5,t5,s1\n     160  300:\tadd\tt1,t1,a4\n     160  304:\txor\ta3,a7,t0\n     160  308:\txor\ta2,a0,t5\n     160  30c:\txor\ta6,a6,t6\n     160  310:\txor\ta1,a1,t1\n     160  314:\tslli\ts9,a3,0x8\n     160  318:\tslli\ts6,a6,0x8\n     160  31c:\tslli\ta7,a2,0x8\n     160  320:\tslli\ta0,a1,0x8\n     160  324:\tsrli\ta3,a3,0x18\n     160  328:\tsrli\ta6,a6,0x18\n     160  32c:\tsrli\ta2,a2,0x18\n     160  330:\tsrli\ta1,a1,0x18\n     160  334:\tor\ta6,a6,s6\n     160  338:\tor\ta3,a3,s9\n     160  33c:\tor\ta2,a2,a7\n     160  340:\tor\ta1,a1,a0\n     160  344:\tadd\ta7,t3,a3\n     160  348:\tadd\tt4,t4,a6\n     160  34c:\tadd\ts0,s0,a2\n     160  350:\tadd\tt2,t2,a1\n     160  354:\txor\ts2,s2,a7\n     160  358:\txor\ta5,a5,t4\n     160  35c:\txor\ts1,s1,s0\n     160  360:\txor\ta4,a4,t2\n     160  364:\tslli\ts9,s2,0x7\n     160  368:\tslli\ts6,a5,0x7\n     160  36c:\tslli\tt3,s1,0x7\n     160  370:\tslli\ta0,a4,0x7\n     160  374:\tsrli\ts2,s2,0x19\n     160  378:\tsrli\ta5,a5,0x19\n     160  37c:\tsrli\ts1,s1,0x19\n     160  380:\tsrli\ta4,a4,0x19\n     160  384:\tor\ts2,s2,s9\n     160  388:\tor\ta5,a5,s6\n     160  38c:\tor\ts1,s1,t3\n     160  390:\tor\ta4,a4,a0\n     160  394:\tadd\tt0,t0,a5\n     160  398:\tadd\tt6,t6,s1\n     160  39c:\tadd\tt5,t5,a4\n     160  3a0:\tadd\tt1,s2,t1\n     160  3a4:\txor\ta0,a6,t5\n     160  3a8:\txor\ta1,a1,t0\n     160  3ac:\txor\ta3,a3,t6\n     160  3b0:\txor\ta2,a2,t1\n     160  3b4:\tslli\ts9,a1,0x10\n     160  3b8:\tslli\ts6,a3,0x10\n     160  3bc:\tslli\tt3,a0,0x10\n     160  3c0:\tslli\ta6,a2,0x10\n     160  3c4:\tsrli\ta1,a1,0x10\n     160  3c8:\tsrli\ta3,a3,0x10\n     160  3cc:\tsrli\ta0,a0,0x10\n     160  3d0:\tsrli\ta2,a2,0x10\n     160  3d4:\tor\ta3,a3,s6\n     160  3d8:\tor\ta2,a2,a6\n     160  3dc:\tor\ta1,a1,s9\n     160  3e0:\tor\ta0,a0,t3\n     160  3e4:\tadd\tt3,a7,a0\n     160  3e8:\tadd\ts0,s0,a1\n     160  3ec:\tadd\tt2,t2,a3\n     160  3f0:\tadd\tt4,t4,a2\n     160  3f4:\txor\ta5,a5,s0\n     160  3f8:\txor\ts1,s1,t2\n     160  3fc:\txor\ta4,a4,t3\n     160  400:\txor\ts2,s2,t4\n     160  404:\tslli\ts9,a5,0xc\n     160  408:\tslli\ts6,s1,0xc\n     160  40c:\tslli\ta7,a4,0xc\n     160  410:\tslli\ta6,s2,0xc\n     160  414:\tsrli\ta5,a5,0x14\n     160  418:\tsrli\ts1,s1,0x14\n     160  41c:\tsrli\ta4,a4,0x14\n     160  420:\tsrli\ts2,s2,0x14\n     160  424:\tor\ts2,s2,a6\n     160  428:\tor\ta5,a5,s9\n     160  42c:\tor\ts1,s1,s6\n     160  430:\tor\ta4,a4,a7\n     160  434:\tadd\tt0,t0,a5\n     160  438:\tadd\tt6,t6,s1\n     160  43c:\tadd\tt5,t5,a4\n     160  440:\tadd\tt1,t1,s2\n     160  444:\txor\ta7,a3,t6\n     160  448:\txor\ta6,a0,t5\n     160  44c:\txor\ta1,a1,t0\n     160  450:\txor\ta0,a2,t1\n     160  454:\tslli\ts9,a7,0x8\n     160  458:\tslli\ta2,a1,0x8\n     160  45c:\tslli\ts6,a6,0x8\n     160  460:\tslli\ta3,a0,0x8\n     160  464:\tsrli\ta1,a1,0x18\n     160  468:\tsrli\ta7,a7,0x18\n     160  46c:\tsrli\ta6,a6,0x18\n     160  470:\tsrli\ta0,a0,0x18\n     160  474:\tor\ta1,a1,a2\n     160  478:\tor\ta7,a7,s9\n     160  47c:\tor\ta6,a6,s6\n     160  480:\tor\ta0,a0,a3\n     160  484:\tadd\ts0,s0,a1\n     160  488:\tadd\tt2,t2,a7\n     160  48c:\tadd\tt3,t3,a6\n     160  490:\tadd\tt4,t4,a0\n     160  494:\txor\ts1,s1,t2\n     160  498:\txor\ta2,s2,t4\n     160  49c:\txor\ta5,a5,s0\n     160  4a0:\txor\ta4,a4,t3\n     160  4a4:\tslli\ts2,a5,0x7\n     160  4a8:\tslli\ts9,s1,0x7\n     160  4ac:\tsrli\ta3,s1,0x19\n     160  4b0:\tslli\ts6,a4,0x7\n     160  4b4:\tslli\ts1,a2,0x7\n     160  4b8:\tsrli\ta5,a5,0x19\n     160  4bc:\tsrli\ta4,a4,0x19\n     160  4c0:\tsrli\ta2,a2,0x19\n     160  4c4:\taddi\ts4,s4,-1\n     160  4c8:\tor\ta5,a5,s2\n     160  4cc:\tor\ta3,a3,s9",
+  "extra": {}
+ },
+ "tool_versions": {
+  "verilator": "Verilator 5.053 devel rev v5.052-521-g6388139f7 (mod)",
+  "yosys": "Yosys 0.70+186 (git sha1 3718f7f13, Release, Clang /usr/bin/clang++ 21.1.8)",
+  "riscv-gcc": "riscv64-unknown-elf-gcc (13.2.0-11ubuntu1+12) 13.2.0",
+  "sandbox_image": "siliconsmith-base:latest"
+ },
+ "measured_at": "2026-10-23T13:54:18Z",
+ "baseline_run_image": "350c03ae-6fb3-4e83-8e6a-9197a0dbf759",
+ "note": "Measured once in a real Token Factory Sandbox by `python -m siliconsmith.live baseline`; live runs reuse it instead of re-measuring."
+}

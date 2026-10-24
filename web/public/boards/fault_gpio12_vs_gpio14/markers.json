@@ -1,0 +1,1 @@
+[{"ref": "U1", "pad": "14", "kind": "fail", "rung": "B4", "text": "Firmware says wake_btn is on GPIO12, but the board wires it to GPIO14."}, {"ref": "U1", "pad": "13", "kind": "wired", "rung": "B4", "text": "wake_btn is actually wired here (GPIO14)."}]

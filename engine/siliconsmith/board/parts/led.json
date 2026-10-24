@@ -1,0 +1,26 @@
+{
+  "id": "led",
+  "name": "LED (placeholder)",
+  "package": "2-terminal",
+  "kind": "passive",
+  "origin": "author_defined",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "A",
+      "number": "1",
+      "direction": "passive",
+      "required": true
+    },
+    {
+      "name": "K",
+      "number": "2",
+      "direction": "passive",
+      "required": true
+    }
+  ]
+}

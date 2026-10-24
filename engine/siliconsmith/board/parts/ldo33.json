@@ -1,0 +1,97 @@
+{
+  "id": "ldo33",
+  "name": "Generic 3.3 V LDO (reference class, author-defined values)",
+  "package": "generic 3-pin",
+  "kind": "ic",
+  "origin": "author_defined",
+  "description": "Not a specific product. Values are chosen by the author for the template and must be replaced by a real part's datasheet facts.",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "VIN",
+      "number": "1",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "v_abs_max": 7.0,
+      "v_rec_min": 3.5,
+      "v_rec_max": 6.0
+    },
+    {
+      "name": "GND",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "VOUT",
+      "number": "3",
+      "direction": "power_out",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "domain_v": 3.3,
+      "v_out_min": 3.3,
+      "v_out_max": 3.3
+    }
+  ],
+  "facts": [
+    {
+      "key": "vout_nominal",
+      "kind": "property",
+      "value": 3.3,
+      "unit": "V",
+      "text": "Fixed 3.3 V output.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "ratings",
+        "citation_checked": false
+      }
+    },
+    {
+      "key": "iout_max_ma",
+      "kind": "abs_max",
+      "value": 600,
+      "unit": "mA",
+      "text": "Maximum continuous output current.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "ratings",
+        "citation_checked": false
+      }
+    },
+    {
+      "key": "vin_recommended",
+      "kind": "recommended",
+      "value": "3.5 to 6.0 V",
+      "text": "Input range.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "ratings",
+        "citation_checked": false
+      }
+    },
+    {
+      "key": "iq_ua",
+      "kind": "typical_current",
+      "value": 50,
+      "unit": "uA",
+      "text": "Quiescent current, a generic-class value chosen by the author for the template, not from a datasheet.",
+      "provenance": {
+        "source": "author-defined placeholder (no datasheet; not a real product)",
+        "section": "ratings",
+        "citation_checked": false
+      }
+    }
+  ]
+}

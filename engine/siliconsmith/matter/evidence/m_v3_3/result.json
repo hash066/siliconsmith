@@ -1,0 +1,520 @@
+{
+  "node": "n2.1.4",
+  "generator": "adaptive_quadtree",
+  "params": {
+    "levels": 2,
+    "trunk_width": 20,
+    "width_reduction_min": 2,
+    "width_reduction_max": 2,
+    "segment_length_min": 16,
+    "segment_length_max": 10,
+    "branch_factor_min": 3,
+    "branch_factor_max": 4
+  },
+  "metrics": {
+    "peak_temp_c": 72.60059771902621,
+    "peak_rise_k": 47.60059771902621,
+    "material_fraction": 0.4,
+    "material_cells": 1440,
+    "baseline_peak_c": 72.82004535448596,
+    "delta_vs_baseline_k": 0.2194476354597441
+  },
+  "ladder": {
+    "M1": "pass",
+    "M2": "pass",
+    "M3": "pass",
+    "M4": "pass",
+    "M5": "pass"
+  },
+  "m4": {
+    "fv_rise": 47.60059771902621,
+    "fv2x_rise": 47.6018683397382,
+    "fem_rise": 47.604876032171916,
+    "refine_err": 2.6692664727430277e-05,
+    "fem_err": 8.987939964447537e-05,
+    "balance": 5.915712364377688e-12
+  },
+  "m5": {
+    "peak": 72.60059771902621,
+    "baseline_peak": 72.82004535448596,
+    "delta_k": 0.2194476354597441,
+    "baseline": {
+      "spine": 6,
+      "spine_len": 60,
+      "n_fins": 15,
+      "fin_w": 4,
+      "fin_len": 9,
+      "cells": 1440
+    }
+  },
+  "spreader": {
+    "n": 60,
+    "dx": 0.001,
+    "t": 0.002,
+    "k": 200.0,
+    "h": 15.0,
+    "T_inf": 25.0,
+    "Q": 2.0,
+    "chip": 6,
+    "budget_fraction": 0.4,
+    "min_feature": 2
+  },
+  "samples": [
+    {
+      "cells": 1372,
+      "material_fraction": 0.3811111111111111,
+      "m2": "pass",
+      "m2_detail": "1372 cells (38.1% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 74.98744667295614,
+      "params": {
+        "levels": 3,
+        "trunk_width": 15,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 12,
+        "segment_length_max": 14,
+        "branch_factor_min": 2,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1039,
+      "material_fraction": 0.2886111111111111,
+      "m2": "pass",
+      "m2_detail": "1039 cells (28.9% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 90.52507633775912,
+      "params": {
+        "levels": 3,
+        "trunk_width": 10,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 10,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1437,
+      "material_fraction": 0.39916666666666667,
+      "m2": "pass",
+      "m2_detail": "1437 cells (39.9% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "6 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.72557896960768,
+      "params": {
+        "levels": 4,
+        "trunk_width": 19,
+        "width_reduction_min": 3,
+        "width_reduction_max": 4,
+        "segment_length_min": 10,
+        "segment_length_max": 19,
+        "branch_factor_min": 2,
+        "branch_factor_max": 3
+      }
+    },
+    {
+      "cells": 963,
+      "material_fraction": 0.2675,
+      "m2": "pass",
+      "m2_detail": "963 cells (26.8% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 95.63706896421627,
+      "params": {
+        "levels": 2,
+        "trunk_width": 11,
+        "width_reduction_min": 2,
+        "width_reduction_max": 4,
+        "segment_length_min": 10,
+        "segment_length_max": 16,
+        "branch_factor_min": 3,
+        "branch_factor_max": 3
+      }
+    },
+    {
+      "cells": 1423,
+      "material_fraction": 0.3952777777777778,
+      "m2": "pass",
+      "m2_detail": "1423 cells (39.5% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 73.21498414399092,
+      "params": {
+        "levels": 2,
+        "trunk_width": 15,
+        "width_reduction_min": 3,
+        "width_reduction_max": 3,
+        "segment_length_min": 15,
+        "segment_length_max": 19,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "1 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.6702326284414,
+      "params": {
+        "levels": 3,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 4,
+        "segment_length_min": 8,
+        "segment_length_max": 14,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1286,
+      "material_fraction": 0.3572222222222222,
+      "m2": "pass",
+      "m2_detail": "1286 cells (35.7% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 78.23658119272045,
+      "params": {
+        "levels": 4,
+        "trunk_width": 14,
+        "width_reduction_min": 2,
+        "width_reduction_max": 4,
+        "segment_length_min": 9,
+        "segment_length_max": 17,
+        "branch_factor_min": 2,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.6254455627134,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 3,
+        "segment_length_min": 14,
+        "segment_length_max": 17,
+        "branch_factor_min": 2,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.61026188566476,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 12,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 979,
+      "material_fraction": 0.27194444444444443,
+      "m2": "pass",
+      "m2_detail": "979 cells (27.2% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 94.48532803943881,
+      "params": {
+        "levels": 3,
+        "trunk_width": 10,
+        "width_reduction_min": 1,
+        "width_reduction_max": 1,
+        "segment_length_min": 13,
+        "segment_length_max": 10,
+        "branch_factor_min": 2,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "fail",
+      "m3_detail": "3 cells belong to features thinner than 2 cells (2 mm)",
+      "peak": 72.60049714578601,
+      "params": {
+        "levels": 4,
+        "trunk_width": 16,
+        "width_reduction_min": 1,
+        "width_reduction_max": 1,
+        "segment_length_min": 16,
+        "segment_length_max": 20,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1314,
+      "material_fraction": 0.365,
+      "m2": "pass",
+      "m2_detail": "1314 cells (36.5% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 77.15364595837237,
+      "params": {
+        "levels": 2,
+        "trunk_width": 17,
+        "width_reduction_min": 2,
+        "width_reduction_max": 3,
+        "segment_length_min": 8,
+        "segment_length_max": 16,
+        "branch_factor_min": 2,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.62417381800957,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 14,
+        "segment_length_max": 14,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.6254455627134,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 12,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.60059771902621,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 16,
+        "segment_length_max": 10,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.64549593630747,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 14,
+        "segment_length_max": 12,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.61026188566476,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 12,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.60059771902621,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 16,
+        "segment_length_max": 13,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.61026188566476,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 13,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.64549593630747,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 14,
+        "segment_length_max": 13,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.6254455627134,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 12,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.62417381800957,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 14,
+        "segment_length_max": 11,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.61026188566476,
+      "params": {
+        "levels": 2,
+        "trunk_width": 20,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 15,
+        "segment_length_max": 13,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    },
+    {
+      "cells": 1440,
+      "material_fraction": 0.4,
+      "m2": "pass",
+      "m2_detail": "1440 cells (40.0% of plate), connected, within 40% budget",
+      "m3": "pass",
+      "m3_detail": "min feature 2 cells (2 mm), one piece, no enclosed voids",
+      "peak": 72.61246361152209,
+      "params": {
+        "levels": 2,
+        "trunk_width": 19,
+        "width_reduction_min": 2,
+        "width_reduction_max": 2,
+        "segment_length_min": 16,
+        "segment_length_max": 11,
+        "branch_factor_min": 3,
+        "branch_factor_max": 4
+      }
+    }
+  ]
+}

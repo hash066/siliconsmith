@@ -1,0 +1,538 @@
+{
+  "id": "esp32",
+  "name": "ESP32-WROOM-32-class module",
+  "package": "38-pad SMD module",
+  "kind": "module",
+  "origin": "datasheet",
+  "description": "Pin names are GPIO numbers; pad numbers are from Table 2 of the cited datasheet (38 pads). Ground pads 1, 15, 38 are named GND1..GND3 so every pin name is unique. The i2c capability is tagged on output-capable GPIOs outside the flash pins (datasheet 4.2.4: I2C pins can be any GPIO via the GPIO matrix); excluding input-only and flash pins is the author's conservative reading.",
+  "pin_table_provenance": {
+    "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+    "section": "2.2 Pin Description (Table 2: Pin Definitions)",
+    "citation_checked": true,
+    "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+  },
+  "pins": [
+    {
+      "name": "GND1",
+      "number": "1",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "number": "2",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true,
+      "domain_v": 3.3,
+      "v_abs_max": 3.6,
+      "v_rec_min": 3.0,
+      "v_rec_max": 3.6,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "5.1 Absolute Maximum Ratings (Table 12) and 5.2 Recommended Operating Conditions (Table 13)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "EN",
+      "number": "3",
+      "direction": "input",
+      "capabilities": [
+        "enable"
+      ],
+      "required": true,
+      "note": "chip enable, active high"
+    },
+    {
+      "name": "GPIO36",
+      "number": "4",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SENSOR_VP"
+    },
+    {
+      "name": "GPIO39",
+      "number": "5",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SENSOR_VN"
+    },
+    {
+      "name": "GPIO34",
+      "number": "6",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO35",
+      "number": "7",
+      "direction": "input",
+      "capabilities": [
+        "gpio",
+        "input_only",
+        "adc"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO32",
+      "number": "8",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO33",
+      "number": "9",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO25",
+      "number": "10",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO26",
+      "number": "11",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO27",
+      "number": "12",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO14",
+      "number": "13",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO12",
+      "number": "14",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "3 Boot Configurations (Table 3: Default Configuration of Strapping Pins)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GND2",
+      "number": "15",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ]
+    },
+    {
+      "name": "GPIO13",
+      "number": "16",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO9",
+      "number": "17",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD2",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO10",
+      "number": "18",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD3",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO11",
+      "number": "19",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label CMD",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO6",
+      "number": "20",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label CLK",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO7",
+      "number": "21",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD0",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO8",
+      "number": "22",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "flash"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label SD1",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "2.2 Pin Description (Table 2 footnote 2: GPIO6 to GPIO11 connect to the integrated SPI flash)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO15",
+      "number": "23",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "3 Boot Configurations (Table 3: Default Configuration of Strapping Pins)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO2",
+      "number": "24",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "3 Boot Configurations (Table 3: Default Configuration of Strapping Pins)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO0",
+      "number": "25",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "3 Boot Configurations (Table 3: Default Configuration of Strapping Pins)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO4",
+      "number": "26",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "adc",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO16",
+      "number": "27",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO17",
+      "number": "28",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO5",
+      "number": "29",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c",
+        "strapping"
+      ],
+      "domain_v": 3.3,
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "3 Boot Configurations (Table 3: Default Configuration of Strapping Pins)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "name": "GPIO18",
+      "number": "30",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO19",
+      "number": "31",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO21",
+      "number": "33",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO3",
+      "number": "34",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label RXD0"
+    },
+    {
+      "name": "GPIO1",
+      "number": "35",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio"
+      ],
+      "domain_v": 3.3,
+      "note": "module pad label TXD0"
+    },
+    {
+      "name": "GPIO22",
+      "number": "36",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GPIO23",
+      "number": "37",
+      "direction": "bidir",
+      "capabilities": [
+        "gpio",
+        "i2c"
+      ],
+      "domain_v": 3.3
+    },
+    {
+      "name": "GND3",
+      "number": "38",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "key": "supply_current_min_ma",
+      "kind": "recommended",
+      "value": 500,
+      "unit": "mA",
+      "text": "The supply should be able to deliver at least 500 mA to the module.",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "5.2 Recommended Operating Conditions (Table 13, current delivered by external power supply, 0.5 A min)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "key": "io_domain",
+      "kind": "property",
+      "value": "3.3 V",
+      "text": "Signal pins are in the 3.3 V domain.",
+      "provenance": {
+        "source": "ESP32-WROOM-32 Datasheet v3.8 (Espressif Systems)",
+        "section": "5.3 DC Characteristics (3.3 V, 25 C) (Table 14)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf"
+      }
+    },
+    {
+      "key": "wifi_tx_typ_ma",
+      "kind": "typical_current",
+      "value": 240,
+      "unit": "mA",
+      "text": "Typical current, Wi-Fi transmit 802.11b DSSS 1 Mbps at +19.5 dBm; measured at 3.3 V, 25 C, 50% transmit duty cycle (so not a peak value).",
+      "provenance": {
+        "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+        "section": "5.4 RF Current Consumption in Active Mode (Table 5-4)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+      }
+    },
+    {
+      "key": "deep_sleep_ua",
+      "kind": "typical_current",
+      "value": 10,
+      "unit": "uA",
+      "text": "Chip power consumption in Deep-sleep mode is 10 uA (RTC memory kept on). This is the chip figure from the series datasheet, not a module measurement.",
+      "provenance": {
+        "source": "ESP32 Series Datasheet v5.3 (Espressif Systems)",
+        "section": "Features (low-power management bullet)",
+        "citation_checked": true,
+        "url": "https://documentation.espressif.com/esp32_datasheet_en.pdf"
+      }
+    }
+  ]
+}

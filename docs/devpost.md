@@ -1,62 +1,66 @@
-# SiliconSmith: Devpost submission text
+# Hardwright: Devpost submission text
 
-Track: Coding and Agentic Engineering. Repo: https://github.com/hash066/siliconsmith (public with Apache-2.0 at submission).
+Track: Coding and Agentic Engineering. Repo: https://github.com/hash066/siliconsmith (Apache-2.0). Live: https://siliconsmith.vercel.app
 
 ## Tagline
 
-Coding agents change code to fit the chip. SiliconSmith changes the chip to fit the code.
+Agents that design hardware, and prove it.
+
+## Inspiration
+
+AI assistants state hardware facts with total confidence and are often wrong: a pin that selects the boot mode, a heat sink that cannot reach its target, a "faster"
+instruction nobody proved. A wrong answer costs a dead board or a lost week. We wanted an agent that **cannot claim what a checker has not returned**.
 
 ## What it does
 
-Point SiliconSmith at a hot C loop. A Nemotron agent profiles it on a RISC-V core, **invents a custom instruction**, writes the
-Verilog and the software that uses it, **proves the hardware correct**, measures speedup, area and clock, and opens a pull
-request that changes your hardware. Every candidate CPU is checked in its own Token Factory Sandbox, started from its
-parent's checkpoint image.
+Hardwright is a workstation for hardware makers. You describe what you want in plain words, in a chat on the left; a preview on the right shows the result.
 
-Real results on real open-source kernels (PicoRV32 rv32im with a fast multiplier; Fmax from nextpnr for a Tang Nano 9K,
-median of 3 seeds, about ±8% seed noise):
+* **Board.** Describe a sensor board. The agent drafts a netlist, five deterministic checks (B1 to B5) judge it, and it becomes a **real routed 2-layer KiCad board**
+  you can zoom: pads, tracks, ground pour, silkscreen. If the firmware says the wake button is on GPIO12 but the board wires GPIO14, the wrong pad is marked on the
+  board and the agent fixes it. You also get a schematic, Gerbers, the KiCad file, BOM and pick-and-place. KiCad's own design-rule check: **0 errors**.
+* **Matter.** "A heat sink for a 5 W chip." A validated finite-volume solver, cross-checked by an independent finite-element solver, produces a 3D part coloured by
+  temperature and a printable STL, compared side by side with plain fins that use the same material. It reports a loss as plainly as a win.
+* **Silicon.** "Make this loop faster." In about two minutes, live: Nemotron proposes a custom RISC-V instruction, writes the Verilog and the software that uses it, and a
+  Token Factory Sandbox proves it (lint, a million test vectors, a **Yosys SAT proof for every possible input**, whole-program output check). Real result on the public
+  site: **3.32× fewer cycles for +4.8% area**, with a circuit view, a waveform on real operand pairs and a before/after loop.
 
-| Kernel | Cycles | Wall-clock | Area | Run |
-|---|---|---|---|---|
-| TinyMaix int8 fully-connected layer (on Token Factory Sandboxes) | 4.04× | 3.76× | +4.83% | `r_w1_contree3` |
-| TinyMaix, local backend (area polish also shrank the hardware) | 4.04× | 3.86× | +3.16% | `r_w1_final` |
-| Monocypher ChaCha20 | 1.30× | 1.22× | +3.04% | `r_w2_final3` |
-
-The agent found, unprompted, the same idea as TinyMaix's hand-written T-Head kernel (a 4-lane int8 dot product), and its polish phase then
-beat our hand-built reference software (3.77× cycles). A full search costs $0.20 to $0.56 of Nemotron.
+Every project is saved with its own chat, shows a **Workflow** of connected steps with real status, lists **who verified what** (tool, version, result), and exports as one zip.
+It is also an **open-source package and MCP server**, so Claude Code, Cursor or Codex can call the same checkers.
 
 ## How we used Nemotron and Token Factory
 
-* **Nemotron 3 Ultra** is the architect: it reads the profile and disassembly and proposes instructions with the cycle arithmetic.
-* **Nemotron 3 Super** is the engineer: Verilog, C reference, intrinsic, kernel rewrite, an independently written golden spec, repairs
-  from compiler logs, failing vectors and formal counterexamples, and the polish passes (smaller hardware, faster software).
-* **Nemotron 3 Nano** triages failures.
-* All calls go through the Token Factory OpenAI-compatible endpoint, are logged as events with model, tokens, cost and latency, and
-  add up to the cost panel in the run console.
-* **Token Factory Sandboxes**: the verification worker runs in sandboxes. A child candidate starts from its parent's checkpoint image
-  and its result is the next checkpoint (we assert this from the event log: 15 of 15 children in the headline run). We build our
-  toolchain image inside Sandboxes (171 s, no local Docker).
+* **Nemotron 3 Ultra** (architect and diagnosis), **Super** (engineer: Verilog, C, repairs, the independent golden spec) and **Nano** (triage), all through the Token Factory
+  OpenAI-compatible endpoint with **native tool calling**: the chat agent performs real actions in the app (open a workbench, set parameters, run a check, move a pin) and
+  reports the real cost of each turn ($0.003 to $0.02). Model choice is routed by difficulty.
+* **Token Factory Sandboxes** are where everything model-written runs: the live Silicon proof, and the routing of every generated board (a custom image with KiCad 7, Java and
+  Freerouting that we built inside Sandboxes). The full Silicon search runs each candidate from its parent's checkpoint image (21 runs, up to 8 at once).
+* The evidence rule is enforced in code: UI claims carry evidence ids and the agent's answers are post-checked for invented commands or claimed runs that did not happen.
 
 ## What is verified, and what is not claimed
 
-Labels are earned: lint-clean; matches the C reference on 1,000,000 random vectors; **formally proven equivalent to an independent spec
-for all 2^64 inputs** (Yosys SAT miter); whole-program output bit-identical to the baseline; then area and Fmax.
-Not claimed: the FPGA rung (no board yet, shown as skipped), silicon, a compiler backend (software uses `.insn`), or a third operand
-(PicoRV32's co-processor port has two source registers, which caps the ChaCha20 result).
-Run-to-run variance is real and published: W1 wall-clock across runs ranged 3.17× to 3.86×.
+Verified: lint, 1,000,000 vectors, formal proof for all 2^64 inputs, whole-program output, area (Silicon); KiCad 7 DRC, autorouter completion, five netlist checks, pin tables
+cross-checked against KiCad's symbol library, a catalogue of 8 injected wiring faults (Board); two independent solvers and equal-material baselines (Matter).
+Not claimed: that a board works (it is netlist level, not fabricated or electrically tested), 3D or CFD accuracy (2D steady state, not a measurement), clock speed in live runs (cycles
+and area only; the recorded searches include it), the FPGA rung, silicon, a compiler backend. Matter gains over baselines are small (+0.1 to +0.5 K recorded) and the app shows
+losses. Run-to-run variance is real and published.
+
+## Challenges
+
+KiCad 7 has no `kicad-cli pcb drc` and its SES importer only works inside the GUI; Freerouting needs a full JRE and a display; Sandboxes start with `HOME` empty and KiCad refuses to
+run. We found a live-bundle bug (`name` vs `path`) only by running the real thing. All are in `docs/feedback.md`.
+
+## What's next
+
+Schematic export to `.kicad_sch`, more parts in the library (each needs a cross-checked pad map), boards with more than two layers, and putting the Silicon proofs behind the same MCP server.
 
 ## Built during the submission period
 
-Everything: the engine (search, verification ladder, polish, Fmax), the Sandboxes backend, the HTTP API, the GitHub PR generator and
-Action template, and the run console (Next.js). The hardware core is PicoRV32 (ISC); workloads are TinyMaix (Apache-2.0) and
-Monocypher (BSD-2-Clause / CC0).
+All of it: the three workbenches, the agent, the Sandbox pipelines, the app, the package. Hardware core PicoRV32 (ISC); workloads TinyMaix (Apache-2.0) and Monocypher (BSD-2-Clause / CC0);
+KiCad libraries (CC-BY-SA 4.0 with library exception); Freerouting (GPL-3.0, separate program in the Sandbox image).
 
 ## Try it
 
-* Run console and replays: https://siliconsmith.vercel.app (replays of real runs; they work without any backend or credits).
-* CLI: `siliconsmith accelerate w1` (see the README).
-* A real pull request the tool opened: https://github.com/hash066/TinyMaix/pull/1
-
-## Feedback
-
-See `docs/feedback.md`: Sandboxes activation and API findings, Nemotron JSON and thinking-token behaviour, measured latency and cost.
+* App (no sign-up, $0.50 of demo credit): https://siliconsmith.vercel.app
+* From your agent: https://siliconsmith.vercel.app/connect (`claude mcp add hardwright -- hardwright mcp`)
+* A real pull request the Silicon engine opened: https://github.com/hash066/TinyMaix/pull/1
+* Feedback on Token Factory, Sandboxes and Nemotron: `docs/feedback.md`; strict evaluation: `docs/EVALUATION.md`.

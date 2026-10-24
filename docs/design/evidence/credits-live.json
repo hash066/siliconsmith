@@ -1,0 +1,39 @@
+{
+  "base": "http://localhost:3217",
+  "steps": [
+    {
+      "step": "before any turn",
+      "pill": "$0.5000 left",
+      "api": {
+        "remaining": 0.5,
+        "spent": 0,
+        "pool": 0
+      }
+    },
+    {
+      "step": "after turn 1",
+      "pill": "$0.4998 left",
+      "api": {
+        "remaining": 0.499791,
+        "spent": 0.000209,
+        "pool": 0.000209
+      }
+    },
+    {
+      "step": "after turn 2",
+      "pill": "$0.4995 left",
+      "api": {
+        "remaining": 0.499473,
+        "spent": 0.000527,
+        "pool": 0.000527
+      }
+    }
+  ],
+  "layout": {
+    "samples": 60,
+    "composerTopMin": 795,
+    "composerTopMax": 795,
+    "shiftPx": 0
+  },
+  "ok": true
+}

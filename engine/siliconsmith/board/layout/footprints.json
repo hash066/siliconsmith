@@ -1,0 +1,50 @@
+{
+  "_comment": "Part id -> real KiCad 7 footprint and how our logical pins map to its pad names. Default: pad name = the part's `number`. Every row is cross-checked by tests/test_board_layout_footprints.py against the footprint file and, where KiCad has one, the symbol library.",
+  "esp32": {
+    "footprint": "RF_Module:ESP32-WROOM-32",
+    "pad_map": { "GND3": ["38", "39"] },
+    "role": "mcu",
+    "note": "Pad 39 is the exposed ground pad under the module; it joins the ground net with GND3."
+  },
+  "bme280": {
+    "footprint": "Package_LGA:Bosch_LGA-8_2.5x2.5mm_P0.65mm_ClockwisePinNumbering",
+    "role": "sensor"
+  },
+  "ldo33": {
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "role": "power",
+    "note": "Generic 3-pin LDO: VIN=1, GND=2, VOUT=3. Choose a regulator whose SOT-23 pinout matches this map or edit the map."
+  },
+  "mcp73831": {
+    "footprint": "Package_TO_SOT_SMD:SOT-23-5",
+    "role": "power"
+  },
+  "usbc": {
+    "footprint": "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
+    "pad_map": {
+      "VBUS": ["A4", "A9", "B4", "B9"],
+      "GND": ["A1", "A12", "B1", "B12", "S1"],
+      "CC1": ["A5"],
+      "CC2": ["B5"]
+    },
+    "role": "connector",
+    "edge": "bottom",
+    "note": "Power-only use: no D+/D-. Both CC pins are available for the 5.1 k pull-downs."
+  },
+  "batt": {
+    "footprint": "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical",
+    "role": "connector",
+    "edge": "bottom"
+  },
+  "res": { "footprint": "Resistor_SMD:R_0603_1608Metric", "role": "passive" },
+  "led": {
+    "footprint": "LED_SMD:LED_0603_1608Metric",
+    "pad_map": { "A": ["2"], "K": ["1"] },
+    "role": "passive",
+    "note": "KiCad numbers the cathode as pad 1 and the anode as pad 2."
+  },
+  "btn": { "footprint": "Button_Switch_SMD:SW_SPST_TL3342", "role": "passive" },
+  "_added_by_layout": {
+    "cap": { "footprint": "Capacitor_SMD:C_0603_1608Metric", "role": "passive" }
+  }
+}

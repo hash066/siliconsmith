@@ -11,6 +11,8 @@ export interface Issue {
   message: string;
 }
 
+const SILICON_SCORED = ["cycles", "speedup", "luts", "ffs", "area_delta_pct", "fmax_mhz", "wall_speedup", "feasible", "on_pareto"];
+const SHA256 = /^[0-9a-f]{64}$/;
 const STATUSES = ["queued", "running", "pass", "fail", "skipped"];
 const REQUIRED: Record<string, string[]> = {
   "run.started": ["workload", "config", "backend"],
@@ -19,10 +21,11 @@ const REQUIRED: Record<string, string[]> = {
   "run.failed": ["error"],
   "node.created": ["node_id", "parent_id", "depth", "proposal", "instruction_set"],
   "node.stage": ["node_id", "stage", "status", "attempt"],
-  "node.scored": ["node_id", "cycles", "speedup", "luts", "ffs", "area_delta_pct", "fmax_mhz", "wall_speedup", "feasible", "on_pareto", "ladder"],
+  "node.scored": ["node_id", "ladder"],
   "node.pruned": ["node_id", "reason"],
   "node.expanded": ["node_id", "children"],
   "node.timing": ["node_id", "fmax_mhz", "wall_speedup", "seeds"],
+  "artifact.created": ["kind", "path", "sha256"],
   "llm.call": ["node_id", "model", "role", "tokens_in", "tokens_out", "cost_usd", "latency_ms"],
   "sandbox.op": ["node_id", "op_id", "from_image", "status"],
   log: ["level", "msg"],
@@ -41,6 +44,8 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
   let lastT = -Infinity;
   let runId: string | null = null;
   let completed = false;
+  // v2: a non-silicon domain uses free-string stage names, so the silicon stage order does not apply to it.
+  let silicon = true;
 
   events.forEach((e, i) => {
     if (e.v !== 1) err(e, "envelope", `v must be 1, got ${String(e.v)}`);
@@ -56,11 +61,36 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
       return;
     }
     for (const k of req) if (!(k in e)) err(e, "fields", `${e.type} missing ${k}`);
+    // v2: silicon keeps the full node.scored field set; other domains may omit the numeric silicon fields.
+    if (e.type === "node.scored" && silicon) for (const k of SILICON_SCORED) if (!(k in e)) err(e, "fields", `node.scored missing ${k}`);
+    if (e.type === "node.scored" && (typeof e.ladder !== "object" || e.ladder === null || Object.values(e.ladder).some((v) => !["pass", "fail", "skipped"].includes(v as string)))) err(e, "ladder", "ladder must map rung id -> pass | fail | skipped");
+    if (e.type === "node.scored" && e.metrics !== undefined && (typeof e.metrics !== "object" || e.metrics === null || Object.values(e.metrics).some((v) => v !== null && typeof v !== "number" && typeof v !== "string"))) err(e, "metrics", "metrics must be a record of number | string");
 
     const nodeId = (e as { node_id?: string | null }).node_id;
     if (e.type !== "node.created" && nodeId && !created.has(nodeId)) err(e, "node-order", `${e.type} for ${nodeId} before node.created`);
 
     switch (e.type) {
+      case "run.started":
+        if (e.domain !== undefined && (typeof e.domain !== "string" || !e.domain)) err(e, "domain", "domain must be a non-empty string");
+        silicon = e.domain === undefined || e.domain === "silicon";
+        if (e.ladder !== undefined) {
+          if (!Array.isArray(e.ladder)) err(e, "ladder", "ladder must be a list of {id, label, tool?}");
+          else {
+            const ids = new Set<string>();
+            for (const r of e.ladder) {
+              if (!r || typeof r.id !== "string" || !r.id || typeof r.label !== "string" || !r.label) err(e, "ladder", "each rung needs a string id and label");
+              else if (r.tool !== undefined && typeof r.tool !== "string") err(e, "ladder", `rung ${r.id}: tool must be a string`);
+              else if (ids.has(r.id)) err(e, "ladder", `rung ${r.id} listed twice`);
+              else ids.add(r.id);
+            }
+          }
+        }
+        break;
+      case "artifact.created":
+        if (typeof e.kind !== "string" || !e.kind || typeof e.path !== "string" || !e.path) err(e, "artifact", "kind and path must be non-empty strings");
+        if (typeof e.sha256 !== "string" || !SHA256.test(e.sha256)) err(e, "artifact", "sha256 must be 64 lowercase hex characters");
+        if (e.node_id && !created.has(e.node_id)) err(e, "node-order", `artifact for ${e.node_id} before node.created`);
+        break;
       case "run.baseline":
         for (const h of e.hotspots ?? []) if (!("symbol" in h)) warn(e, "hotspot", `hotspot uses ${"function" in h ? "`function`" : "no name"} instead of \`symbol\``);
         if (e.fmax_mhz !== null && typeof e.fmax_mhz !== "number") err(e, "fmax", "fmax_mhz must be number | null");
@@ -73,27 +103,31 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
         progress.set(e.node_id, { attempt: 0, idx: -1, pendingFail: null, synthPassed: false, failedFinal: false });
         break;
       case "node.stage": {
-        if (!STAGES.includes(e.stage)) err(e, "stage", `unknown stage ${e.stage}`);
+        if (typeof e.stage !== "string" || !e.stage) err(e, "stage", "stage must be a non-empty string");
+        else if (silicon && !STAGES.includes(e.stage as Stage)) err(e, "stage", `unknown stage ${e.stage}`);
         if (!STATUSES.includes(e.status)) err(e, "stage", `unknown status ${e.status}`);
         const p = progress.get(e.node_id);
         if (!p) break;
         if (ended.has(e.node_id)) err(e, "stage", `${e.node_id} stage after the node ended`);
-        const idx = STAGES.indexOf(e.stage);
+        const idx = silicon ? STAGES.indexOf(e.stage as Stage) : 0;
         if (p.pendingFail) {
           if (!(e.stage === "implement" && e.attempt === p.attempt + 1)) err(e, "repair", `${e.node_id}: a fail at attempt ${p.attempt} must be followed by implement attempt ${p.attempt + 1}`);
           p.pendingFail = null;
           p.attempt = e.attempt;
           p.idx = idx;
-        } else if (e.attempt !== p.attempt) {
+        } else if (silicon && e.attempt !== p.attempt) {
           err(e, "attempt", `${e.node_id}: attempt ${e.attempt} without a failure at attempt ${p.attempt}`);
           p.attempt = e.attempt;
           p.idx = idx;
-        } else if (idx < p.idx) {
+        } else if (silicon && idx < p.idx) {
           err(e, "stage-order", `${e.node_id}: ${e.stage} after ${STAGES[p.idx]} (v1.1 order is ${STAGES.join(" → ")})`);
-        } else p.idx = idx;
-        if (e.status === "fail") {
+        } else {
+          p.attempt = Math.max(p.attempt, e.attempt);
+          p.idx = idx;
+        }
+        if (e.status === "fail" && silicon) {
           if (e.stage === "bench" || e.stage === "synth" || e.attempt >= 2) p.failedFinal = true;
-          else p.pendingFail = e.stage;
+          else p.pendingFail = e.stage as Stage;
         }
         if (e.stage === "synth" && e.status === "pass") p.synthPassed = true;
         if (e.attempt < 0 || e.attempt > 2) err(e, "attempt", `attempt ${e.attempt} out of range 0..2`);
@@ -101,8 +135,8 @@ export function validateStream(events: readonly RunEvent[]): Issue[] {
       }
       case "node.scored": {
         const p = progress.get(e.node_id);
-        if (p && !p.synthPassed) err(e, "scored", `${e.node_id} scored before synth passed`);
-        if (e.fmax_mhz === null && Math.abs(e.wall_speedup - e.speedup) > 1e-9) err(e, "fmax", `${e.node_id}: fmax null but wall_speedup != speedup`);
+        if (silicon && p && !p.synthPassed) err(e, "scored", `${e.node_id} scored before synth passed`);
+        if (silicon && "fmax_mhz" in e && e.fmax_mhz === null && Math.abs(e.wall_speedup - e.speedup) > 1e-9) err(e, "fmax", `${e.node_id}: fmax null but wall_speedup != speedup`);
         break;
       }
       case "node.pruned": {

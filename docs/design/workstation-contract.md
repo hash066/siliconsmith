@@ -1,0 +1,87 @@
+# Workstation design contract
+
+Source of truth for the `/workstation` shell. It follows `docs/WORKSTATION_PLAN.md` sections 3 and 12 and the
+`frontend-design-direction` skill (design contract, content states, rendered finish gate). The rendered gate evidence
+(screenshots + `docs/design/evidence/workstation-evidence.json`) is checked against this file.
+
+## Design contract
+
+| Field | Decision |
+|---|---|
+| Purpose | Operate and trust agent-built hardware designs in one place |
+| Audience | Hardware/embedded/mechanical engineers, repeat users; scan: status, evidence, next action |
+| Tone | Precision bench instrument: graphite, off-white ink, one phosphor signal colour, semantic red/amber; dense but quiet |
+| Memorable detail | **The evidence chip**: a small calibration-sticker style tag on every number (tool, version, run, command) that opens the evidence drawer |
+| Constraints | Existing Next.js 16 + Tailwind 4 app; tokens in `app/globals.css`; dark-first with light datasheet theme; WCAG AA; reduced-motion respected; the existing routes (`/`, `/how`, `/try`, `/runs/[id]`, `/runs/[id]/report`) keep working |
+| First viewport | The workbench itself (canvas + agent), never a marketing hero |
+| Honesty rule | A feature appears only when it is real. No mock data, no simulated responses. Unbuilt workbenches show a "not built yet" state with a roadmap label. Silicon shows real replays only |
+
+Primary action: read a run's result and open the evidence behind a number. Hierarchy: top bar (where am I, is it proven, what did it cost) →
+canvas (the run) → evidence drawer (why to believe it) → agent (ask about it).
+
+## Target viewports
+
+| Viewport | Layout |
+|---|---|
+| 1440x900 | Top bar; left rail (Project) 208 px; centre canvas; right Agent panel 340 px; bottom drawer (Events, Evidence, Cost) |
+| 768x1024 | Rails collapse into tabs: Canvas, Agent, Project, Drawer. Canvas shows the run as tabs (Tree, Node) |
+| 390x844 | Same tabs, one panel at a time; tree becomes the outline list; no horizontal scroll |
+
+Also checked for horizontal overflow at 360, 390, 705, 768, 1024 and 1440 (grid base tracks are `minmax(0,1fr)`, `min-w-0` on grid children).
+Below 1024 px the rails collapse into tabs.
+
+## Content states
+
+Every surface defines these. Trigger, visible feedback, safe next action; "Built" says whether the surface can show the state today.
+
+| State | Agent panel | Board checks | Matter viewer | Library | Run canvas |
+|---|---|---|---|---|---|
+| Loading | streaming skeleton, stop button | per-check spinner, stable matrix | solver progress per candidate | skeleton rows | tree grows from events |
+| Empty | suggests 3 starter prompts and templates | "no design yet" + start from template | "no geometry" + template | explains evidence rule | "pick a template" |
+| Error | names the failing call, offers retry or smaller task | failed check with the exact fact and part | candidate failed: reason + code error | entry fails reproduce: shows diff | node pruned with reason |
+| Partial | shows tool results received, marks missing | passed/failed/unknown separated; unknown never counts as pass | some candidates done, others running | entry with missing artifact flagged | live + replayed mix labelled |
+| Success | cites evidence ids; offers export | all required checks green + "author-curated facts" notice | winner + second-solver agreement | reproduce passed with timestamp | best node + bundle link |
+| Permission / limit | "daily budget used: replays and Verify still work" | n/a | n/a | n/a | live run capped: replay offered |
+
+### What the shell shows today (Oct 22, hosted workbenches)
+
+| Surface | Shown now | Not built yet (label) |
+|---|---|---|
+| Agent panel | Streaming text, tool-call cards, evidence citations, confirm-before-action with a cost-estimate slot, model badge. `/api/agent` calls Nemotron on Token Factory with native tools, **read-only**: `library_search` (the evidence library entries, with the exact reproduce string), `run_nodes_search` (nodes of recorded runs, no commands), `evidence_get` (a stored manifest and its exact reproduce command, shown and never run, or the evidence behind a run metric), `run_explain_failure`, `board_check` and `matter_simulate` (the free hosted functions). Per-turn token cap and in-memory daily limits (per server instance, and the UI says so). Without `NEBIUS_API_KEY` on the server it stays "Agent endpoint not connected yet" with a disabled composer; the Board and Matter panels do not need it. Answers that say verified, proven or passes without a cited evidence id are flagged | Action tools (start a run, verify, export), shared limits across instances |
+| Board: Check your design | Real template picker (3 templates), editable design JSON, optional pin-header edit, `/api/board/check` with rungs B1 to B5 (pass, fail, unknown; a label only on pass), fact ids as chips that open the curated fact with its provenance and "citation checked" flag, the generated C header with Copy, "Explain the failures". States: empty, loading, 400 with field paths and line/column, 413, 429 with countdown, network error, stale-after-edit | A laid-out schematic |
+| Board: Recorded run | Check matrix and design chain for a replay of `domain: board`; otherwise "No recorded Board run is installed" | Replays of agent runs are not shipped with the deployment yet |
+| Matter: Simulate | Generator and parameter controls from the documented ranges, power and material limit, `/api/matter/simulate`, the plate coloured by the solver's temperatures (coolest cell to peak, legend with numbers), rungs M1 to M5, both baselines, the verdict and the honest limits, STL download. States: empty, loading, local range errors and server 422 field errors, 429, network error | Agent-written generators (they need Sandboxes) |
+| Matter: Recorded run | Plate from a shipped STL, Pareto, gallery and matrix for a replay of `domain: matter`; otherwise the empty state | Replays are not shipped yet |
+| Library | `/workstation/library`: stored evidence entries (manifest, claims and what is not claimed, tool versions, artifact hashes, the exact `siliconsmith verify-entry <id>` command with Copy, shown and never run) and every instruction that passed L1 to L5 in the recorded runs | L6 (real silicon), running the verifier from the site |
+| Templates | `/workstation/templates`: reads `/templates.json` (provisional format), usable only when its run is recorded | The manifest itself |
+| Run canvas | Loading, partial, success, error as before | Live-run labelling and cap |
+| Evidence drawer | Metric evidence, rung evidence from replays and from live hosted calls, and curated facts with provenance | Tool versions in replays (no stream records them yet; the library manifests do) |
+
+## Evidence chip
+
+A small bordered tag next to a number. It is a button: it opens the evidence drawer for that number. Data only from the replay events:
+the scored/timing event that carries the number, the run config (for the command), the rung tool, `run.started.tool_versions` if present.
+A missing field is shown as missing ("not recorded in this run's event log"), never guessed.
+
+## Checks for the rendered gate
+
+Viewports above; keyboard-only pass (tab order: top bar, switcher, rail, canvas, agent, drawer); visible focus (`:focus-visible` signal outline);
+contrast (token pairs AA); reduced motion (global rule in `globals.css`); long-content check (long mnemonics and workload titles truncate or wrap);
+touch targets at least 36 px in the mobile tab bar. States that cannot be exercised without a live endpoint are reported as **untested**, not passed.
+
+## Demo credits: what is exact and what is not
+
+Every agent turn is priced from the model's reported token usage at Token Factory list prices. `GET /api/credits` returns the visitor's balance, the shared pool and `scope`, a sentence that says exactly which numbers are trusted: "your balance is exact; the shared pool is per server instance, in memory until a durable store is added" (or "...is durable (Upstash / Vercel KV)" when `KV_REST_API_URL` / `UPSTASH_REDIS_REST_URL` and their tokens are set).
+
+* **The visitor's balance is exact on every serverless instance.** It lives in a signed httpOnly cookie `hw_credits` holding `{visitor id, UTC day, USD spent}` and an HMAC-SHA256 signature. The signing key is SHA-256('hw-credits:' + `NEBIUS_API_KEY`), so there is no new secret and nothing secret reaches the browser. The cookie is verified on every turn and on every `GET /api/credits`. A missing, tampered, malformed or expired (earlier UTC day) cookie is not an error: the visitor gets a fresh allowance for today.
+* **Reserve, then settle.** The cookie travels with the response headers, before a turn's cost is known, so a turn reserves its worst-case estimate in the cookie when it starts. The stream ends with a `credits` event holding the balance after the turn and a signed receipt; the browser posts it to `POST /api/credits`, which lowers the cookie to the real cost. A receipt is accepted only if it is signed by this deployment, for the same visitor and day, written against the spend the cookie still holds (so it cannot be replayed) and does not raise the balance. A client that never claims it, or stops the turn, only overpays.
+* **A determined visitor can clear their cookies** and start again with a fresh allowance. That is why the per-IP backstop (`AGENT_IP_USD`, default 3x the allowance) and the shared pool cap (`AGENT_POOL_USD`, $25) exist; both stay best effort per instance until a durable store is configured. Concurrent turns from one visitor can each pass the preflight against the same cookie; at these prices that is a few cents at worst.
+* The credit pill and the agent panel refresh after every turn: the `credits` event updates them at once, the settled cookie is confirmed by a fresh `GET /api/credits`.
+
+## Agent, prompt-first (UX v2)
+
+* **Routing.** On the start screen the panel sends no `workbench`. The agent picks Matter, Board or Silicon from the goal, emits `workbench.open` first (once), then the tools for the job, or asks ONE short question with no tool. Plain requests become parameters: "a heat sink for a 5 W chip, 40 mm square, under 70 C" -> `matter_simulate` with `Q: 5` and `plate_mm: 40` (plate size is the new `n` spreader field, 30 to 80 mm, 1 mm per cell). If the geometry is rejected the agent is asked once to try a smaller one; if the peak is far over the target it says that still air cannot do it, simulates a fan (h 60) and says it changed that assumption. "Make this loop faster" proposes a live Silicon run (workload w1 unless the user names ChaCha20).
+* **Plain language.** The system prompt asks for one short sentence before a tool and one short paragraph after. `lib/agent-plain.ts` is the safety net on the stream (`rung` -> `check`, "formally proven" -> "proved for every possible input", ids in prose -> words, markdown bold removed) and also runs on tool-chip summaries. The evidence ids are not in the prose: they come in the `evidence` event (everything the turn's tools returned) and the panel shows them behind a "Show the evidence behind this" toggle.
+* **Honesty filters still run on the model's own words**: invented `verify-entry` commands and "I ran it" claims (as before), plus a new `invented_number` flag: a temperature in the answer that the user did not write and no tool returned. A "proved" claim with no tool result has no evidence event, so the panel flags it as unsupported.
+* **Follow-up chips** (`suggest` event) are computed from what the turn did (Make it cooler, Fix the failing check...), never written by the model.
+* **Live Silicon** (\`silicon_run\`, a confirmed action like the other loops, cap $0.15 and 270 s): the route POSTs \`/api/silicon/run\` with \`{workload: "w1" | "w2"}\` and reads NDJSON contract events. \`node.stage\` becomes a chip with a plain label, \`node.created\` the proposed instruction, each \`llm.call\` a \`cost\` event with its real \`cost_usd\` (charged like any turn), and the verdict is written only from \`node.scored\` (cycle speedup, area) and the stage results; it says the clock speed was not measured. Until the endpoint exists the tests use a stub stream. The reservation for a live run is its $0.15 cap; the cookie settles to the real cost with the receipt, as for every turn.

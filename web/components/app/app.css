@@ -1,0 +1,106 @@
+/* The app skin. The reused run, Board and Matter components read the older tokens (--panel, --line, --signal ...);
+   inside .hw-app those resolve to the Hardwright palette, and --signal follows the active workbench's accent
+   (Silicon steel, Board pcb, Matter ember). Nothing outside .hw-app changes. */
+.hw-app {
+  --wb: var(--hw-ember);
+  --bg: var(--hw-bg);
+  --panel: var(--hw-surface);
+  --raised: var(--hw-elevated);
+  --sunken: color-mix(in srgb, var(--hw-bg) 70%, #000);
+  --line: var(--hw-border);
+  --line-2: var(--hw-border-hover);
+  --grid: color-mix(in srgb, var(--hw-border) 35%, transparent);
+  --grid-major: color-mix(in srgb, var(--hw-border) 70%, transparent);
+  --ink: var(--hw-ink);
+  --ink-2: var(--hw-ink-2);
+  --ink-3: color-mix(in srgb, var(--hw-ink-3) 80%, #fff);
+  --signal: var(--wb);
+  --signal-ink: var(--wb);
+  --signal-dim: color-mix(in srgb, var(--wb) 15%, transparent);
+  --signal-line: color-mix(in srgb, var(--wb) 55%, transparent);
+  --on-signal: var(--hw-on-accent);
+  --amber: var(--hw-warn);
+  --amber-dim: color-mix(in srgb, var(--hw-warn) 15%, transparent);
+  --red: var(--hw-bad);
+  --red-dim: color-mix(in srgb, var(--hw-bad) 15%, transparent);
+  --focus: var(--wb);
+  font-family: var(--font-body), var(--font-sans), system-ui, sans-serif;
+  background: var(--hw-bg);
+  color: var(--hw-ink);
+}
+:root[data-theme="light"] .hw-app {
+  --ink-3: color-mix(in srgb, var(--hw-ink-3) 85%, #000);
+  --sunken: color-mix(in srgb, var(--hw-bg) 80%, var(--hw-border));
+}
+/* Light theme: deeper accents so text and white-on-accent buttons reach 4.5:1. */
+:root[data-theme="light"] .hw-app { --hw-ember: #b8430d; --hw-pcb: #136b52; --hw-steel: #2a58c2; }
+.hw-app[data-wb="silicon"] { --wb: var(--hw-steel); }
+.hw-app[data-wb="board"] { --wb: var(--hw-pcb); }
+.hw-app[data-wb="matter"] { --wb: var(--hw-ember); }
+/* The signal colour is used as text on dark panels; on filled buttons the label is dark. */
+.hw-app .num { font-family: var(--font-code), var(--font-mono), ui-monospace, monospace; }
+
+/* Splitter handle */
+.hw-split {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+.hw-split::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 2px;
+  background: var(--hw-border);
+  transition: background 0.15s var(--hw-ease), inset 0.15s var(--hw-ease);
+}
+.hw-split:hover::after, .hw-split:focus-visible::after, .hw-split[data-drag="1"]::after { background: var(--wb); inset: 0 2px; }
+.hw-split:focus-visible { outline: 2px solid var(--wb); outline-offset: -2px; border-radius: 4px; }
+
+/* Tooltips for the icon rail: CSS only, shown on hover and keyboard focus. */
+.hw-tip { position: relative; }
+.hw-tip > .hw-tip-text {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  translate: 0 -50%;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 60;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  background: var(--hw-elevated);
+  border: 1px solid var(--hw-border);
+  color: var(--hw-ink);
+  box-shadow: var(--hw-shadow);
+  transition: opacity 0.12s;
+}
+.hw-tip:hover > .hw-tip-text, .hw-tip:focus-visible > .hw-tip-text { opacity: 1; }
+@media (max-width: 1023px) {
+  .hw-tip > .hw-tip-text { display: none; }
+}
+
+.hw-app .hw-spot { position: fixed; inset: 0; z-index: 90; }
+@keyframes hw-pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.hw-pop { animation: hw-pop 0.22s var(--hw-ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .hw-pop { animation: none; }
+  .hw-split::after, .hw-tip > .hw-tip-text { transition: none; }
+}
+
+/* A brief ring on the part of the app a workflow step just focused. */
+.hw-app [data-flash="1"] { outline: 2px solid var(--wb); outline-offset: 2px; border-radius: 12px; }
+.hw-app [data-step]:focus { outline: none; }
+
+/* a check marker on the board: a ring that pulses (and holds still under reduced motion) */
+.hw-marker { transform-box: fill-box; transform-origin: center; animation: hw-marker-pulse 1.6s ease-in-out infinite; }
+@keyframes hw-marker-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .hw-marker { animation: none; } }
+
+/* a running step's spinner (holds still under reduced motion) */
+.hw-wf-spin { animation: hw-wf-spin 0.9s linear infinite; }
+@keyframes hw-wf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hw-wf-spin { animation: none; } }

@@ -1,0 +1,1 @@
+[{"ref": "U1", "pad": "14", "kind": "warn", "rung": "B4", "text": "GPIO12 is a boot-strapping pin: its level at reset selects boot behaviour."}]

@@ -1,0 +1,67 @@
+/* Hardwright design tokens (landing + app). Warm near-black ground, glass surfaces, ember / steel / pcb accents.
+   Namespaced --hw-* so the older pages keep working. Light theme: [data-theme="light"]. */
+:root {
+  --hw-bg: #0e0d0c;
+  --hw-surface: #1a1816;
+  --hw-elevated: #26231f;
+  --hw-border: #3a3631;
+  --hw-border-hover: #524c45;
+  --hw-ink: #faf8f5;
+  --hw-ink-2: #d8d2ca;
+  --hw-ink-3: #8f877d;
+  --hw-ember: #ff7a3d;
+  --hw-steel: #5b8def;
+  --hw-pcb: #3fb68b;
+  --hw-ok: #7bd88f;
+  --hw-warn: #f2c14e;
+  --hw-bad: #ff6b5e;
+  --hw-on-accent: #1a0f08;
+  --hw-glass: rgb(14 13 12 / 0.78);
+  --hw-glass-border: rgb(255 255 255 / 0.1);
+  --hw-grid: rgb(255 255 255 / 0.035);
+  --hw-noise: 0.04;
+  --hw-radius: 20px;
+  --hw-radius-sm: 12px;
+  --hw-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6), 0 4px 10px -4px rgb(0 0 0 / 0.45);
+  --hw-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --hw-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --hw-gradient: linear-gradient(100deg, #ff7a3d 0%, #d9806a 45%, #5b8def 100%);
+}
+
+:root[data-theme="light"] {
+  --hw-bg: #f7f4ef;
+  --hw-surface: #ffffff;
+  --hw-elevated: #efe9e1;
+  --hw-border: #d9d1c6;
+  --hw-border-hover: #b9afa1;
+  --hw-ink: #1b1713;
+  --hw-ink-2: #4a423a;
+  --hw-ink-3: #6d6459;
+  --hw-ember: #d9531a;
+  --hw-steel: #2f63d6;
+  --hw-pcb: #1c8a63;
+  --hw-ok: #1c8a4a;
+  --hw-warn: #9a6a00;
+  --hw-bad: #c43a2c;
+  --hw-on-accent: #ffffff;
+  --hw-glass: rgb(247 244 239 / 0.82);
+  --hw-glass-border: rgb(0 0 0 / 0.1);
+  --hw-grid: rgb(0 0 0 / 0.04);
+  --hw-shadow: 0 18px 40px -14px rgb(60 40 20 / 0.25), 0 4px 10px -4px rgb(60 40 20 / 0.15);
+  --hw-gradient: linear-gradient(100deg, #d9531a 0%, #b5664f 45%, #2f63d6 100%);
+}
+
+/* Utilities used by the landing page and the app. */
+.hw-display { font-family: var(--font-display), system-ui, sans-serif; letter-spacing: -0.03em; line-height: 0.98; font-weight: 700; }
+.hw-body { font-family: var(--font-body), system-ui, sans-serif; }
+.hw-mono { font-family: var(--font-code), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+.hw-gradient-text { background: var(--hw-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hw-glass { background: var(--hw-glass); border: 1px solid var(--hw-glass-border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.hw-card { background: var(--hw-surface); border: 1px solid var(--hw-border); border-radius: var(--hw-radius); }
+.hw-label { font-family: var(--font-code), ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hw-ink-3); }
+.hw-grid-bg { background-image: linear-gradient(var(--hw-grid) 1px, transparent 1px), linear-gradient(90deg, var(--hw-grid) 1px, transparent 1px); background-size: 48px 48px; }
+.hw-noise::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--hw-noise); background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-reveal, .hw-float { animation: none !important; transition: none !important; }
+}

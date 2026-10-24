@@ -123,7 +123,7 @@ def extract_json(text: str) -> dict:
     """Pull the first complete JSON object out of a reply (fenced or bare)."""
     m = _FENCE.search(text)
     if m:
-        return json.loads(m.group(1))
+        return json.loads(m.group(1), strict=False)
     start = text.find("{")
     if start < 0:
         raise ValueError("no JSON object in reply")
@@ -144,5 +144,5 @@ def extract_json(text: str) -> dict:
         elif ch == "}":
             depth -= 1
             if depth == 0:
-                return json.loads(text[start:i + 1])
+                return json.loads(text[start:i + 1], strict=False)
     raise ValueError("unterminated JSON object in reply")

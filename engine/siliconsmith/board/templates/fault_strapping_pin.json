@@ -1,0 +1,281 @@
+{
+  "id": "fault_strapping_pin",
+  "title": "Fault: wake button on a strapping pin",
+  "description": "The wake button is wired and declared on GPIO12, a boot-strapping pin, so firmware and netlist agree but the pin is hazardous. Rung B4 flags it.",
+  "expect": {
+    "B1": "pass",
+    "B2": "pass",
+    "B3": "pass",
+    "B4": "fail",
+    "B5": "pass"
+  },
+  "design": {
+    "name": "Battery environmental sensor (reference, clean)",
+    "template": "battery_env_sensor",
+    "mcu_ref": "U1",
+    "assumptions": {
+      "i2c_mode": "standard",
+      "i2c_cb_pf": 100,
+      "battery_capacity_mah": 2000,
+      "battery_usable_fraction": 0.8,
+      "target_hours": 48,
+      "active_s": 5,
+      "period_s": 600
+    },
+    "instances": [
+      {
+        "ref": "U1",
+        "part": "esp32",
+        "params": {}
+      },
+      {
+        "ref": "U2",
+        "part": "ldo33",
+        "params": {}
+      },
+      {
+        "ref": "U3",
+        "part": "bme280",
+        "params": {}
+      },
+      {
+        "ref": "J1",
+        "part": "usbc",
+        "params": {}
+      },
+      {
+        "ref": "J2",
+        "part": "batt",
+        "params": {}
+      },
+      {
+        "ref": "R1",
+        "part": "res",
+        "params": {
+          "ohms": 4700
+        }
+      },
+      {
+        "ref": "R2",
+        "part": "res",
+        "params": {
+          "ohms": 4700
+        }
+      },
+      {
+        "ref": "R3",
+        "part": "res",
+        "params": {
+          "ohms": 10000
+        }
+      },
+      {
+        "ref": "R4",
+        "part": "res",
+        "params": {
+          "ohms": 330
+        }
+      },
+      {
+        "ref": "R5",
+        "part": "res",
+        "params": {
+          "ohms": 5100
+        }
+      },
+      {
+        "ref": "R6",
+        "part": "res",
+        "params": {
+          "ohms": 5100
+        }
+      },
+      {
+        "ref": "SW1",
+        "part": "btn",
+        "params": {}
+      },
+      {
+        "ref": "D1",
+        "part": "led",
+        "params": {}
+      },
+      {
+        "ref": "U5",
+        "part": "mcp73831",
+        "params": {}
+      },
+      {
+        "ref": "R7",
+        "part": "res",
+        "params": {
+          "ohms": 2000
+        }
+      }
+    ],
+    "nets": [
+      {
+        "name": "VBAT",
+        "pins": [
+          "J2.BAT_P",
+          "U2.VIN",
+          "U5.VBAT"
+        ]
+      },
+      {
+        "name": "GND",
+        "pins": [
+          "J2.BAT_N",
+          "U2.GND",
+          "U1.GND1",
+          "U1.GND2",
+          "U1.GND3",
+          "U5.VSS",
+          "R7.2",
+          "U3.GND1",
+          "U3.GND2",
+          "U3.SDO",
+          "J1.GND",
+          "R5.2",
+          "R6.2",
+          "SW1.2",
+          "D1.K"
+        ]
+      },
+      {
+        "name": "3V3",
+        "pins": [
+          "U2.VOUT",
+          "U1.3V3",
+          "U3.VDD",
+          "U3.VDDIO",
+          "U3.CSB",
+          "R1.1",
+          "R2.1",
+          "R3.1"
+        ]
+      },
+      {
+        "name": "VBUS",
+        "pins": [
+          "J1.VBUS",
+          "U5.VDD"
+        ]
+      },
+      {
+        "name": "PROG",
+        "pins": [
+          "U5.PROG",
+          "R7.1"
+        ]
+      },
+      {
+        "name": "CC1",
+        "pins": [
+          "J1.CC1",
+          "R5.1"
+        ]
+      },
+      {
+        "name": "CC2",
+        "pins": [
+          "J1.CC2",
+          "R6.1"
+        ]
+      },
+      {
+        "name": "SDA",
+        "pins": [
+          "U1.GPIO21",
+          "U3.SDI",
+          "R1.2"
+        ]
+      },
+      {
+        "name": "SCL",
+        "pins": [
+          "U1.GPIO22",
+          "U3.SCK",
+          "R2.2"
+        ]
+      },
+      {
+        "name": "EN",
+        "pins": [
+          "U1.EN",
+          "R3.2"
+        ]
+      },
+      {
+        "name": "WAKE",
+        "pins": [
+          "SW1.1",
+          "U1.GPIO12"
+        ]
+      },
+      {
+        "name": "LED_DRV",
+        "pins": [
+          "U1.GPIO4",
+          "R4.1"
+        ]
+      },
+      {
+        "name": "LED_A",
+        "pins": [
+          "R4.2",
+          "D1.A"
+        ]
+      }
+    ],
+    "mcu_assignments": [
+      {
+        "function": "i2c_sda",
+        "pin": "GPIO21",
+        "use": "bidir",
+        "net": "SDA"
+      },
+      {
+        "function": "i2c_scl",
+        "pin": "GPIO22",
+        "use": "bidir",
+        "net": "SCL"
+      },
+      {
+        "function": "wake_btn",
+        "pin": "GPIO12",
+        "use": "input",
+        "net": "WAKE"
+      },
+      {
+        "function": "status_led",
+        "pin": "GPIO4",
+        "use": "output",
+        "net": "LED_DRV"
+      }
+    ],
+    "firmware_pins": [
+      {
+        "function": "i2c_sda",
+        "pin": "GPIO21",
+        "use": "bidir"
+      },
+      {
+        "function": "i2c_scl",
+        "pin": "GPIO22",
+        "use": "bidir"
+      },
+      {
+        "function": "wake_btn",
+        "pin": "GPIO12",
+        "use": "input"
+      },
+      {
+        "function": "status_led",
+        "pin": "GPIO4",
+        "use": "output"
+      }
+    ]
+  },
+  "header": "/* Generated by siliconsmith.board.export from the design's firmware pin table. Do not edit.\n * Design: Battery environmental sensor (reference, clean)\n * Rung B4 compares this table with the netlist; this file alone proves nothing. */\n#ifndef SS_BOARD_PINS_H\n#define SS_BOARD_PINS_H\n\n#define SS_PIN_I2C_SDA 21  /* bidir */\n#define SS_PIN_I2C_SCL 22  /* bidir */\n#define SS_PIN_WAKE_BTN 12  /* input */\n#define SS_PIN_STATUS_LED 4  /* output */\n\n#endif /* SS_BOARD_PINS_H */\n"
+}

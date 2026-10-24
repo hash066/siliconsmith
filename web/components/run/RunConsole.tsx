@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { isDemoRun, type RunController } from "@/lib/controller";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isDemoRun, type RunController, type Snapshot } from "@/lib/controller";
+import type { EvidenceMetric } from "@/lib/evidence";
 import type { NodeId } from "@/lib/events";
 import { pct, times } from "@/lib/format";
 import { useMediaQuery, useRunSource, useSnapshot } from "@/lib/hooks";
@@ -70,14 +71,26 @@ export function finding(s: RunState): string {
   return `Searching${depth ? ` depth ${depth}${s.config ? ` of ${s.config.max_depth}` : ""}` : ""} · ${c.candidates} candidates · ${c.running} running${best?.score ? ` · best so far ${best.proposal?.mnemonic} ${times(wallOf(best.score))}` : ""}`;
 }
 
-function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: string; initialNode: string | null }) {
-  const snap = useSnapshot(c)!;
-  const s = snap.state;
-  const wide = useMediaQuery("(min-width: 1024px)");
-  const tablet = useMediaQuery("(min-width: 768px)");
+export type RunTab = "tree" | "node" | "cost" | "log";
+
+export interface RunFocus {
+  shown: NodeId | null;
+  select: (id: NodeId) => void;
+  follow: boolean;
+  setFollow: (f: boolean | ((f: boolean) => boolean)) => void;
+  tab: RunTab;
+  setTab: (t: RunTab) => void;
+}
+
+/**
+ * Which node the inspector shows, whether it follows the notable moments, and the narrow-layout tab.
+ * Shared by the run page and the workstation canvas so the selection logic exists once.
+ */
+export function useRunFocus(s: RunState, opts: { wide: boolean; initialNode: string | null; syncUrl?: boolean }): RunFocus {
+  const { wide, initialNode, syncUrl = true } = opts;
   const [selected, setSelected] = useState<NodeId | null>(initialNode);
   const [follow, setFollow] = useState(!initialNode);
-  const [tab, setTab] = useState<"tree" | "node" | "cost" | "log">("tree");
+  const [tab, setTab] = useState<RunTab>("tree");
 
   // Follow mode: the inspector moves to the moments worth seeing (a counterexample, a new best).
   const followTarget = useMemo(() => {
@@ -95,13 +108,18 @@ function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: strin
       setSelected(id);
       setFollow(false);
       if (!wide) setTab("node");
-      const url = new URL(window.location.href);
-      url.searchParams.set("node", id);
-      window.history.replaceState(null, "", url);
+      if (syncUrl) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("node", id);
+        window.history.replaceState(null, "", url);
+      }
     },
-    [wide],
+    [wide, syncUrl],
   );
+  return { shown, select, follow, setFollow, tab, setTab };
+}
 
+function useSpaceToggle(c: RunController) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
@@ -114,13 +132,53 @@ function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: strin
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [c]);
+}
 
-  const demo = isDemoRun(runId);
-  const reportHref = `/runs/${runId}/report`;
-  const statusText = snap.mode === "live" ? "Live" : s.status === "completed" ? "Replay · completed" : s.status === "failed" ? "Replay · failed" : "Replay";
+function useElementWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => setW(Math.round(entries[0].contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w];
+}
+
+const CANVAS_TWO_COL_MIN = 840;
+
+/**
+ * The run console's content (title, scrubber, metrics, tree, inspector, and, on the run page, cost and events).
+ * `embedded` is the workstation's Silicon canvas: cost and events live in the workstation drawer, the layout
+ * follows the width of its own container, and numbers can carry evidence chips via `onEvidence`.
+ */
+export function RunCanvas({
+  c,
+  snap,
+  focus,
+  reportHref,
+  embedded = false,
+  onEvidence,
+}: {
+  c: RunController;
+  snap: Snapshot;
+  focus: RunFocus;
+  reportHref: string;
+  embedded?: boolean;
+  onEvidence?: (metric: EvidenceMetric) => void;
+}) {
+  const s = snap.state;
+  const wideViewport = useMediaQuery("(min-width: 1024px)");
+  const tablet = useMediaQuery("(min-width: 768px)");
+  const [boxRef, boxW] = useElementWidth<HTMLDivElement>();
+  const { shown, select, follow, setFollow, tab, setTab } = focus;
+  const wide = embedded ? boxW >= CANVAS_TWO_COL_MIN : wideViewport;
   const w = s.workload;
   const repo = w?.source_repo?.replace(/^https?:\/\/(www\.)?github\.com\//, "");
   const hot = s.baseline?.hotspots[0]?.symbol;
+  const Title = embedded ? "h2" : "h1";
 
   const tree = (
     <div className="graticule min-h-full px-2 py-2">
@@ -138,6 +196,131 @@ function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: strin
       {follow ? "Following" : "Follow"}
     </button>
   );
+  const treePanel = (
+    <Panel title="Search tree" aside={<span className="num text-[12px] text-ink-3">{counts(s).candidates} candidates</span>} bodyClass="bg-sunken">
+      <div className="flex min-h-full flex-col">
+        <div className="flex-1">{tree}</div>
+        <Legend />
+      </div>
+    </Panel>
+  );
+  const inspectorPanel = (
+    <Panel title="Inspector" aside={followBtn}>
+      <Inspector state={s} nodeId={shown} onSelect={select} reportHref={reportHref} />
+    </Panel>
+  );
+  const tabs: RunTab[] = embedded ? ["tree", "node"] : ["tree", "node", "cost", "log"];
+
+  return (
+    <div ref={boxRef} className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <Title className={`${embedded ? "text-[18px]" : "text-[22px] sm:text-[24px]"} font-semibold leading-tight tracking-[-0.015em] text-ink`}>{w?.title ?? snap.state.runId}</Title>
+          <p className="mt-1 text-[13px] text-ink-3">
+            {[hot && <span key="h" className="num">{hot}</span>, repo, s.backend && `${s.backend} backend`, s.config && `budget ${s.config.area_budget_pct.toFixed(1)}%`, s.config && `beam ${s.config.beam}`, s.config && `depth ≤ ${s.config.max_depth}`]
+              .filter(Boolean)
+              .map((x, i) => (
+                <span key={i}>
+                  {i > 0 && <span aria-hidden="true"> · </span>}
+                  {x}
+                </span>
+              ))}
+          </p>
+        </div>
+        <p className="max-w-[560px] text-[14px] leading-snug text-ink lg:text-right" aria-live="polite">
+          {finding(s)}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2 lg:block">
+        <div className={`flex items-center justify-between gap-2 ${embedded ? "" : "lg:hidden"}`}>
+          <PlayerControls c={c} snap={snap} />
+          {!embedded && (
+            <Link href={reportHref} className="inline-flex h-9 items-center rounded-md border border-line-2 px-3 text-[13px] text-ink sm:hidden">
+              Report
+            </Link>
+          )}
+        </div>
+        <Scrubber c={c} snap={snap} />
+      </div>
+
+      <MetricsStrip state={s} onEvidence={onEvidence} cols={embedded ? (boxW >= 800 ? 6 : boxW >= 520 ? 3 : 2) : undefined} />
+
+      {s.warnings.length > 0 && (
+        <p className="rounded-md bg-amber-dim px-3 py-2 text-[12.5px] text-amber">
+          The stream deviates from the event contract in {s.warnings.length} place{s.warnings.length > 1 ? "s" : ""}: {s.warnings.slice(0, 2).join("; ")}
+        </p>
+      )}
+
+      {wide ? (
+        embedded ? (
+          <div className="grid h-[560px] grid-cols-[minmax(0,1fr)_minmax(300px,380px)] gap-3 [&>*]:min-w-0">
+            {treePanel}
+            {inspectorPanel}
+          </div>
+        ) : (
+          <>
+            <div className="grid min-h-[560px] grid-cols-[minmax(0,1fr)_minmax(360px,400px)_280px] gap-3 [&>*]:min-w-0" style={{ height: "max(560px, calc(100dvh - 372px))" }}>
+              {treePanel}
+              {inspectorPanel}
+              <Panel title="Cost and compute">
+                <CostPanel state={s} t={snap.t} duration={snap.duration} />
+              </Panel>
+            </div>
+            <Panel title="Events" aside={<span className="num text-[12px] text-ink-3">{s.eventCount} received</span>}>
+              <EventTicker state={s} onSelect={select} rows={5} />
+            </Panel>
+          </>
+        )
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div role="tablist" aria-label="Run views" className={`grid h-11 rounded-lg border border-line bg-panel p-1 ${embedded ? "grid-cols-2" : "grid-cols-4"}`}>
+            {tabs.map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={tab === k}
+                onClick={() => setTab(k)}
+                className={`rounded-md text-[13px] transition-colors duration-150 ${tab === k ? "bg-raised text-ink" : "text-ink-3"}`}
+              >
+                {k === "tree" ? "Tree" : k === "node" ? "Node" : k === "cost" ? "Cost" : "Events"}
+              </button>
+            ))}
+          </div>
+          {(tab === "tree" || (embedded && tab !== "node")) && (
+            <Panel title="Search tree" bodyClass="bg-sunken" aside={<span className="num text-[12px] text-ink-3">{counts(s).candidates} candidates</span>}>
+              {tree}
+              <Legend />
+            </Panel>
+          )}
+          {tab === "node" && inspectorPanel}
+          {!embedded && tab === "cost" && (
+            <Panel title="Cost and compute">
+              <CostPanel state={s} t={snap.t} duration={snap.duration} />
+            </Panel>
+          )}
+          {!embedded && tab === "log" && (
+            <Panel title="Events">
+              <EventTicker state={s} onSelect={select} rows={14} />
+            </Panel>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: string; initialNode: string | null }) {
+  const snap = useSnapshot(c)!;
+  const s = snap.state;
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const focus = useRunFocus(s, { wide, initialNode });
+  useSpaceToggle(c);
+
+  const demo = isDemoRun(runId);
+  const reportHref = `/runs/${runId}/report`;
+  const statusText = snap.mode === "live" ? "Live" : s.status === "completed" ? "Replay · completed" : s.status === "failed" ? "Replay · failed" : "Replay";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -169,102 +352,7 @@ function ConsoleBody({ c, runId, initialNode }: { c: RunController; runId: strin
       </header>
 
       <main id="main" className="flex flex-1 flex-col gap-3 px-4 pb-4 pt-4 lg:px-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.015em] text-ink sm:text-[24px]">{w?.title ?? runId}</h1>
-            <p className="mt-1 text-[13px] text-ink-3">
-              {[hot && <span key="h" className="num">{hot}</span>, repo, s.backend && `${s.backend} backend`, s.config && `budget ${s.config.area_budget_pct.toFixed(1)}%`, s.config && `beam ${s.config.beam}`, s.config && `depth ≤ ${s.config.max_depth}`]
-                .filter(Boolean)
-                .map((x, i) => (
-                  <span key={i}>
-                    {i > 0 && <span aria-hidden="true"> · </span>}
-                    {x}
-                  </span>
-                ))}
-            </p>
-          </div>
-          <p className="max-w-[560px] text-[14px] leading-snug text-ink lg:text-right" aria-live="polite">
-            {finding(s)}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 lg:block">
-          <div className="flex items-center justify-between gap-2 lg:hidden">
-            <PlayerControls c={c} snap={snap} />
-            <Link href={reportHref} className="inline-flex h-9 items-center rounded-md border border-line-2 px-3 text-[13px] text-ink sm:hidden">
-              Report
-            </Link>
-          </div>
-          <Scrubber c={c} snap={snap} />
-        </div>
-
-        <MetricsStrip state={s} />
-
-        {s.warnings.length > 0 && (
-          <p className="rounded-md bg-amber-dim px-3 py-2 text-[12.5px] text-amber">
-            The stream deviates from the event contract in {s.warnings.length} place{s.warnings.length > 1 ? "s" : ""}: {s.warnings.slice(0, 2).join("; ")}
-          </p>
-        )}
-
-        {wide ? (
-          <>
-            <div className="grid min-h-[560px] grid-cols-[minmax(0,1fr)_minmax(360px,400px)_280px] gap-3" style={{ height: "max(560px, calc(100dvh - 372px))" }}>
-              <Panel title="Search tree" aside={<span className="num text-[12px] text-ink-3">{counts(s).candidates} candidates</span>} bodyClass="bg-sunken">
-                <div className="flex min-h-full flex-col">
-                  <div className="flex-1">{tree}</div>
-                  <Legend />
-                </div>
-              </Panel>
-              <Panel title="Inspector" aside={followBtn}>
-                <Inspector state={s} nodeId={shown} onSelect={select} reportHref={reportHref} />
-              </Panel>
-              <Panel title="Cost and compute">
-                <CostPanel state={s} t={snap.t} duration={snap.duration} />
-              </Panel>
-            </div>
-            <Panel title="Events" aside={<span className="num text-[12px] text-ink-3">{s.eventCount} received</span>}>
-              <EventTicker state={s} onSelect={select} rows={5} />
-            </Panel>
-          </>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <div role="tablist" aria-label="Run views" className="grid h-11 grid-cols-4 rounded-lg border border-line bg-panel p-1">
-              {(["tree", "node", "cost", "log"] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === k}
-                  onClick={() => setTab(k)}
-                  className={`rounded-md text-[13px] transition-colors duration-150 ${tab === k ? "bg-raised text-ink" : "text-ink-3"}`}
-                >
-                  {k === "tree" ? "Tree" : k === "node" ? "Node" : k === "cost" ? "Cost" : "Events"}
-                </button>
-              ))}
-            </div>
-            {tab === "tree" && (
-              <Panel title="Search tree" bodyClass="bg-sunken" aside={<span className="num text-[12px] text-ink-3">{counts(s).candidates} candidates</span>}>
-                {tree}
-                <Legend />
-              </Panel>
-            )}
-            {tab === "node" && (
-              <Panel title="Inspector" aside={followBtn}>
-                <Inspector state={s} nodeId={shown} onSelect={select} reportHref={reportHref} />
-              </Panel>
-            )}
-            {tab === "cost" && (
-              <Panel title="Cost and compute">
-                <CostPanel state={s} t={snap.t} duration={snap.duration} />
-              </Panel>
-            )}
-            {tab === "log" && (
-              <Panel title="Events">
-                <EventTicker state={s} onSelect={select} rows={14} />
-              </Panel>
-            )}
-          </div>
-        )}
+        <RunCanvas c={c} snap={snap} focus={focus} reportHref={reportHref} />
       </main>
     </div>
   );

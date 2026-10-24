@@ -1,0 +1,17 @@
+Refs,Qty,Value,Footprint,Source
+C101 C102 C103,3,10u,Capacitor_SMD:C_0603_1608Metric,added by the layout (not in the checked netlist)
+C104,1,100n,Capacitor_SMD:C_0603_1608Metric,added by the layout (not in the checked netlist)
+C105 C106,2,4u7,Capacitor_SMD:C_0603_1608Metric,added by the layout (not in the checked netlist)
+D1,1,LED (placeholder),LED_SMD:LED_0603_1608Metric,design
+J1,1,"USB-C receptacle, power only (placeholder)",Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12,design
+J2,1,Li-ion cell connector (placeholder),Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical,design
+R1 R2,2,4.7k,Resistor_SMD:R_0603_1608Metric,design
+R3,1,10k,Resistor_SMD:R_0603_1608Metric,design
+R4,1,330,Resistor_SMD:R_0603_1608Metric,design
+R5 R6,2,5.1k,Resistor_SMD:R_0603_1608Metric,design
+R7,1,2k,Resistor_SMD:R_0603_1608Metric,design
+SW1,1,Push button (placeholder),Button_Switch_SMD:SW_SPST_TL3342,design
+U1,1,ESP32-WROOM-32-class module,RF_Module:ESP32-WROOM-32,design
+U2,1,"Generic 3.3 V LDO (reference class, author-defined values)",Package_TO_SOT_SMD:SOT-23,design
+U3,1,BME280-class humidity/pressure/temperature sensor,Package_LGA:Bosch_LGA-8_2.5x2.5mm_P0.65mm_ClockwisePinNumbering,design
+U5,1,MCP73831-class single-cell Li-ion charger (SOT-23-5),Package_TO_SOT_SMD:SOT-23-5,design

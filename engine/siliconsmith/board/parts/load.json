@@ -1,0 +1,33 @@
+{
+  "id": "load",
+  "name": "External load (placeholder)",
+  "package": "abstract",
+  "kind": "placeholder",
+  "origin": "author_defined",
+  "description": "Abstract load. Instance params: peak_ma (number, mA drawn while active; used by the regulator current check) and sleep_ma (number, mA while the system sleeps; used by the battery model).",
+  "pin_table_provenance": {
+    "source": "author-defined placeholder (no datasheet; not a real product)",
+    "section": "pin table",
+    "citation_checked": false
+  },
+  "pins": [
+    {
+      "name": "VCC",
+      "number": "1",
+      "direction": "power_in",
+      "capabilities": [
+        "power"
+      ],
+      "required": true
+    },
+    {
+      "name": "GND",
+      "number": "2",
+      "direction": "ground",
+      "capabilities": [
+        "ground"
+      ],
+      "required": true
+    }
+  ]
+}

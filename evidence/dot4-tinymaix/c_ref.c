@@ -1,0 +1,1 @@
+ int8_t a0=(int8_t)(rs1&0xFF), a1=(int8_t)((rs1>>8)&0xFF), a2=(int8_t)((rs1>>16)&0xFF), a3=(int8_t)((rs1>>24)&0xFF); int8_t b0=(int8_t)(rs2&0xFF), b1=(int8_t)((rs2>>8)&0xFF), b2=(int8_t)((rs2>>16)&0xFF), b3=(int8_t)((rs2>>24)&0xFF); return (uint32_t)((int32_t)a0*b0 + (int32_t)a1*b1 + (int32_t)a2*b2 + (int32_t)a3*b3);

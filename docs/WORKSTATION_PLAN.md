@@ -1,3 +1,5 @@
+> **Status (Oct 24 2026):** historical planning document, kept for the record. Current state: `docs/HANDOFF_LATEST.md` and `docs/EVALUATION.md`.
+
 # SiliconSmith Workstation: a verified-agent workbench for hardware engineers
 
 Written Oct 22 2026 (day 1 of 8). Deadline Oct 30 2026, 10:00 PT = 22:30 IST. Submit by Oct 29.

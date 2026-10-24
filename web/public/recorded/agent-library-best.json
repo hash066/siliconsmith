@@ -1,0 +1,184 @@
+{
+ "kind": "recorded-agent-session",
+ "label": "Recorded session",
+ "id": "library-best",
+ "title": "Silicon: the best verified instruction",
+ "workbench": "silicon",
+ "question": "Search the library for the best verified instruction and tell me its speedup.",
+ "source": "POST https://siliconsmith.vercel.app/api/agent {text}, streamed NDJSON events, saved unedited",
+ "captured": "2026-10-23",
+ "model": "nemotron-super",
+ "cost_usd": null,
+ "cost_note": "The endpoint streams no usage figures, so no cost is shown for agent sessions.",
+ "events": [
+  {
+   "type": "turn.started",
+   "id": "amvkcgd8h",
+   "model": "super"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "I"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "'ll search for the"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " best verified instruction using"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " an"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " empty query to"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " get top"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " candidates"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": ".\n"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "\n"
+  },
+  {
+   "type": "tool.call",
+   "id": "amvkcgd8h",
+   "call": {
+    "id": "chatcmpl-tool-9ec8b3719fe9481f",
+    "name": "library_search",
+    "args": {
+     "query": ""
+    }
+   }
+  },
+  {
+   "type": "tool.result",
+   "id": "amvkcgd8h",
+   "callId": "chatcmpl-tool-9ec8b3719fe9481f",
+   "ok": true,
+   "summary": "30 verified nodes match (top 8 shown)"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "The"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " best verified instruction is"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " `"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "dot4` at"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " node n"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "1.1."
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "1 in run r"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "_w1_final with"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " wall"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " speedup "
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "3.8"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "552x"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": ". Evidence"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": " ID"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": ": run:r"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "_w1_final/n"
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "1.1."
+  },
+  {
+   "type": "text.delta",
+   "id": "amvkcgd8h",
+   "text": "1."
+  },
+  {
+   "type": "evidence",
+   "id": "amvkcgd8h",
+   "ids": [
+    "run:r_w1_final/n1.1.1"
+   ]
+  },
+  {
+   "type": "turn.done",
+   "id": "amvkcgd8h"
+  }
+ ]
+}

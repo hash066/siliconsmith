@@ -156,6 +156,18 @@ app = FastAPI(title="SiliconSmith engine", version="1.3")
 app.add_middleware(CORSMiddleware, allow_origins=[o for o in os.environ.get("SS_CORS_ORIGINS", "").split(",") if o],
                    allow_methods=["GET", "POST"], allow_headers=["*"])
 
+# Workbenches. Board /check and Matter /simulate are deterministic and call no model; /run endpoints spend Nemotron credits
+# under their own hard caps. Each router is optional so a missing extra (numpy/scipy for Matter) cannot break the Silicon API.
+from .board.api import router as _board_router  # noqa: E402
+
+app.include_router(_board_router)
+try:
+    from .matter.api import make_router as _make_matter_router  # noqa: E402
+
+    app.include_router(_make_matter_router())
+except ImportError:  # pragma: no cover - numpy/scipy not installed
+    pass
+
 
 def _log_path(run_id: str) -> Path:
     if not RUN_ID.match(run_id):

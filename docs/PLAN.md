@@ -1,3 +1,5 @@
+> **Status (Oct 24 2026):** historical planning document, kept for the record. Current state: `docs/HANDOFF_LATEST.md` and `docs/EVALUATION.md`.
+
 # SiliconSmith: master build plan
 
 > **Coding agents change code to fit the chip. SiliconSmith changes the chip to fit the code.**
