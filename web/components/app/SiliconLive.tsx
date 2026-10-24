@@ -11,6 +11,7 @@ import { RUN_CAP, WORKLOADS, type SiliconLive, type Workload } from "./useSilico
 import { btnGhost, btnPrimary } from "./ui";
 import { Ledger } from "./Ledger";
 import { BeforeAfter, HardwareView, ProofExplainer, WaveView } from "./SiliconViews";
+import { AgentsPanel, TestPlan } from "./SiliconStudio";
 import { parseViews } from "@/lib/silicon-views";
 import { siliconLedger } from "@/lib/ledger";
 
@@ -132,6 +133,8 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
         )}
       </section>
 
+      <AgentsPanel run={run} phase={phase} />
+
       <section aria-label="Proof stages" className="flex flex-col gap-2">
         <h3 className="hw-label !text-[10.5px]">Proving it</h3>
         <StageList node={node} running={running} />
@@ -150,6 +153,7 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
       <p className="text-[11.5px] leading-snug text-ink-3">Cycle count measured on the simulated core. Clock speed was not measured, so this is not a wall-clock claim.</p>
       {views && <HardwareView views={views} />}
       {views && views.rows.length > 0 && <WaveView views={views} />}
+      {views && views.rows.length > 0 && prop && <TestPlan views={views} mnemonic={prop.mnemonic} />}
       {original && patched && prop && <BeforeAfter before={original} after={patched} mnemonic={prop.mnemonic} />}
 
       {error && (
