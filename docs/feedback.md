@@ -68,6 +68,26 @@ or measured; the numbers come from our own run logs (`web/public/replays/`).
   formal check matters: of the instructions the agent wrote, several were rejected by a SAT counterexample or a
   mismatch on random vectors and then repaired.
 
+## Hardwright era (Oct 22 to 24): hosting, Sandboxes in a web product, and Nemotron in an agent
+
+* **Sandboxes work well as a backend for a public web function, once activated.** A Vercel Python function starts a Sandbox, streams the stages and returns a verified
+  result in about two minutes (live Silicon), and the same pattern routes a PCB (about 107 s). Streaming NDJSON through a rewrite proxy works for 2 to 3 minutes if the
+  server sends a heartbeat line every few seconds.
+* **`ForbiddenError` with no hint.** A Sandbox run from the web host failed with `ForbiddenError: You do not have permission to perform this action` while the same code and
+  key worked locally. The cause was a missing `NEBIUS_PROJECT_ID` in the host's environment (the SDK reads it itself). The error does not say which setting is absent; naming it
+  would have saved an hour.
+* **A pasted key with a trailing newline** produced `Illegal header value b'Bearer v1...'` from the Sandbox SDK and `APIConnectionError` from the OpenAI client. Trimming the
+  value on read fixes both; the SDK could trim it for you.
+* **Sandboxes start with `HOME` empty.** KiCad aborts ("Environment variable HOME is empty"); setting `HOME` in the command fixes it. A note in the Sandbox docs would help.
+* **Building an image inside a Sandbox is fast.** `images.use(base).run(shell=..., disposable=False)` then `tag_as` installed KiCad, a JRE and Xvfb in 74 s (the mirrors are near).
+  This is the best workflow we found: no local Docker. Passing files into a run and reading base64 results back through stdout (about 1 MB) worked without trouble.
+* **Transient 500s on the status endpoint** while a run is going: retry `wait()` a few times; the run continues.
+* **Token Factory.** Native tool calling works for Super and Ultra; Nano needed `enable_thinking=false`. Thinking tokens count toward `max_tokens`, so a small cap truncated answers
+  until we retried without thinking. Models sometimes put a raw newline inside a JSON string (code in a field); a lenient JSON parse handles it.
+* **Agent behaviour.** Given a tool that needs a whole 2 KB design as an argument, Ultra sometimes sent invalid JSON and ran out of its per-turn token cap; a tool with tiny
+  arguments (`board_fix_pin(function, pin)`) fixed the failure for good. Design tools for models: small arguments beat big ones.
+* **Cost.** A chat turn with tool calls cost $0.003 to $0.02; a live Silicon run $0.04 to $0.07 in model tokens (Sandbox compute is billed separately).
+
 ## Where the platform made the product possible
 
 * One OpenAI-compatible endpoint for all three Nemotron sizes made role-based routing (Ultra to design, Super to

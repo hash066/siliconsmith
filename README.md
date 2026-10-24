@@ -1,188 +1,138 @@
-# SiliconSmith
+# Hardwright
 
-**Coding agents change code to fit the chip. SiliconSmith changes the chip to fit the code.**
+**Agents that design hardware, and prove it.**
 
-SiliconSmith profiles a C hot loop, **invents a custom RISC-V instruction** for it, writes the hardware
-(Verilog) and the software that uses it, **proves the hardware correct**, measures the real speedup and
-area, and hands you a reviewable bundle (or pull request). Nemotron is the architect and the engineer;
-every candidate CPU is built and verified in its own isolated workspace.
+Hardwright is a workstation for people who make hardware: describe a heat sink, a sensor board or a slow loop in plain words, and a
+Nemotron agent builds it. Every claim it makes has to pass a checker it cannot argue with, so you get a part, a board or an instruction
+you can open in a real tool, plus the evidence for it. It also ships as an **open-source Python package, command-line tool and MCP server**
+so any coding agent can use the same checkers.
+
+> Built for the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering).
+> **Try it, no sign-up: https://siliconsmith.vercel.app** · Apache-2.0
+> Use the checkers from your terminal or editor: https://siliconsmith.vercel.app/connect
 
 ```bash
-pip install -e 'engine[sandboxes,matter]'          # from this repo (see "Run it locally")
-siliconsmith accelerate w1 --area-budget 5
-#  run r_20261021_101500 on local
-#  -> siliconsmith-out/r_20261021_101500/{rtl/, include/, src/, REPORT.md}
+pip install "hardwright[matter] @ git+https://github.com/hash066/siliconsmith#subdirectory=engine"
+claude mcp add hardwright -- hardwright mcp        # or: codex mcp add ... / Cursor / VS Code (see /connect)
+hardwright board check --template fault_gpio12_vs_gpio14     # exit 1: the firmware uses a boot-strapping pin
 ```
-
-> Built for the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering track).
-> Demo (replays of real runs, no backend needed): https://siliconsmith.vercel.app
-> License: Apache-2.0.
 
 ---
 
-## What you get
+## Three workbenches, one idea
 
-A bundle you can merge, not a chat transcript:
+The idea: **an AI may say what it likes, but it may only claim what a deterministic verifier returned.** Each workbench ends in something
+you can open in a real tool, and each result carries the tool, the version and the verdict behind it.
 
-| Path | What it is |
-|---|---|
-| `rtl/ss_insn_<name>.v` | the new instruction as a pure combinational unit (`rs1`, `rs2` → `rd`) |
-| `rtl/ss_pcpi.v` | a drop-in decoder that attaches the units to PicoRV32's co-processor port |
-| `include/ss_intrinsics.h` | C intrinsics (`.insn r 0x0B, …`) plus a C reference fallback for host builds |
-| `src/…` | your kernel rewritten to use the instruction, verified bit-identical |
-| `REPORT.md` | speedup, area, every proof, Nemotron usage and cost, and every rejected candidate with the reason |
-| `run.ndjson` | the full event log, replayable in the run console |
+| Workbench | You say | You get | Verified by |
+|---|---|---|---|
+| **Board** | "A battery ESP32 sensor board with a BME280 and USB-C charging; check it against its firmware." | A **routed 2-layer KiCad board** you can zoom, a schematic, a report card, Gerbers, KiCad file, BOM, pick-and-place. The wrong pin is marked on the pad. | Five netlist checks (B1 to B5: well formed, electrical rules, bus rules, firmware pins vs netlist and boot-strapping hazards, battery estimate), KiCad 7 design-rule check, the autorouter's completion |
+| **Matter** | "A heat sink for a 5 W chip, 40 mm square, under 70 C." | A 3D part coloured by temperature, a printable **STL**, and a side-by-side with plain fins that use the same material | A finite-volume solver validated on analytic cases, an independent finite-element solver, printability rules, equal-material baselines (M1 to M5) |
+| **Silicon** | "Make this loop faster with a custom RISC-V instruction." | A new instruction written **live**: Verilog, C intrinsic, rewritten kernel, a circuit view of the hardware, a waveform on real operand pairs, a before/after loop | Verilator lint, 1,000,000 test vectors, a **Yosys SAT proof for every possible input**, whole-program output check, cycle count and area |
 
-The same engine is reachable three ways: the **CLI** (above), a **GitHub bot**
-(`/siliconsmith accelerate <function>` on an issue → a PR with the bundle), and a **run console** in the
-browser, where every run gets a URL showing the search tree, proofs, waveforms and diffs live.
+Around them: a **chat agent** (Nemotron 3 Ultra, Super and Nano on Nebius Token Factory, with native tool calling) that performs actions in the app
+and reports what it spent; **projects** (each workbench is a folder of projects with its own chat and settings); a **Workflow** tab that shows every
+project as connected steps with their real status; a **Verified-by ledger** on every Proof tab; **one-click zip** of a project; and $0.50 of demo
+credit per visitor from a $25 pool.
 
-## How it works
+## What is real
+
+Everything below ran for real and is reproducible; numbers are from the run logs and the test suites.
+
+* **Board.** The three example boards (clean, wiring fault, strapping-pin fault) route fully with **0 KiCad errors** (15 silkscreen warnings), 48 × 36 mm.
+  Boards for **any** design are made on request in a **Token Factory Sandbox** that has KiCad, Java and Freerouting: a custom design routed in **107 s**
+  with 0 errors, measured on the public site. Placement is deterministic code (not a model), so a board is reproducible. Pin tables are cross-checked
+  against KiCad's own symbol library. The checker is tested against a catalogue of 8 injected wiring faults.
+* **Silicon, live.** A real run on the public site: Nemotron Ultra proposes, Super implements, a Sandbox proves it. TinyMaix int8 dot product:
+  **3.32× fewer cycles for +4.8% area** (another run 2.69×), about 2 minutes and $0.04 of model tokens; ChaCha20: 1.14×. The recorded 20-minute full searches
+  (with clock-speed estimates) reached **4.04× cycles / 3.76× wall-clock** on TinyMaix ([pull request](https://github.com/hash66/TinyMaix/pull/1)).
+* **Matter.** Gains over an equal-material plain-fin plate are small and we say so: +0.1 to +0.5 K in the recorded evaluations, and the app will show a loss
+  ("1.3 K hotter than plain fins") rather than hide it.
+* **Tests.** Engine 640 passed (14 skipped), web 339 passed, axe accessibility 0 violations, layout shift 0.03, strict first-time-user pass in
+  `docs/EVALUATION.md`.
+
+## Honest limits
+
+* The board check is **netlist level**. It does not prove a board works; the routed board is **not fabricated or tested electrically**. Part facts are
+  author-curated, each with a `citation_checked` flag. 2 layers, 0.2 mm tracks, 0.15 mm clearance.
+* Matter is **2D steady state** with stated constants: not CFD, not a measurement. "Validated" means agreement with analytic cases, nothing more.
+* A live Silicon run skips clock-speed (place and route) so it reports **cycles and area, not wall-clock**; the recorded searches do include it.
+  The FPGA rung (L6) was not run on a board. Software calls the instruction through inline assembly, not a compiler backend.
+* The agent can be wrong: its answers are checked against the verifiers and say so when a check fails. Rate limits and the shared credit pool are per server instance.
+* Run-to-run variance is real and published: TinyMaix wall-clock across our runs ranged 3.17× to 3.86×.
+
+## Use it from your coding agent
+
+The `hardwright` package (in `engine/`, Apache-2.0) is offline and free: no model, no network, no API key. Every check answers `pass`, `fail` or `unknown`;
+only `pass` is a claim.
+
+```python
+import hardwright as hw
+hw.board_check(template="fault_gpio12_vs_gpio14")["passed"]                       # False (B4)
+hw.board_fix_pin(template="fault_gpio12_vs_gpio14", function="wake_btn", pin="GPIO14")["passed"]   # True
+hw.matter_simulate(power_w=5, stl_path="heat-sink.stl")["peak_c"]
+```
+
+MCP tools: `board_templates`, `board_get_template`, `board_check`, `board_fix_pin`, `board_parts`, `matter_simulate`. Verified with the official MCP Python client.
+Setup lines for Claude Code, Codex, Cursor, VS Code and Claude Desktop: `hardwright mcp --setup` or https://siliconsmith.vercel.app/connect.
+
+## How it is built
 
 ```
-profile ──► Ultra proposes k instructions ──► each candidate CPU = a sandbox branch from its parent's checkpoint
-                                                 │
-                     Super implements RTL + C reference + rewritten kernel; independently writes a golden spec
-                                                 │
-            verification ladder ──────────── fail ──► Nano triages ──► Super repairs (≤2) ──► or pruned, with reason
-                                                 │ pass
-                     beam keeps the best ──► polish: smaller hardware (re-proven), faster software ──► next round
+browser ──► Next.js app (Vercel)                         chat agent: Nemotron Ultra / Super / Nano (Token Factory, tool calling)
+              │  /api/board|matter|silicon/* (proxy)       actions: open workbench, set parameters, check, simulate, run live
+              ▼
+         Python API host (Vercel, FastAPI)  ──►  Token Factory Sandboxes
+           Board checker, Matter solver               siliconsmith-base   : Verilator, Yosys, RISC-V GCC  (Silicon proofs)
+           live Silicon pipeline                      siliconsmith-kicad  : KiCad 7, Java, Freerouting    (routed boards)
 ```
 
-* **Search.** A beam search over CPUs. A node is a CPU: its parent's instructions + one new instruction
-  + the software rewritten to use it. Each round, Nemotron 3 Ultra reads the remaining hot spots and
-  proposes new instructions. The winners are then **polished by the agent itself**: an area pass
-  (same function, less hardware, formally re-proven) and a software pass (same hardware, faster code).
-* **Isolation and sandboxes.** Every candidate is evaluated by a worker that speaks one small job
-  protocol (`engine/siliconsmith/worker.py`): a job in, stage events and an outcome out. Three backends run
-  it: `local` (in-process), `subprocess` (the exact sandbox protocol, in a separate process) and `contree`
-  (**Nebius Token Factory Sandboxes**: each candidate runs from its parent's checkpoint image, and its result
-  image is the checkpoint its children branch from). **The `r_w1_contree3` run was verified in Token Factory Sandboxes**: 21 sandbox
-  runs, up to 8 at once, and every child started from its parent's checkpoint image (checked from the event log).
-  The other runs below used the `local` backend, and each says which in its row. Fmax place-and-route runs on the
-  orchestrating machine in both cases. Platform notes are in `docs/feedback.md`.
-* **Nemotron, routed by difficulty.**
-
-  | Model | Role |
-  |---|---|
-  | Nemotron 3 Ultra | architect: reads profiles and disassembly, proposes instructions, diagnoses hard failures |
-  | Nemotron 3 Super | engineer: RTL, C reference, kernel rewrite, the independent golden spec, repairs, polish |
-  | Nemotron 3 Nano | triage: turns raw tool logs into a precise diagnosis for the repair loop |
-
-  Every call is logged with tokens and cost; `REPORT.md` totals them per model.
-
-## The verification ladder (and what each label means)
-
-Nothing reaches the bundle without passing every rung. The UI and report use exactly these claims:
-
-| Rung | Check | Tool |
-|---|---|---|
-| L1 Builds | the RTL is Verilator `-Wall` clean; the patched source only *calls* intrinsics | Verilator |
-| L2 Matches the C reference | RTL == C reference on edge cases + 1,000,000 random vectors; the rewritten kernel == the original on thousands of random calls (host differential test) | Verilator, GCC |
-| L3 Formally proven | RTL ≡ an **independently written** golden spec for **all 2^64 inputs** (SAT miter). The spec is itself validated against the C reference first. On a counterexample, the agent is told whether the RTL or the spec is wrong. | Yosys + SAT |
-| L4 Bit-identical output | the whole program runs on the modified CPU and its output hash equals the original CPU's | Verilator (full SoC) |
-| L5 Area | Gowin synthesis of the full core; must stay inside the area budget | Yosys `synth_gowin` |
-| L6 On silicon | the same design on a Tang Nano 9K FPGA | nextpnr-himbaechel, openFPGALoader |
-
-Speedups are clock cycles on the same core against a **strong baseline**: PicoRV32 rv32im with the fast
-multiplier, hardware divide and barrel shifter.
-
-## Results
-
-All numbers are from real engine runs (the event logs are in `web/public/replays/`, replayable in the run
-console). Wall-clock speedup = cycle speedup × Fmax ratio, with Fmax from nextpnr place-and-route for a Tang
-Nano 9K (GW1NR-9), **median of 3 seeds** (seed noise is about ±8%). Area is LUT-equivalents of the whole core.
-
-| Workload (real open-source code) | Baseline | Best found | Cycles | Wall-clock | Area | Search | Run |
-|---|---|---|---|---|---|---|---|
-| TinyMaix `tm_dot_prod` (int8 NN layer), **Token Factory Sandboxes** | 860,730 cycles | `dot4`, software-polished | **4.04×** | **3.76×** (71.0 → 66.2 MHz) | +4.83% | 21 CPUs, 19 min, $0.44 | `r_w1_contree3` |
-| TinyMaix `tm_dot_prod`, local backend | 860,730 cycles | `dot4`, area- then software-polished | **4.04×** | **3.86×** (71.0 → 67.8 MHz) | +3.16% | 20 CPUs, 22 min, $0.56 | `r_w1_final` |
-| Monocypher ChaCha20 (1 KiB) | 133,255 cycles | `xor.rotl12` + `chacha.xor.rotl8` (stacked) | **1.30×** | **1.22×** (71.0 → 66.6 MHz) | +3.04% | 22 CPUs, 30 min, $0.40 | `r_w2_final3` |
-
-Reference point: the hand-built `dot4.s8` (`siliconsmith golden`) reaches 3.77× cycles at +3.16%. The agent
-found the same idea on its own, then its polish phase beat the hand-built software (4.04×).
-
-**Results vary from run to run, because the model does.** Every W1 run we made, in order:
-
-| Run | What changed | Cycles | Wall-clock | Area |
-|---|---|---|---|---|
-| `r_m4_second` | before the polish phase existed | 3.32× | n/a | +4.83% |
-| `r_w1_hero` | first polish run | 2.68× | n/a | +3.16% |
-| `r_w1_hero2` | polish prompt tuned, up to 3 software passes | 3.90× | n/a | +3.16% |
-| `r_w1_final` | + real Fmax (the run above) | 4.04× | 3.86× | +3.16% |
-| `r_20261021_083715` | started through the HTTP API (k=3, depth 1, beam 1) | 4.04× | 3.86× | +3.16% |
-| `r_w1_v3` | same settings as `r_w1_final` | 3.32× | 3.17× | +3.16% |
-| `r_w1_contree3` | same settings, **on Token Factory Sandboxes** | 4.04× | 3.76× | +4.83% (area polish found no saving this time) |
-
-We report the best run, with the others shown above rather than hidden. W2 took three runs: the first two
-found nothing (truncated model JSON, then proposals with an immediate operand the co-processor port cannot
-encode); each failure fixed a real engine or prompt problem, and the logs are kept.
-
-## Limitations (stated plainly)
-
-* **Two source registers.** PicoRV32's co-processor port gives an instruction `rs1` and `rs2` and no accumulator
-  or immediate, so ideas like a multiply-accumulate (T-Head's `smaqa` reads three registers) or a rotate by a
-  constant need one instruction per constant. This caps W2 at two fused XOR-rotates inside the area budget.
-* **No compiler backend.** Software calls instructions through inline assembly (`.insn`). A production flow
-  would teach GCC/LLVM the instruction.
-* **Simulation and FPGA place-and-route, not silicon.** L6 (a physical board) has not run. Fmax is an estimate
-  from nextpnr with about ±8% seed noise.
-* **Two harnessed workloads.** A new kernel needs a test harness and a host differential check. The API and the
-  web `/try` page run only the whitelisted workloads and do not accept arbitrary C.
-* **TinyMaix PR alignment.** The generated TinyMaix patch reads int8 buffers as 32-bit words and so assumes
-  4-byte-aligned buffers; the PR body says so.
-* **Sandboxes covers verification, not Fmax.** Fmax place-and-route runs on the orchestrating machine, not in a sandbox. Only `r_w1_contree3` used Sandboxes; the W2 run and the other W1 runs used the local backend.
-
-## Other surfaces
-
-* **HTTP API** (`engine/siliconsmith/api.py`): `POST /api/runs`, SSE `GET /api/runs/{id}/events`, `GET /api/runs`.
-  Whitelisted workloads, capped parameters, per-IP and daily-spend limits.
-  `uvicorn siliconsmith.api:app --host 0.0.0.0 --port 8080`.
-* **Pull request** (`siliconsmith pr <bundle> --repo <TinyMaix clone>`): creates a branch with
-  `hw/siliconsmith/`, `src/arch_rv32ss.h` (`TM_ARCH_RV32SS`) and the report. It pushes and opens a PR only with
-  `--push --open`. A GitHub Actions template for `/siliconsmith accelerate <fn>` comments is in
-  `integrations/github/`.
-* **Run console** (`web/`, Next.js): `cd web && npm install && npm run dev`. It replays the recorded runs without a
-  backend, and shows a live run when `NEXT_PUBLIC_ENGINE_URL` points at the API.
+* **Nemotron.** Ultra is the architect (proposals, diagnosis), Super the engineer (Verilog, C, repairs, the independent spec), Nano triages. Every call is logged
+  with tokens and cost; a chat turn costs about $0.003 to $0.02, a live Silicon run $0.04 to $0.07.
+* **Token Factory Sandboxes.** Everything model-written (Verilog, C) runs only inside a Sandbox: the live Silicon run, and the routing of every generated board.
+  The full search runs each candidate from its parent's checkpoint image (21 Sandbox runs, up to 8 at once, in the headline run).
+* **The evidence rule.** A claim in the UI carries an evidence id (`part:esp32.gpio12.strapping`, `board:fault_gpio12_vs_gpio14#B4`, `run:...`). The agent's
+  answers are post-checked: an invented command or a claimed run that did not happen is flagged.
+* **Library.** `evidence/` holds three verified instructions that anyone can re-check with no model: `siliconsmith verify-entry dot4-tinymaix`.
 
 ## Run it locally
 
-Requirements: Linux or WSL2, Python ≥ 3.11, a Nebius Token Factory API key.
+Requirements: Python 3.11+, Node 22, and for the full pipelines Linux or WSL2.
 
 ```bash
-sudo bash scripts/setup-toolchain.sh        # Verilator, Yosys, SymbiYosys, nextpnr, RISC-V GCC (OSS CAD Suite)
-pip install -e 'engine[sandboxes,server]'
-cp .env.example .env.local                  # NEBIUS_API_KEY, NEBIUS_PROJECT_ID, model IDs
-siliconsmith hello                          # boots PicoRV32 in simulation
-siliconsmith golden                         # hand-built example through the whole ladder (no LLM)
-siliconsmith accelerate w1 --backend local  # the agent, verifying locally
-siliconsmith accelerate w1 --backend contree  # the agent, every candidate in a Token Factory Sandbox
+pip install -e "engine[matter,dev]"            # the checkers, CLI and MCP server
+pytest engine/tests/test_hardwright_pkg.py      # package, CLI and MCP tests (no toolchain needed)
+cd web && npm install && npm run dev            # the app; the hosted API is used unless LOCAL_PYTHON_API is set
+
+# the full engine (Silicon search, KiCad layout) needs the toolchain:
+sudo bash scripts/setup-toolchain.sh            # Verilator, Yosys, nextpnr, RISC-V GCC
+pip install -e "engine[all]" && cp .env.example .env.local     # NEBIUS_API_KEY, NEBIUS_PROJECT_ID
+siliconsmith accelerate w1 --backend contree    # the full Silicon search, every candidate in a Token Factory Sandbox
+python -m siliconsmith.board.layout.build_sandbox_image         # build the KiCad Sandbox image (once)
 ```
 
-## Related work, and what is new here
-
-* **Commercial custom-instruction flows** (Andes ACE/COPILOT, Cadence Tensilica) generate the processor,
-  compiler support and simulator **after a human architect decides** what the instruction is.
-* **Research agents** (CHIA, LACE) use LLMs to implement a *described* instruction extension;
-  **CIDRE** automates instruction selection without an LLM.
-* **SiliconSmith** closes the loop: it decides which instruction to build from profiles, implements the
-  hardware and the software, **proves** the hardware against an independent spec, accounts for area,
-  improves its own designs, and searches many candidate CPUs in parallel sandbox branches.
-
-A useful reference point: TinyMaix ships a hand-written kernel for T-Head's Xuantie E907 built on the
-vendor instruction `smaqa` (4× int8 multiply-accumulate). SiliconSmith arrives at the same idea (a 4-lane
-int8 dot product) on its own. Without the accumulate, it fits PicoRV32's two-operand co-processor port.
+Deploy notes, the Sandbox image recipes and every gotcha we hit are in `docs/HANDOFF_LATEST.md` and `docs/feedback.md`.
 
 ## Repository layout
 
 ```
-engine/      the agent (search, ladder, backends, Nemotron client, CLI)    hw/       PicoRV32 SoC + slot + testbench
-workloads/   real kernels from TinyMaix and Monocypher, with harnesses     firmware/ bare-metal runtime
-sandbox/     the image every candidate is verified in                      fpga/     Tang Nano 9K flow
-web/         the run console                                               docs/     plan, event contract
+engine/hardwright/          the open-source package: Python API, CLI, MCP server
+engine/siliconsmith/        board/ (checker, layout, Sandbox routing), matter/ (solver), live/ (live Silicon), search, ladder, backends
+engine/tests/               640 tests          engine/scripts/    build_boards.py (precomputes the template boards)
+web/                        the app (Next.js)  web/public/boards/ the routed template boards
+workloads/ hw/ firmware/    real kernels (TinyMaix, Monocypher), PicoRV32 SoC, runtime
+evidence/                   verified instructions (re-checkable without a model)
+docs/                       EVALUATION.md (strict evaluation), HANDOFF_LATEST.md, plans, feedback.md, video.md, devpost.md
 ```
+
+## Related work, and what is new here
+
+Commercial custom-instruction flows (Andes, Cadence Tensilica) build the processor after a human decides the instruction; research agents (CHIA, LACE) implement a
+described extension; AI circuit-design tools (Flux Copilot and others) generate a design without a verifier that can refuse it. Hardwright puts a **deterministic
+verifier between the model and every claim**, across chips (formal proof), boards (KiCad rules plus firmware-versus-datasheet checks) and matter (two independent solvers),
+and ends each in a file you can open elsewhere.
 
 ## Licenses
 
-SiliconSmith is Apache-2.0. Vendored or adapted code keeps its license: PicoRV32 (ISC),
-TinyMaix (Apache-2.0), Monocypher (BSD-2-Clause or CC0-1.0).
+Apache-2.0. Vendored or adapted code keeps its license: PicoRV32 (ISC), TinyMaix (Apache-2.0), Monocypher (BSD-2-Clause or CC0-1.0), KiCad footprints and symbols
+(CC-BY-SA 4.0 with the library exception) and Freerouting (GPL-3.0, used only as a separate program inside the Sandbox image, never linked or redistributed here).

@@ -1,3 +1,5 @@
+> **Status (Oct 24 2026):** historical planning document, kept for the record. Current state: `docs/HANDOFF_LATEST.md` and `docs/EVALUATION.md`.
+
 # Outcome plan: make every workbench end in something real you can open
 
 Written Oct 24 2026 (IST). Submit target Oct 29. This plan comes from reading the competitors' pages and from inspecting what our

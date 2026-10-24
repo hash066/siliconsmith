@@ -1,3 +1,5 @@
+> **Status (Oct 24 2026):** historical planning document, kept for the record. Current state: `docs/HANDOFF_LATEST.md` and `docs/EVALUATION.md`.
+
 # Hardwright: brand, landing, app (plan for the redesign)
 
 Oct 23 2026. Deadline Oct 30 10:00 PT; submit by Oct 29. Supersedes the UI parts of `WORKSTATION_PLAN.md`; the engines and honesty rules stay.

@@ -1,3 +1,5 @@
+> **Status (Oct 24 2026):** historical planning document, kept for the record. Current state: `docs/HANDOFF_LATEST.md` and `docs/EVALUATION.md`.
+
 # App UX v2: prompt first, chat on the left, preview on the right (Lovable-style)
 
 Oct 23 2026. Replaces the pane/dashboard layout of `/app`. The landing page stays. Backend, verifiers and honesty rules stay.
