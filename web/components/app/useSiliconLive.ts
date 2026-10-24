@@ -28,10 +28,12 @@ export function parseBundle(e: unknown): BundleFile[] {
     for (const f of files) {
       if (!f || typeof f !== "object") continue;
       const r = f as Record<string, unknown>;
-      if (typeof r.path !== "string") continue;
+      // the engine names a file `name` (the live API's bundle); older shapes used `path`
+      const path = typeof r.path === "string" ? r.path : typeof r.name === "string" ? r.name : null;
+      if (path === null) continue;
       const text = typeof r.text === "string" ? r.text : typeof r.content === "string" && r.encoding !== "base64" ? r.content : undefined;
       const base64 = typeof r.base64 === "string" ? r.base64 : typeof r.content === "string" && r.encoding === "base64" ? r.content : undefined;
-      if (text !== undefined || base64 !== undefined) out.push({ path: r.path, text, base64 });
+      if (text !== undefined || base64 !== undefined) out.push({ path, text, base64 });
     }
   } else if (files && typeof files === "object") {
     for (const [path, v] of Object.entries(files)) if (typeof v === "string") out.push({ path, text: v });

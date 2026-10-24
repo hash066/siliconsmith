@@ -124,6 +124,8 @@ describe("live Silicon stream", () => {
   it("reads a bundle given as an array or as a map, and ignores junk", () => {
     expect(parseBundle({ files: [{ path: "a.v", content: "x" }, { path: "b.bin", content: "AAAA", encoding: "base64" }, { nope: 1 }, null] })).toEqual([{ path: "a.v", text: "x", base64: undefined }, { path: "b.bin", text: undefined, base64: "AAAA" }]);
     expect(parseBundle({ files: { "report.md": "# ok" } })).toEqual([{ path: "report.md", text: "# ok" }]);
+    // the live API's real shape: files carry a name and content (and a sha256)
+    expect(parseBundle({ files: [{ name: "rtl/x.v", content: "module x;", sha256: "abc" }] })).toEqual([{ path: "rtl/x.v", text: "module x;", base64: undefined }]);
     expect(parseBundle({})).toEqual([]);
     expect(parseBundle(null)).toEqual([]);
   });
