@@ -16,7 +16,7 @@ export default function ConnectPage() {
   return (
     <div className="hw-app min-h-dvh bg-bg text-ink">
       <SiteHeader />
-      <main id="main" className="mx-auto w-full max-w-[860px] px-4 pb-24 pt-12 sm:px-6">
+      <main id="main" className="mx-auto w-full max-w-[860px] px-4 pb-24 pt-12 [overflow-wrap:anywhere] sm:px-6">
         <p className="hw-label">CLI and MCP</p>
         <h1 className="hw-display mt-3 text-[clamp(28px,5vw,44px)]">Use {BRAND.name} from your terminal or editor</h1>
         <p className="mt-4 max-w-[62ch] text-[15.5px] leading-relaxed text-ink-2">
@@ -25,7 +25,7 @@ export default function ConnectPage() {
 
         <section aria-labelledby="what" className="mt-12">
           <h2 id="what" className={H2}>What your agent gets</h2>
-          <ul className="mt-4 grid gap-2.5">
+          <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-2.5">
             {TOOLS.map((t) => (
               <li key={t.name} className="rounded-xl border border-line bg-panel p-3.5">
                 <p className="num text-[13px] text-ink">{t.name}</p>
@@ -39,7 +39,7 @@ export default function ConnectPage() {
         <section aria-labelledby="install" className="mt-12">
           <h2 id="install" className={H2}>1. Install</h2>
           <p className="mt-2 text-[14px] text-ink-2">Python 3.11 or newer.</p>
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3">
             <CopyBlock code={INSTALL_GIT} label="Install with pip" />
             <details className="rounded-xl border border-line bg-panel p-3.5">
               <summary className="cursor-pointer text-[13.5px] text-ink-2">Or from a clone</summary>
@@ -56,7 +56,7 @@ export default function ConnectPage() {
         <section aria-labelledby="connect" className="mt-12">
           <h2 id="connect" className={H2}>2. Connect your agent</h2>
           <p className="mt-2 text-[14px] text-ink-2">The server starts when your agent needs it and stops with it. Pick your tool.</p>
-          <div className="mt-4 grid gap-5">
+          <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-5">
             {CLIENTS.map((c) => (
               <div key={c.id}>
                 <h3 className="text-[14px] font-medium text-ink">
@@ -76,7 +76,7 @@ export default function ConnectPage() {
         <section aria-labelledby="try" className="mt-12">
           <h2 id="try" className={H2}>3. Ask for it</h2>
           <p className="mt-2 text-[14px] text-ink-2">Say what you want in plain words. Mentioning hardwright helps the agent pick the tools.</p>
-          <ul className="mt-4 grid gap-2.5">
+          <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-2.5">
             {PROMPTS.map((p) => (
               <li key={p} className="rounded-xl border border-line bg-panel px-3.5 py-3 text-[14px] leading-snug text-ink">
                 {p}
@@ -102,7 +102,7 @@ export default function ConnectPage() {
         <section aria-labelledby="http" className="mt-12">
           <h2 id="http" className={H2}>No install: the hosted checks</h2>
           <p className="mt-2 text-[14px] text-ink-2">The board checker and the heat solver are also open over HTTP, free and rate limited. Nothing here uses AI credits.</p>
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3">
             <CopyBlock code={CURL_BOARD} label="Hosted board check" />
             <CopyBlock code={CURL_MATTER} label="Hosted heat simulation" />
           </div>
