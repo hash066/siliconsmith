@@ -90,3 +90,22 @@ def test_no_result_beats_the_physical_lower_bound():
     assert b == pytest.approx(isothermal_bound(Spreader(), Spreader().budget_cells))
     assert b < out["baselines"]["full_budget"]["peak_temp_c"] < out["metrics"]["peak_temp_c"] + 100
     assert out["metrics"]["peak_temp_c"] > b
+
+
+def test_simulation_returns_the_equal_material_baseline_plate_as_a_viewer():
+    from siliconsmith.matter.serverless import simulate
+
+    r = simulate({"generator": "rect_fins", "spreader": {"Q": 5}})
+    bv = r["baseline_viewer"]
+    eq = r["baselines"]["equal_material"]
+    assert bv["format"] == "matter-candidate/1" and bv["n"] == r["viewer"]["n"]
+    assert sum(row.count("1") for row in bv["mask"]) == eq["cells"] == r["metrics"]["material_cells"]  # same amount of material
+    assert bv["field"]["peak"] == pytest.approx(eq["peak_temp_c"], abs=1e-6)  # the picture IS the number that is reported
+
+
+def test_a_rejected_shape_has_no_baseline_plate():
+    from siliconsmith.matter.serverless import simulate
+
+    r = simulate({"generator": "rect_fins", "spreader": {"Q": 5, "n": 40}})
+    if "peak_temp_c" not in r["metrics"]:
+        assert r["baseline_viewer"] is None

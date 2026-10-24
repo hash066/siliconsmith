@@ -10,13 +10,13 @@ import { matterChecks } from "./verdict";
 import { Ledger } from "./Ledger";
 import { matterLedger } from "@/lib/ledger";
 import { solvedOf, type MatterBench } from "./useMatterBench";
-import { btnPrimary } from "./ui";
+import { btnGhost, btnPrimary } from "./ui";
 
 const f1 = (n: number, d = 1) => n.toFixed(d);
 
-function PlateViewer({ sim, hi }: { sim: MatterSimulation; hi: number }) {
-  const plate = useMemo(() => buildPlate(sim.viewer), [sim]);
-  const lo = plate.tMin;
+function PlateViewer({ viewer, hi, lo: loIn, label = "Heat sink" }: { viewer: MatterSimulation["viewer"]; hi: number; lo?: number; label?: string }) {
+  const plate = useMemo(() => buildPlate(viewer), [viewer]);
+  const lo = loIn ?? plate.tMin;
   const byTri = useMemo(() => {
     const span = Math.max(hi - lo, 1e-9);
     return (tri: number) => heatColor((plate.temps[Math.floor(tri / 2)] - lo) / span);
@@ -33,7 +33,7 @@ function PlateViewer({ sim, hi }: { sim: MatterSimulation; hi: number }) {
         mesh={plate.mesh}
         colorOf={byTri}
         zScale={6}
-        label={`Heat sink drawn from the simulation, coloured by temperature from ${f1(lo)} to ${f1(hi)} degrees C. Drag to rotate.`}
+        label={`${label} drawn from the simulation, coloured by temperature from ${f1(lo)} to ${f1(hi)} degrees C. Drag to rotate.`}
         footer={<span className="num ml-auto">{plate.cells.toLocaleString("en-US")} cells · height exaggerated</span>}
       />
       <div className="mt-2" aria-label="Temperature scale">
@@ -89,6 +89,7 @@ function SimpleControls({ b }: { b: MatterBench }) {
 
 export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "proof" }) {
   const { sim, busy, failure, stale, valid } = b;
+  const [compare, setCompare] = useState(false);
   // Re-run after the visitor stops moving a control. Never while a run is in flight, never with invalid values.
   useEffect(() => {
     if (!sim || !stale || busy || !valid) return;
@@ -116,7 +117,25 @@ export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "pr
       {solved ? (
         <>
           <div className={`transition-opacity duration-200 ${busy ? "opacity-60" : ""}`}>
-            <PlateViewer sim={sim} hi={solved.fieldPeak} />
+            {compare && sim.baseline_viewer?.field ? (
+              <div className="grid min-w-0 gap-3 @2xl:grid-cols-2" data-testid="compare">
+                <div className="min-w-0">
+                  <p className="mb-1 text-[12.5px] font-medium text-ink">Your part · {f1(solved.peak)} °C</p>
+                  <PlateViewer viewer={sim.viewer} hi={Math.max(solved.fieldPeak, sim.baseline_viewer.field.peak)} lo={Math.min(...[solved.fieldPeak, sim.baseline_viewer.field.peak, sim.spreader.T_inf ?? 25].filter((n) => Number.isFinite(n)))} label="Your part" />
+                </div>
+                <div className="min-w-0">
+                  <p className="mb-1 text-[12.5px] font-medium text-ink">Plain fins, same material · {f1(sim.baseline_viewer.field.peak)} °C</p>
+                  <PlateViewer viewer={sim.baseline_viewer} hi={Math.max(solved.fieldPeak, sim.baseline_viewer.field.peak)} lo={Math.min(...[solved.fieldPeak, sim.baseline_viewer.field.peak, sim.spreader.T_inf ?? 25].filter((n) => Number.isFinite(n)))} label="Plain-fin plate with the same amount of material" />
+                </div>
+              </div>
+            ) : (
+              <PlateViewer viewer={sim.viewer} hi={solved.fieldPeak} />
+            )}
+            {sim.baseline_viewer?.field && (
+              <button type="button" onClick={() => setCompare((c) => !c)} aria-pressed={compare} className={`${btnGhost} mt-2`} data-testid="compare-toggle">
+                {compare ? "Back to your part" : "Compare with plain fins, same material"}
+              </button>
+            )}
           </div>
           <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-line bg-line text-[13px] [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2.5">
             <div>

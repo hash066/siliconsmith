@@ -101,6 +101,8 @@ export interface MatterSimulation {
     note: string;
   } | null;
   viewer: MatterViewer;
+  /** The same artifact for the plain-fin plate that uses the same amount of material; null when nothing was solved. */
+  baseline_viewer?: MatterViewer | null;
   limits: string[];
   source: string;
   timings_ms: number;

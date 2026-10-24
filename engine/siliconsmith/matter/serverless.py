@@ -23,7 +23,7 @@ import numpy as np
 from . import export, ladder
 from . import limits as lim
 from . import reference_generators as ref
-from .problem import Spreader, baseline, force_chip, isothermal_bound, solve_mask
+from .problem import Spreader, baseline, force_chip, isothermal_bound, rect_fin_mask, solve_mask
 
 GENERATORS = {g["name"]: g for g in (ref.RECT_FINS, ref.RADIAL_SPOKES)}
 
@@ -124,7 +124,17 @@ def simulate(params: dict | None = None) -> dict:
         ladder_out += [_rung("skipped", "skipped: M2 did not pass", i) for i in (2, 3, 4)]
     first_fail = next((r["id"] for r in ladder_out if r["status"] == "fail"), None)
 
+    baseline_viewer = None
+    eqb = baselines.get("equal_material")
+    if eqb and field is not None:
+        bp = eqb["params"]
+        bmask = np.asarray(rect_fin_mask(sp, bp["spine"], bp["n_fins"], bp["fin_w"], bp["fin_len"], bp["spine_len"] or None), dtype=bool) if bp.get("spine") else force_chip(np.zeros((sp.n, sp.n), bool), sp)
+        bres = solve_mask(bmask, sp)
+        # the same artifact as `viewer`, for the plain-fin plate that uses the same amount of material
+        baseline_viewer = dict(format="matter-candidate/1", n=sp.n, dx_mm=sp.dx * 1e3, thickness_mm=sp.t * 1e3, chip=list(sp.chip_cells),
+                               mask=mask_rows(bmask), field=export.field_payload(bmask, bres.T, sp))
     out = dict(ok=True, generator=name, gen_params=gp, spreader=sp.as_dict(), ladder=ladder_out, first_failure=first_fail,
+               baseline_viewer=baseline_viewer,
                metrics=metrics, baselines=baselines, verdict=verdict,
                viewer=dict(format="matter-candidate/1", n=sp.n, dx_mm=sp.dx * 1e3, thickness_mm=sp.t * 1e3,
                            chip=list(sp.chip_cells), mask=mask_rows(force_chip(mask, sp)), field=field),
