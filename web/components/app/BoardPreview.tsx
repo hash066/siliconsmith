@@ -145,6 +145,35 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
               ))}
           </div>
         </div>
+        {layout.status === "none" && parsed.design && (
+          <div className="mb-3 rounded-xl border border-line bg-sunken p-3" data-testid="make-board">
+            {layout.generation.status === "running" ? (
+              <div role="status" aria-live="polite">
+                <p className="text-[13.5px] font-medium text-ink">Making your routed board…</p>
+                <p className="mt-1 text-[12.5px] leading-snug text-ink-2">
+                  {layout.generation.step || "Starting"} · <span className="num">{layout.generation.seconds}s</span>
+                </p>
+                <p className="mt-1 text-[11.5px] leading-snug text-ink-3">The parts are placed by rules, then routed and checked by KiCad in a Sandbox. This usually takes one to two minutes.</p>
+                <button type="button" onClick={layout.cancel} className={`${btnGhost} mt-2 !h-8`}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-[13.5px] font-medium text-ink">No routed board for this design yet</p>
+                <p className="mt-1 text-[12.5px] leading-snug text-ink-2">The checks above ran on your netlist. You can also turn it into a real 2-layer board: placed, routed with copper tracks, checked by KiCad, with Gerbers to download. Free; takes one to two minutes.</p>
+                {layout.generation.status === "failed" && (
+                  <p className="mt-2 rounded-lg bg-amber-dim px-3 py-2 text-[12.5px] leading-snug text-ink" role="alert">
+                    {layout.generation.message}
+                  </p>
+                )}
+                <button type="button" onClick={layout.generate} className={`${btnPrimary} mt-2`} data-testid="make-board-go">
+                  {layout.generation.status === "failed" ? "Try again" : "Make a routed board"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {shown === "schematic" && layout.design ? (
           <SchematicView design={layout.design as never} />
         ) : shown === "layout" && layout.status === "ready" ? (
@@ -183,35 +212,6 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
           </div>
         ) : (
           <>
-            {layout.status === "none" && parsed.design && (
-              <div className="mb-3 rounded-xl border border-line bg-sunken p-3" data-testid="make-board">
-                {layout.generation.status === "running" ? (
-                  <div role="status" aria-live="polite">
-                    <p className="text-[13.5px] font-medium text-ink">Making your routed board…</p>
-                    <p className="mt-1 text-[12.5px] leading-snug text-ink-2">
-                      {layout.generation.step || "Starting"} · <span className="num">{layout.generation.seconds}s</span>
-                    </p>
-                    <p className="mt-1 text-[11.5px] leading-snug text-ink-3">The parts are placed by rules, then routed and checked by KiCad in a Sandbox. This usually takes one to two minutes.</p>
-                    <button type="button" onClick={layout.cancel} className={`${btnGhost} mt-2 !h-8`}>
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-[13.5px] font-medium text-ink">No routed board for this design yet</p>
-                    <p className="mt-1 text-[12.5px] leading-snug text-ink-2">The checks above ran on your netlist. You can also turn it into a real 2-layer board: placed, routed with copper tracks, checked by KiCad, with Gerbers to download. Free; takes one to two minutes.</p>
-                    {layout.generation.status === "failed" && (
-                      <p className="mt-2 rounded-lg bg-amber-dim px-3 py-2 text-[12.5px] leading-snug text-ink" role="alert">
-                        {layout.generation.message}
-                      </p>
-                    )}
-                    <button type="button" onClick={layout.generate} className={`${btnPrimary} mt-2`} data-testid="make-board-go">
-                      {layout.generation.status === "failed" ? "Try again" : "Make a routed board"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
             {parsed.design ? <BlockDiagram design={parsed.design} hot={hot} /> : <p className="py-6 text-center text-[13px] text-ink-3">{parsed.error}</p>}
             <p className="mt-1 text-[11.5px] leading-snug text-ink-3">
               {layout.status === "failed" ? `The routed board could not be loaded (${layout.message}). ` : "No routed board has been generated for this exact design yet; boards for the built-in examples are ready. "}
