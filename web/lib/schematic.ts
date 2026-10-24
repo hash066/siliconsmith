@@ -148,13 +148,14 @@ export function schematicOf(design: DesignIn, maxWidth = 1080): Schematic {
     let rowTop = y;
     let rowH = 0;
     for (const s of syms) {
-      const boxW = s.w + 2 * LABEL_MARGIN;
+      const extraLeft = s.pins.some((p) => p.mark && p.side === "left") ? 80 : 0; // a note on a left-hand pin needs room to its left
+      const boxW = s.w + 2 * LABEL_MARGIN + extraLeft;
       if (x + boxW > maxWidth && x > 8) {
         x = 8;
         rowTop += rowH + 26;
         rowH = 0;
       }
-      s.x = x + LABEL_MARGIN;
+      s.x = x + LABEL_MARGIN + extraLeft;
       s.y = rowTop + 24; // room for top pins and the ref text
       rowH = Math.max(rowH, s.h + 48);
       x += boxW;
