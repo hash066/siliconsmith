@@ -6,8 +6,8 @@ import { bytesOf, downloadFile, sizeLabel, type ProductFile } from "./files";
 import type { Verdict } from "./verdict";
 import { btnGhost, IconDownload, IconReset, IconShare, IconSliders, WB_ICON } from "./ui";
 
-export type PreviewTab = "preview" | "files" | "proof";
-const TABS: Array<[PreviewTab, string]> = [["preview", "Preview"], ["files", "Files"], ["proof", "Proof"]];
+export type PreviewTab = "preview" | "workflow" | "files" | "proof";
+const TABS: Array<[PreviewTab, string]> = [["preview", "Preview"], ["workflow", "Workflow"], ["files", "Files"], ["proof", "Proof"]];
 
 const TONE: Record<Verdict["tone"], { color: string; word: string }> = {
   idle: { color: "var(--hw-ink-3)", word: "Waiting" },

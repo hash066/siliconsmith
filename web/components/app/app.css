@@ -99,3 +99,8 @@
 .hw-marker { transform-box: fill-box; transform-origin: center; animation: hw-marker-pulse 1.6s ease-in-out infinite; }
 @keyframes hw-marker-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .hw-marker { animation: none; } }
+
+/* a running step's spinner (holds still under reduced motion) */
+.hw-wf-spin { animation: hw-wf-spin 0.9s linear infinite; }
+@keyframes hw-wf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hw-wf-spin { animation: none; } }

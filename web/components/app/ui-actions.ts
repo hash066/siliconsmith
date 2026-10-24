@@ -45,7 +45,7 @@ export function parseUiAction(raw: unknown): { ok: true; action: UiAction } | { 
     case "board.design":
       return typeof args.brief === "string" && args.brief.trim() && args.brief.length <= 1200 ? { ok: true, action: { name: raw.name, args: { brief: args.brief } } } : { ok: false, reason: "brief must be a short non-empty string." };
     case "preview.tab":
-      return args.tab === "preview" || args.tab === "files" || args.tab === "proof" ? { ok: true, action: { name: raw.name, args: { tab: args.tab } } } : { ok: false, reason: "tab must be preview, files or proof." };
+      return args.tab === "preview" || args.tab === "workflow" || args.tab === "files" || args.tab === "proof" ? { ok: true, action: { name: raw.name, args: { tab: args.tab } } } : { ok: false, reason: "tab must be preview, workflow, files or proof." };
     case "workflow.focus":
       return typeof args.step === "string" && STEPS.includes(args.step) ? { ok: true, action: { name: raw.name, args: { step: args.step as "brief" } } } : { ok: false, reason: `step must be one of ${STEPS.join(", ")}.` };
     default:

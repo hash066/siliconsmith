@@ -17,12 +17,14 @@ import { CoachMarks } from "./CoachMarks";
 import { CreditsPill, Mark, type ModelChoice } from "./CreditsPill";
 import { FilesTab, PreviewPane, type PreviewTab } from "./PreviewPane";
 import { MatterPreview } from "./MatterPreview";
-import { SiliconLivePreview } from "./SiliconLive";
+import { mainNode, SiliconLivePreview } from "./SiliconLive";
 import { StartScreen, type StartPick } from "./StartScreen";
 import type { Chip } from "./route";
 import { UI_ACTION_EVENT, type UiActionDetail } from "./ui-actions";
 import { useBoardBench } from "./useBoardBench";
 import { useBoardLayout } from "./useBoardLayout";
+import { WorkflowView } from "./WorkflowView";
+import { boardWorkflow, matterWorkflow, siliconWorkflow, type Workflow } from "@/lib/workflow";
 import { useCredits } from "./useCredits";
 import { solvedOf, useMatterBench } from "./useMatterBench";
 import { useSiliconLive } from "./useSiliconLive";
@@ -496,6 +498,24 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
     return { silicon: {} };
   }, [wb, matter.input, matter.sim, matter.stale, sol, board.templateId, board.stale, parsedDesign.design, bd]);
 
+  const requestText = initial?.text ?? project.chat.messages.find((m) => m.role === "user")?.text ?? project.title;
+  const workflow = useMemo<Workflow>(() => {
+    if (wb === "matter") return matterWorkflow({ prompt: requestText, sim: matter.sim, busy: matter.busy, stale: matter.stale, input: matter.input as never, files: files.length });
+    if (wb === "board") {
+      const L = boardLayout;
+      return boardWorkflow({
+        prompt: requestText,
+        design: parsedDesign.design,
+        check: bd,
+        busy: board.busy === "checking",
+        stale: board.stale,
+        layout: L.status === "ready" ? { status: "ready", routed: L.summary.stats.fully_routed, unrouted: L.summary.stats.unrouted_connections, drcErrors: L.summary.drc.errors, drcWarnings: L.summary.drc.warnings, boardMm: L.summary.stats.board_mm, tracks: L.summary.stats.tracks, parts: L.summary.stats.parts } : { status: L.status },
+        files: files.length,
+      });
+    }
+    return siliconWorkflow({ prompt: requestText, phase: live.phase, node: mainNode(live.run), files: live.files.length, workload: "" });
+  }, [wb, requestText, matter.sim, matter.busy, matter.stale, matter.input, parsedDesign.design, bd, board.busy, board.stale, boardLayout, live.phase, live.run, live.files, files.length]);
+
   const share = async () => {
     const origin = window.location.origin;
     const L = latest.current;
@@ -518,7 +538,9 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
   const blocked = lowCredits ? "Your demo credits are used up. Board checks and Matter simulations still work for free." : credits.poolExhausted ? "The shared demo pool is used up. Free checks still work." : null;
 
   const body =
-    tab === "files" ? (
+    tab === "workflow" ? (
+      <WorkflowView wf={workflow} onOpen={(t) => setTab(t)} />
+    ) : tab === "files" ? (
       <FilesTab files={files} empty={wb === "silicon" ? "Files appear when a live run finishes: the hardware (RTL), the C intrinsic, the patched kernel and the report." : wb === "board" ? "Files appear after the board has been checked: pin header, parts list, netlist and the design." : "Files appear after a simulation: the STL you can print and the settings."} />
     ) : wb === "matter" ? (
       <MatterPreview b={matter} tab={tab} />

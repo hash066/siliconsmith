@@ -12,7 +12,7 @@ export type UiAction =
   | { name: "silicon.open_run"; args: { run_id: string; node_id?: string } }
   | { name: "silicon.run_live"; args: { workload: "w1" | "w2" } } // starts the LIVE single-candidate pipeline (spends credits; needs a click)
   | { name: "board.design"; args: { brief: string } } // bounded propose/check/repair loop (spends credits; needs a click)
-  | { name: "preview.tab"; args: { tab: "preview" | "files" | "proof" } }
+  | { name: "preview.tab"; args: { tab: "preview" | "workflow" | "files" | "proof" } }
   | { name: "workflow.focus"; args: { step: "brief" | "propose" | "verify" | "evidence" | "export" } };
 
 export type UiActionName = UiAction["name"];
