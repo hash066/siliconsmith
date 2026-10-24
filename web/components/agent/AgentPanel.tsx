@@ -74,7 +74,7 @@ const MODEL_TITLE: Record<ModelChoice, string> = {
 
 export function ModelSelector({ value, onChange, active, disabled }: { value: ModelChoice; onChange: (m: ModelChoice) => void; active: AgentModel | null; disabled?: boolean }) {
   return (
-    <div role="radiogroup" aria-label="Model" className="flex h-7 items-center rounded-md border border-line-2 p-0.5">
+    <div role="radiogroup" aria-label="Model" className="order-last flex h-7 w-full items-center rounded-md border border-line-2 p-0.5 sm:order-none sm:w-auto">
       {MODEL_CHOICES.map((m) => (
         <button
           key={m}
@@ -297,11 +297,11 @@ export function AgentPanelView(p: AgentPanelViewProps) {
         <h2 className="mr-auto text-[13px] font-medium text-ink">Agent</h2>
         <ModelSelector value={model} onChange={p.onModelChange} active={state.activeModel} disabled={busy} />
         {connected !== false && (credits ? (
-          <span className="num text-[11.5px] text-ink-3" title={`Demo credits. Pool ${formatUsd(credits.pool.spentUsd)} of ${formatUsd(credits.pool.capUsd)}. ${credits.scope}.`}>
+          <span className="num min-w-[88px] text-right text-[11.5px] text-ink-3" title={`Demo credits. Pool ${formatUsd(credits.pool.spentUsd)} of ${formatUsd(credits.pool.capUsd)}. ${credits.scope}.`}>
             {formatBalance(credits.remainingUsd)} left
           </span>
         ) : (
-          <Skeleton className="h-3.5 w-[68px]" />
+          <Skeleton className="ml-auto h-3.5 w-[88px]" />
         ))}
       </div>
 
