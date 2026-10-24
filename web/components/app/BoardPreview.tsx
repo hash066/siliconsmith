@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { markersFor, type Marker } from "@/lib/layout";
 import { PcbView } from "./PcbView";
+import { Ledger } from "./Ledger";
+import { boardLedger } from "@/lib/ledger";
 import type { LayoutState } from "./useBoardLayout";
 import { ApiErrorView } from "../domain/ApiErrorView";
 import { isDesignJson, type DesignJson } from "../domain/SchematicGraph";
@@ -112,6 +114,7 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
         {stale}
         <p className="text-[12.5px] leading-snug text-ink-2">Five checks, run by deterministic code (no AI). Open one to see the part facts it used.</p>
         <CheckCards cards={cards} facts={check.evidence} detail={Object.fromEntries(check.ladder.map((l) => [l.id, l.tool]))} />
+        <Ledger rows={boardLedger({ check, layout: layout.status === "ready" ? { status: "ready", routed: layout.summary.stats.fully_routed, drcErrors: layout.summary.drc.errors, unrouted: layout.summary.stats.unrouted_connections, kicad: layout.summary.generated_with.kicad, router: layout.summary.generated_with.router } : { status: layout.status } })} />
         <p className="text-[11.5px] leading-snug text-ink-3">{check.notice}</p>
       </div>
     );

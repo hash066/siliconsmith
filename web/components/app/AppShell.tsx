@@ -24,6 +24,7 @@ import { UI_ACTION_EVENT, type UiActionDetail } from "./ui-actions";
 import { useBoardBench } from "./useBoardBench";
 import { useBoardLayout } from "./useBoardLayout";
 import { WorkflowView } from "./WorkflowView";
+import { buildProjectZip, downloadBytes, zipName } from "./exportProject";
 import { boardWorkflow, matterWorkflow, siliconWorkflow, type Workflow } from "@/lib/workflow";
 import { useCredits } from "./useCredits";
 import { solvedOf, useMatterBench } from "./useMatterBench";
@@ -516,6 +517,11 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
     return siliconWorkflow({ prompt: requestText, phase: live.phase, node: mainNode(live.run), files: live.files.length, workload: "" });
   }, [wb, requestText, matter.sim, matter.busy, matter.stale, matter.input, parsedDesign.design, bd, board.busy, board.stale, boardLayout, live.phase, live.run, live.files, files.length]);
 
+  const exportAll = useCallback(async () => {
+    const zip = await buildProjectZip({ project, request: requestText, verdict: [verdict.title, verdict.detail].filter(Boolean).join(". "), files });
+    downloadBytes(zipName(project.title), zip);
+  }, [project, requestText, verdict, files]);
+
   const share = async () => {
     const origin = window.location.origin;
     const L = latest.current;
@@ -589,6 +595,7 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
             shareNote={shareNote}
             onStartOver={() => onNew(wb)}
             onAdvanced={() => setAdvanced(true)}
+            onExportAll={files.length > 0 ? exportAll : undefined}
           >
             {body}
           </PreviewPane>

@@ -9,6 +9,8 @@ import { CellGlyph } from "../domain/RungMatrix";
 import { SILICON_STAGE_WORDS } from "./verdict";
 import { RUN_CAP, WORKLOADS, type SiliconLive, type Workload } from "./useSiliconLive";
 import { btnGhost, btnPrimary } from "./ui";
+import { Ledger } from "./Ledger";
+import { siliconLedger } from "@/lib/ledger";
 
 /** The node that carries the one proposed instruction: the best scored one, else the latest with a proposal. */
 export function mainNode(s: RunState): NodeState | null {
@@ -85,6 +87,7 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
       <div className="flex flex-col gap-3 p-4">
         <p className="text-[12.5px] leading-snug text-ink-2">Every proposed instruction has to pass all of these before it counts. Proved means true for every possible input, not just the ones we tried.</p>
         {phase === "idle" ? <p className="rounded-lg border border-line bg-panel px-3 py-4 text-[13px] text-ink-3" role="status">Nothing has run yet.</p> : <StageList node={node} running={running} />}
+        {phase !== "idle" && <Ledger rows={siliconLedger(node, run.toolVersions)} />}
         <p className="mt-1 text-[12.5px] text-ink-3">
           Want to see a long, full search instead of one candidate?{" "}
           <Link href={recordedHref} className="text-signal-ink underline underline-offset-2" data-testid="recorded-link">

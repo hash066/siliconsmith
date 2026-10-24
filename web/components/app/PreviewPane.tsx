@@ -33,8 +33,9 @@ export function VerdictBar({ v }: { v: Verdict }) {
   );
 }
 
-function DownloadMenu({ files }: { files: ProductFile[] }) {
+function DownloadMenu({ files, onAll }: { files: ProductFile[]; onAll?: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -55,6 +56,31 @@ function DownloadMenu({ files }: { files: ProductFile[] }) {
       </button>
       {open && (
         <ul role="menu" aria-label="Downloads" className="hw-pop absolute right-0 top-11 z-40 w-[min(280px,calc(100vw-24px))] rounded-xl border border-line bg-panel p-1.5 shadow-[var(--hw-shadow)]">
+          {onAll && (
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onAll();
+                  } finally {
+                    setBusy(false);
+                    setOpen(false);
+                  }
+                }}
+                data-testid="dl-all"
+                className="mb-1 flex w-full min-w-0 items-center gap-2 rounded-lg bg-raised px-2.5 py-2 text-left hover:bg-sunken disabled:opacity-60"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px] font-medium text-ink">{busy ? "Packing…" : "Everything as one zip"}</span>
+                  <span className="block truncate text-[11.5px] text-ink-3">All files, your request and the conversation</span>
+                </span>
+              </button>
+            </li>
+          )}
           {files.map((f) => (
             <li key={f.name} role="none">
               <button
@@ -122,7 +148,7 @@ export function FilesTab({ files, empty }: { files: ProductFile[]; empty: string
 }
 
 /** Header (workbench, verdict, actions), the three tabs and the tab body. */
-export function PreviewPane({ wb, title, verdict, tab, onTab, files, onShare, shareNote, onStartOver, onAdvanced, children }: { wb: WorkbenchId; title: string; verdict: Verdict; tab: PreviewTab; onTab: (t: PreviewTab) => void; files: ProductFile[]; onShare: () => void; shareNote: string | null; onStartOver: () => void; onAdvanced: () => void; children: React.ReactNode }) {
+export function PreviewPane({ wb, title, verdict, tab, onTab, files, onShare, shareNote, onStartOver, onAdvanced, onExportAll, children }: { wb: WorkbenchId; title: string; onExportAll?: () => Promise<void>; verdict: Verdict; tab: PreviewTab; onTab: (t: PreviewTab) => void; files: ProductFile[]; onShare: () => void; shareNote: string | null; onStartOver: () => void; onAdvanced: () => void; children: React.ReactNode }) {
   return (
     <section aria-label="Preview" data-coach="preview" className="flex h-full min-h-0 min-w-0 flex-col bg-bg">
       <div className="flex shrink-0 flex-col gap-2.5 border-b border-line bg-panel px-3 pb-0 pt-3 sm:px-4">
@@ -140,7 +166,7 @@ export function PreviewPane({ wb, title, verdict, tab, onTab, files, onShare, sh
             </div>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            <DownloadMenu files={files} />
+            <DownloadMenu files={files} onAll={onExportAll} />
             <button type="button" onClick={onShare} className={`${btnGhost} !h-9 !px-2.5`} aria-label="Copy a link to this view" title={shareNote ?? "Copy a link to this view"} data-testid="share">
               <IconShare size={16} />
               <span className="sr-only" role="status">{shareNote}</span>

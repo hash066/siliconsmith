@@ -159,7 +159,7 @@ function FullGraph({ wf, onOpen, onClose }: { wf: Workflow; onOpen: (t: "preview
   const close = useRef<HTMLButtonElement>(null);
   const avail = useWidth(box);
   const { width } = layoutOf(wf);
-  const scale = avail > 0 ? Math.min(1, Math.max(0.5, (avail - 4) / width)) : 1;
+  const scale = avail > 0 ? Math.min(1, Math.max(0.5, (avail - 52) / width)) : 1;
   useEffect(() => {
     close.current?.focus();
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();

@@ -7,6 +7,8 @@ import { ApiErrorView } from "../domain/ApiErrorView";
 import { MeshCanvas } from "../domain/StlViewer";
 import { CheckCards } from "./CheckCards";
 import { matterChecks } from "./verdict";
+import { Ledger } from "./Ledger";
+import { matterLedger } from "@/lib/ledger";
 import { solvedOf, type MatterBench } from "./useMatterBench";
 import { btnPrimary } from "./ui";
 
@@ -101,6 +103,7 @@ export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "pr
       <div className="flex flex-col gap-3 p-4">
         <p className="text-[12.5px] leading-snug text-ink-2">Five checks stand behind this result. Green means it passed, red means it failed, amber means it could not be decided.</p>
         <CheckCards cards={matterChecks(sim)} detail={Object.fromEntries(sim.ladder.map((r) => [r.id, r.check]))} />
+        <Ledger rows={matterLedger(sim)} />
       </div>
     );
   }
