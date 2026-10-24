@@ -107,3 +107,22 @@ Measured: axe 0 violations and CLS 0.03 at 1440 and 390; tests: engine 631 passe
 Found while doing it: Sandboxes start with HOME empty and KiCad refuses to run without one (set HOME in the image build and in the worker command). Layout files are served from the API host's cache of the last 8 boards; nothing is stored.
 
 Measured: engine 640 passed (14 skipped), web 339 passed.
+
+## 10. Update, Oct 24 2026 (night): replicating the reference products (docs/REFERENCE_PLAN.md)
+
+Added, all on top of what existed, deployed and checked on production:
+
+| Reference idea | Hardwright addition | Check |
+|---|---|---|
+| Split mechanical (3D) + electronics (PCB, schematic) workspace | Board "3D" view and a "Studio" split (layout beside 3D); 3D built from the real board geometry, labelled approximate | board3d tests on the real board; axe 0 |
+| Design pipeline strip (brief, parts, BOM, PCB, DRC, export) | Stage strip: Design, Parts and BOM, DRC, Manufacture, each with a real status dot | browser run |
+| DRC with locations | DRC panel: KiCad's findings grouped by type, click a finding to zoom to it on the board | parsed the real report; location conversion tested |
+| Manufacturing quote | Manufacture panel: ready-to-send checks, board specification read from the board, Gerber download, links to PCBWay, JLCPCB and OSH Park quote pages. **No prices are shown: we have no quote** | browser run |
+| Component search and library | Parts panel: search, categories, pins, facts with source status, datasheet links (the sources recorded in the library), BOM table and CSV, "Ask the agent to add it" | real part files in tests |
+| Agent suite | Silicon "The agents" panel: Architect (Ultra), Engineer (Super), Triage (Nano), Prover (Sandbox) with the run's own calls, tokens and cost | real live run: architect/engineer/prover done, triage not needed |
+| Test plan with scenarios | Silicon "Test plan": 8 named scenarios, each with Description, Code, Results, and Export CSV | real live run: 8 of 8 passed |
+| Waveform viewer | Interactive viewer: variables to show or hide, step and play, zoom, cursor readout | real live run: play moves the cursor |
+
+Not yet (in REFERENCE_PLAN.md): "Make PCB board?" card with Default / Smallest / Reduce EMI and constraints text (needs engine placer options); PCB status bar; running your own operand pair as a new scenario (needs a Sandbox endpoint); internal-signal waveforms from a Verilator VCD.
+
+Measured: engine tests unchanged (parts-list and isolation fixes), web 356 passed; axe 0 serious on all six Board views at 1440 and 390 with no horizontal overflow.
