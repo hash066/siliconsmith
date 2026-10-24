@@ -124,6 +124,10 @@ def build(job: dict, out_pcb: str, out_dsn: str) -> None:
     def zone(layer, net, poly, rule_area=False):
         return add_zone(b, layer, net, poly, rule_area)
 
+    # a thin ring along the board edge where no track or via may go: copper must stay 0.5 mm from the edge (the autorouter does not know)
+    ring_w = 0.55
+    for r in ((0, 0, W, ring_w), (0, H - ring_w, W, H), (0, 0, ring_w, H), (W - ring_w, 0, W, H)):
+        zone(pcbnew.F_Cu, None, [(r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3])], rule_area=True)
     for (x0, y0, x1, y1) in job.get("keepouts", []):
         zone(pcbnew.F_Cu, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], rule_area=True)
     # The ground pours are added AFTER routing (see finish): a pour on the bottom layer would be exported to the autorouter as a

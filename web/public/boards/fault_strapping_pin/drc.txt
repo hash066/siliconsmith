@@ -1,0 +1,131 @@
+** Drc report for routed.kicad_pcb **
+** Created on 2026-10-24 05:38:12 **
+
+** Found 36 DRC violations **
+[silk_overlap]: Silkscreen overlap
+    Rule: board setup constraints silk; Severity: warning
+    @(115.0000 mm, 105.5700 mm): Reference 'C105'
+    @(115.7627 mm, 105.0225 mm): Line on F.Silkscreen
+[silk_overlap]: Silkscreen overlap
+    Rule: board setup constraints silk; Severity: warning
+    @(124.0000 mm, 114.4000 mm): PCB Text 'Battery environmental sensor (refe...' on F.Silkscreen
+    @(134.3800 mm, 112.7150 mm): Line on F.Silkscreen
+[silk_overlap]: Silkscreen overlap
+    Rule: board setup constraints silk; Severity: warning
+    @(140.5000 mm, 117.4350 mm): Line on F.Silkscreen
+    @(124.0000 mm, 114.4000 mm): PCB Text 'Battery environmental sensor (refe...' on F.Silkscreen
+[silk_overlap]: Silkscreen overlap
+    Rule: board setup constraints silk; Severity: warning
+    @(139.8900 mm, 116.8250 mm): Line on F.Silkscreen
+    @(124.0000 mm, 114.4000 mm): PCB Text 'Battery environmental sensor (refe...' on F.Silkscreen
+[silk_overlap]: Silkscreen overlap
+    Rule: board setup constraints silk; Severity: warning
+    @(140.5225 mm, 85.2373 mm): Line on F.Silkscreen
+    @(141.0700 mm, 85.0000 mm): Reference 'R3'
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; Severity: warning
+    @(124.0000 mm, 114.4000 mm): PCB Text 'Battery environmental sensor (refe...' on F.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; Severity: warning
+    @(111.0000 mm, 108.4300 mm): Reference 'R5'
+[lib_footprint_issues]: The current configuration does not include the library 'Package_LGA'.
+    Local override; Severity: warning
+    @(136.5000 mm, 85.0000 mm): Footprint U3
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(140.0000 mm, 85.0000 mm): Footprint R2
+[lib_footprint_issues]: The current configuration does not include the library 'Button_Switch_SMD'.
+    Local override; Severity: warning
+    @(110.0000 mm, 95.0000 mm): Footprint SW1
+[lib_footprint_issues]: The current configuration does not include the library 'RF_Module'.
+    Local override; Severity: warning
+    @(124.0000 mm, 89.8000 mm): Footprint U1
+[lib_footprint_issues]: The current configuration does not include the library 'Package_TO_SOT_SMD'.
+    Local override; Severity: warning
+    @(136.5000 mm, 94.0000 mm): Footprint U2
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(116.0000 mm, 104.5000 mm): Footprint R6
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(140.0000 mm, 88.5000 mm): Footprint C101
+[lib_footprint_issues]: The current configuration does not include the library 'Package_TO_SOT_SMD'.
+    Local override; Severity: warning
+    @(121.5000 mm, 111.0000 mm): Footprint U5
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(131.5000 mm, 109.5000 mm): Footprint C106
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(136.0000 mm, 88.5000 mm): Footprint R1
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(142.5000 mm, 92.0000 mm): Footprint C104
+[lib_footprint_issues]: The current configuration does not include the library 'Connector_JST'.
+    Local override; Severity: warning
+    @(136.4400 mm, 114.5250 mm): Footprint J2
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(136.0000 mm, 98.0000 mm): Footprint R4
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(131.5000 mm, 107.0000 mm): Footprint C102
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(115.0000 mm, 107.0000 mm): Footprint C105
+[lib_footprint_issues]: The current configuration does not include the library 'LED_SMD'.
+    Local override; Severity: warning
+    @(140.0000 mm, 98.0000 mm): Footprint D1
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(111.0000 mm, 107.0000 mm): Footprint R5
+[lib_footprint_issues]: The current configuration does not include the library 'Connector_USB'.
+    Local override; Severity: warning
+    @(113.4400 mm, 113.5500 mm): Footprint J1
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(142.5000 mm, 85.0000 mm): Footprint R3
+[lib_footprint_issues]: The current configuration does not include the library 'Resistor_SMD'.
+    Local override; Severity: warning
+    @(120.5000 mm, 106.0000 mm): Footprint R7
+[lib_footprint_issues]: The current configuration does not include the library 'Capacitor_SMD'.
+    Local override; Severity: warning
+    @(140.0000 mm, 92.0000 mm): Footprint C103
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(100.0000 mm, 80.0000 mm): Line on Edge.Cuts
+    @(114.8800 mm, 73.9400 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(100.0000 mm, 80.0000 mm): Line on Edge.Cuts
+    @(133.1200 mm, 73.9400 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(134.3800 mm, 112.7150 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(134.9900 mm, 113.3250 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(139.8900 mm, 116.8250 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(140.5000 mm, 117.4350 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(108.7400 mm, 115.5500 mm): Line on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(148.0000 mm, 116.0000 mm): Line on Edge.Cuts
+    @(118.1400 mm, 115.5500 mm): Line on F.Silkscreen
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

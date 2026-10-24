@@ -1,0 +1,196 @@
+{
+ "template": "fault_strapping_pin",
+ "design_name": "Battery environmental sensor (reference, clean)",
+ "mcu_ref": "U1",
+ "mcu_padmap": {
+  "GND1": [
+   "1"
+  ],
+  "3V3": [
+   "2"
+  ],
+  "EN": [
+   "3"
+  ],
+  "GPIO36": [
+   "4"
+  ],
+  "GPIO39": [
+   "5"
+  ],
+  "GPIO34": [
+   "6"
+  ],
+  "GPIO35": [
+   "7"
+  ],
+  "GPIO32": [
+   "8"
+  ],
+  "GPIO33": [
+   "9"
+  ],
+  "GPIO25": [
+   "10"
+  ],
+  "GPIO26": [
+   "11"
+  ],
+  "GPIO27": [
+   "12"
+  ],
+  "GPIO14": [
+   "13"
+  ],
+  "GPIO12": [
+   "14"
+  ],
+  "GND2": [
+   "15"
+  ],
+  "GPIO13": [
+   "16"
+  ],
+  "GPIO9": [
+   "17"
+  ],
+  "GPIO10": [
+   "18"
+  ],
+  "GPIO11": [
+   "19"
+  ],
+  "GPIO6": [
+   "20"
+  ],
+  "GPIO7": [
+   "21"
+  ],
+  "GPIO8": [
+   "22"
+  ],
+  "GPIO15": [
+   "23"
+  ],
+  "GPIO2": [
+   "24"
+  ],
+  "GPIO0": [
+   "25"
+  ],
+  "GPIO4": [
+   "26"
+  ],
+  "GPIO16": [
+   "27"
+  ],
+  "GPIO17": [
+   "28"
+  ],
+  "GPIO5": [
+   "29"
+  ],
+  "GPIO18": [
+   "30"
+  ],
+  "GPIO19": [
+   "31"
+  ],
+  "GPIO21": [
+   "33"
+  ],
+  "GPIO3": [
+   "34"
+  ],
+  "GPIO1": [
+   "35"
+  ],
+  "GPIO22": [
+   "36"
+  ],
+  "GPIO23": [
+   "37"
+  ],
+  "GND3": [
+   "38",
+   "39"
+  ]
+ },
+ "status": "Fully routed; KiCad DRC: 0 error(s), 15 warning(s). Checked by KiCad 7 DRC, the autorouter's completion and rungs B1 to B5. Not fabricated, not tested electrically.",
+ "stats": {
+  "parts": 21,
+  "added_parts": 6,
+  "nets": 13,
+  "tracks": 180,
+  "vias": 4,
+  "board_mm": [
+   48.0,
+   36.0
+  ],
+  "layers": 2,
+  "unrouted_connections": 0,
+  "fully_routed": true,
+  "seconds": 102.8,
+  "timings": {
+   "place": 2.7,
+   "build": 0.4,
+   "route+drc": 88.2,
+   "export": 11.5
+  },
+  "wirelength_estimate_mm": 91.6,
+  "route_attempts": [
+   {
+    "passes": 100,
+    "unrouted": 1,
+    "errors": 1
+   },
+   {
+    "passes": 300,
+    "unrouted": 0,
+    "errors": 0
+   }
+  ]
+ },
+ "drc": {
+  "errors": 0,
+  "warnings": 15,
+  "unconnected": 0,
+  "error_types": {},
+  "warning_types": {
+   "silk_overlap": 5,
+   "silk_over_copper": 2,
+   "silk_edge_clearance": 8
+  },
+  "examples": []
+ },
+ "markers": [
+  {
+   "ref": "U1",
+   "pad": "14",
+   "kind": "warn",
+   "rung": "B4",
+   "text": "GPIO12 is a boot-strapping pin: its level at reset selects boot behaviour."
+  }
+ ],
+ "notes": [
+  "6 bypass capacitors were added by the layout (C101 and up). They are not part of the checked netlist; rungs B1 to B5 did not see them.",
+  "The module's antenna end hangs over the top board edge, as its maker recommends; nothing is placed in its no-copper zone.",
+  "2 layers, 0.2 mm tracks, 0.15 mm clearance, 0.6/0.3 mm vias."
+ ],
+ "files": {
+  "kicad_pcb": "routed.kicad_pcb",
+  "gerber_zip": "gerbers-and-drill.zip",
+  "positions": "positions.csv",
+  "bom": "bom.csv",
+  "viewer": "board.json",
+  "markers": "markers.json",
+  "drc_report": "drc.txt",
+  "svg_all-layers": "all-layers.svg"
+ },
+ "tool_note": "Checked by KiCad 7 DRC, the autorouter's completion and rungs B1 to B5. Not fabricated, not tested electrically.",
+ "generated_with": {
+  "kicad": "7.0.11",
+  "router": "Freerouting 1.9.0",
+  "rules": "2 layers, 0.2 mm tracks, 0.15 mm clearance, 0.6/0.3 mm vias"
+ }
+}
