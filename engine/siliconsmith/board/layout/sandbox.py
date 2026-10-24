@@ -57,12 +57,14 @@ def generate_in_sandbox(
     deadline: Deadline | None = None,
     backend: Any = None,
     progress: Callable[[str], None] | None = None,
+    style: str | None = None,
+    constraints: Any = None,
 ) -> dict[str, Any]:
     """Returns {summary, board, downloads, seconds}. Raises P.LayoutError (cannot place) or LayoutSandboxError."""
     say = progress or (lambda _m: None)
     t0 = time.monotonic()
     say("Placing the parts")
-    job = P.build_and_place(design, library)
+    job = P.build_and_place(design, library, style=style, constraints=constraints)
     files = {
         f"{DIR}/job.json": json.dumps(P.to_json(job)).encode(),
         f"{DIR}/pcb_build.py": (HERE / "pcb_build.py").read_bytes(),

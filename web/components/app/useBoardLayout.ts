@@ -81,7 +81,13 @@ export async function readLayoutStream(
 }
 
 /** The routed board for the design in the editor: a stored one if the engine made one for its netlist, or one made on request in a Sandbox. */
-export function useBoardLayout(designText: string): LayoutState & { design: Parameters<typeof canonicalNetlist>[0] | null; generation: Generation; generate: () => void; cancel: () => void } {
+export interface LayoutOptions {
+  style?: "default" | "smallest" | "emi";
+  /** free text, at most 300 characters; the server reports which parts it understood */
+  constraints?: string;
+}
+
+export function useBoardLayout(designText: string): LayoutState & { design: Parameters<typeof canonicalNetlist>[0] | null; generation: Generation; generate: (opts?: LayoutOptions) => void; cancel: () => void } {
   const design = useMemo(() => {
     try {
       const j: unknown = JSON.parse(designText);
@@ -130,8 +136,10 @@ export function useBoardLayout(designText: string): LayoutState & { design: Para
   // a design that changes while a board is being made no longer wants that board
   useEffect(() => () => abort.current?.abort(), [key]);
 
-  const generate = useCallback(() => {
+  const generate = useCallback((opts?: LayoutOptions) => {
     const d = designRef.current;
+    const style = opts?.style ?? "default";
+    const constraints = (opts?.constraints ?? "").trim().slice(0, 300);
     if (!d || !key || abort.current) return;
     const ctl = new AbortController();
     abort.current = ctl;
@@ -140,7 +148,7 @@ export function useBoardLayout(designText: string): LayoutState & { design: Para
     const tick = setInterval(() => setGen((g) => (g.status === "running" ? { ...g, seconds: Math.round((Date.now() - t0) / 1000) } : g)), 1000);
     void (async () => {
       try {
-        const r = await fetch("/api/board/layout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ design: d }), signal: ctl.signal });
+        const r = await fetch("/api/board/layout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ design: d, style, ...(constraints ? { constraints } : {}) }), signal: ctl.signal });
         if (!r.ok || !r.body) {
           const j = (await r.json().catch(() => null)) as { error?: { message?: string } } | null;
           throw new Error(j?.error?.message ?? `The board service answered ${r.status}.`);

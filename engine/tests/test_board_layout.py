@@ -229,3 +229,65 @@ def test_full_run_fault_template_routes_cleanly_and_marks_the_wrong_pad(tmp_path
             assert any(abs(pad["x"] - x) < 0.01 and abs(pad["y"] - y) < 0.01 for x, y in by_name.get(pad["name"], [])), (fp["ref"], pad["name"])
     assert (tmp_path / "gerbers-and-drill.zip").stat().st_size > 10_000
     assert "Ref" in (tmp_path / "positions.csv").read_text()
+
+
+# ---------------------------------------------------------------------------------------------------------------- styles and constraints
+
+from siliconsmith.board.layout.constraints import parse_constraints  # noqa: E402
+
+
+def test_constraints_understood_and_ignored_are_both_reported():
+    c = parse_constraints("40x30mm, USB-C on the left edge, GND pour on the bottom, keep the antenna corner clear, make it blue")
+    assert (c.width, c.height) == (40.0, 30.0)
+    assert c.connector_edges == {"usbc": "left"}
+    assert any("antenna" in u.lower() for u in c.understood)
+    assert any("ground pours" in i for i in c.ignored)
+    assert any("make it blue" in i for i in c.ignored)
+    assert parse_constraints("").as_dict() == parse_constraints(None).as_dict()
+
+
+def test_constraint_limits_and_unsupported_edges_are_ignored_with_a_reason():
+    c = parse_constraints("5 x 5 mm; USB on the top edge; battery near the edge")
+    assert c.width is None and c.connector_edges == {}
+    assert len(c.ignored) == 3 and "between 25 and 120" in c.ignored[0]
+    assert parse_constraints("battery connector on the right, 60 x 45")  .connector_edges == {"batt": "right"}
+    assert len(parse_constraints("x" * 5000).understood) == 0  # clipped, not a crash
+
+
+def test_styles_do_what_their_notes_say():
+    d = design("clean_sensor")
+    base = P.build_and_place(d, LIB)
+    small = P.build_and_place(d, LIB, style="smallest")
+    emi = P.build_and_place(d, LIB, style="emi")
+    assert small.width * small.height <= base.width * base.height
+    assert P.STYLES["emi"]["stitch_pitch"] < P.STYLES["default"]["stitch_pitch"]
+    assert any("Smallest" in n for n in small.notes) and any("Reduce EMI" in n for n in emi.notes)
+    assert P.STYLES['emi']['power_w'] > P.STYLES['default']['power_w']
+    assert P.to_json(emi)["stitch_pitch"] == 2.5 and P.to_json(base)["request"]["style"] == "default"
+
+
+def test_an_unknown_style_falls_back_to_default():
+    assert P.style_of("nope") == "default" and P.style_of(None) == "default" and P.style_of("emi") == "emi"
+
+
+@pytest.mark.parametrize("edge", ["left", "right"])
+def test_connectors_can_sit_on_a_side_edge_facing_outward_without_overlap(edge):
+    d = design("clean_sensor")
+    c = parse_constraints(f"USB-C on the {edge} edge, 50 x 50 mm")
+    job = P.build_and_place(d, LIB, constraints=c)
+    usb = job.inst("J1")
+    r = usb.courtyard(CACHE)
+    assert (r[0] <= 0.5) if edge == "left" else (r[2] >= job.width - 0.5)  # flush with the chosen edge
+    assert usb.rot == (270 if edge == "left" else 90)
+    assert any(u.startswith("Board size") for u in job.request["understood"])
+    rects = {i.ref: i.courtyard(CACHE) for i in job.instances if i.ref != "U1"}
+    refs = sorted(rects)
+    for i, a in enumerate(refs):
+        for b in refs[i + 1:]:
+            ra, rb = rects[a], rects[b]
+            assert not (ra[0] < rb[2] and rb[0] < ra[2] and ra[1] < rb[3] and rb[1] < ra[3]), f"{a} overlaps {b}"
+
+
+def test_a_requested_size_that_cannot_hold_the_design_fails_with_a_clear_message():
+    with pytest.raises(P.LayoutError, match="no room|does not fit"):
+        P.build_and_place(design("clean_sensor"), LIB, constraints=parse_constraints("26 x 26 mm"))

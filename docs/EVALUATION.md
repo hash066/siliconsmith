@@ -123,6 +123,6 @@ Added, all on top of what existed, deployed and checked on production:
 | Test plan with scenarios | Silicon "Test plan": 8 named scenarios, each with Description, Code, Results, and Export CSV | real live run: 8 of 8 passed |
 | Waveform viewer | Interactive viewer: variables to show or hide, step and play, zoom, cursor readout | real live run: play moves the cursor |
 
-Not yet (in REFERENCE_PLAN.md): "Make PCB board?" card with Default / Smallest / Reduce EMI and constraints text (needs engine placer options); PCB status bar; running your own operand pair as a new scenario (needs a Sandbox endpoint); internal-signal waveforms from a Verilator VCD.
+Done: style card (Default / Smallest / Reduce EMI) with constraints text; the board view reports what it acted on and what it ignored. Not yet (in REFERENCE_PLAN.md): PCB status bar; running your own operand pair as a new scenario (needs a Sandbox endpoint); internal-signal waveforms from a Verilator VCD.
 
 Measured: engine tests unchanged (parts-list and isolation fixes), web 356 passed; axe 0 serious on all six Board views at 1440 and 390 with no horizontal overflow.

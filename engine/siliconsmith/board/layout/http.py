@@ -30,6 +30,7 @@ from ..serverless import check as run_check
 from ..serverless import library as load_library
 from . import place as P
 from .canonical import canonical_netlist
+from .constraints import MAX_CHARS, parse_constraints
 from .sandbox import LayoutSandboxError, generate_in_sandbox
 
 NO_STORE = {"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
@@ -103,15 +104,22 @@ def make_router(generator: Callable[..., dict[str, Any]] = generate_in_sandbox, 
             body = json.loads(raw.decode("utf-8") or "null")
         except (ValueError, UnicodeDecodeError):
             return _err("bad_json", "the body must be JSON", 400)
-        if not isinstance(body, dict) or set(body) - {"design"}:
-            return _err("bad_request", "the body must be {\"design\": ...}", 400)
+        if not isinstance(body, dict) or set(body) - {"design", "style", "constraints"}:
+            return _err("bad_request", "the body must be {\"design\": ..., \"style\"?: \"default\"|\"smallest\"|\"emi\", \"constraints\"?: text}", 400)
+        style = body.get("style", "default")
+        if style not in P.STYLES:
+            return _err("bad_style", f"style must be one of {sorted(P.STYLES)}", 422)
+        ctext = body.get("constraints")
+        if ctext is not None and (not isinstance(ctext, str) or len(ctext) > MAX_CHARS):
+            return _err("bad_constraints", f"constraints must be text of at most {MAX_CHARS} characters", 422)
+        cons = parse_constraints(ctext)
         try:
             design: Design = parse_design(body.get("design"))
         except InputError as e:
             return _err(e.code if hasattr(e, "code") else "bad_design", str(e), 422)
         if not lib:
             lib.update(load_library())
-        key = canonical_netlist(design)
+        key = canonical_netlist(design) + "|" + style + "|" + json.dumps(cons.as_dict(), sort_keys=True)
         hit = cache.get(key)
         if hit is not None:
             cache.move_to_end(key)
@@ -121,8 +129,8 @@ def make_router(generator: Callable[..., dict[str, Any]] = generate_in_sandbox, 
                 yield json.dumps({"type": "result", "cached": True, **hit}, separators=(",", ":")) + "\n"
 
             return StreamingResponse(cached(), media_type="application/x-ndjson", headers=NO_STORE)
-        try:  # reject what cannot be placed before a Sandbox is started
-            P.build_job(design, lib)
+        try:  # reject what cannot be placed before a Sandbox is started (this also finds a board size, so a too-small request fails here)
+            P.build_and_place(design, lib, style=style, constraints=cons)
         except P.LayoutError as e:
             return _err("cannot_place", str(e), 422)
         visitor = _visitor(request)
@@ -138,7 +146,7 @@ def make_router(generator: Callable[..., dict[str, Any]] = generate_in_sandbox, 
                     chk = run_check(design.model_dump())
                 except Exception:  # noqa: BLE001 - the markers are optional
                     chk = None
-                res = generator(design, lib, check=chk, deadline=Deadline(SECONDS), progress=lambda m: q.put({"type": "progress", "message": m}))
+                res = generator(design, lib, check=chk, deadline=Deadline(SECONDS), progress=lambda m: q.put({"type": "progress", "message": m}), style=style, constraints=cons)
                 cache[key] = res
                 while len(cache) > cache_size:
                     cache.popitem(last=False)

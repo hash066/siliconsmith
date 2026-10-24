@@ -27,6 +27,20 @@ HERE = Path(__file__).parent
 GRID = 0.5
 EDGE_MARGIN = 1.0
 EDGE_INSET = 0.35  # connectors sit this far inside the edge so their pads keep the 0.5 mm copper-to-edge clearance
+
+# Layout styles: each is a documented set of placer and routing settings, and `note` says exactly what it changes.
+STYLES: dict[str, dict[str, Any]] = {
+    "default": dict(power_w=0.35, clear_small=0.45, clear_ic=0.8, margin=1.0, stitch_pitch=4.0, area_factor=1.9, widths=(40.0, 44.0, 48.0, 52.0, 56.0),
+                    note="Default: room for escape routing around every part, ground stitching vias every 4 mm."),
+    "smallest": dict(power_w=0.35, clear_small=0.32, clear_ic=0.55, margin=0.8, stitch_pitch=4.0, area_factor=1.3, widths=tuple(float(w) for w in range(30, 58, 2)),
+                     note="Smallest: tighter gaps between parts (0.32 mm small parts, 0.55 mm chips), 0.8 mm edge margin, and board sizes tried from 30 mm wide. Harder to route; the DRC result says whether it worked."),
+    "emi": dict(power_w=1.6, clear_small=0.45, clear_ic=0.8, margin=1.0, stitch_pitch=2.5, area_factor=1.9, widths=(40.0, 44.0, 48.0, 52.0, 56.0),
+                note="Reduce EMI: supply connections weigh more than signals in the placement score, and ground stitching vias every 2.5 mm (denser return paths)."),
+}
+
+
+def style_of(name: str | None) -> str:
+    return name if name in STYLES else "default"
 GROUND_NETS = {"GND", "AGND", "VSS"}
 POWER_NETS = {"VBAT", "VBUS", "3V3", "VCC", "VDD", "5V"}
 
@@ -84,6 +98,9 @@ class Job:
     nets: dict[str, list[tuple[str, str, str]]]  # net -> [(ref, pad name, logical pin)]
     keepouts: list[tuple[float, float, float, float]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    style: str = "default"
+    connector_edges: dict[str, str] = field(default_factory=dict)  # part id -> "left" | "right" | "bottom"
+    request: dict[str, Any] = field(default_factory=dict)  # what was asked: style, understood, ignored
 
     def inst(self, ref: str) -> Inst:
         return next(i for i in self.instances if i.ref == ref)
@@ -148,17 +165,18 @@ def _overlap(a: tuple[float, float, float, float], b: tuple[float, float, float,
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
-def _weight(net: str) -> float:
+def _weight(net: str, power_w: float = 0.35) -> float:
     if net in GROUND_NETS:
         return 0.0
-    return 0.35 if net in POWER_NETS else 1.0
+    return power_w if net in POWER_NETS else 1.0
 
 
 def _hpwl(job: Job, cache: dict[str, Any], extra: Inst | None = None) -> float:
     total = 0.0
     pads_of = {i.ref: {p["name"]: p for p in cache[i.footprint]["pads"]} for i in job.instances}
+    pw = STYLES[job.style]["power_w"]
     for net, rows in job.nets.items():
-        w = _weight(net)
+        w = _weight(net, pw)
         if not w:
             continue
         xs: list[float] = []
@@ -197,20 +215,48 @@ def place(job: Job) -> Job:
         top = max((k[3] for k in kos), default=y0)
         commit(mcu, W / 2 - (x0 + x1) / 2, -top, 0, 0.3)
         job.notes.append("The module's antenna end hangs over the top board edge, as its maker recommends; nothing is placed in its no-copper zone.")
-    # connectors on the bottom edge
-    edge = [i for i in job.instances if fpmap.get(i.part, {}).get("edge") == "bottom"]
+    sty = STYLES[job.style]
+    margin, pw = sty["margin"], sty["power_w"]
+    # connectors on an edge (bottom unless the request says left or right); the plug opening faces outward
+    edge_parts = [i for i in job.instances if fpmap.get(i.part, {}).get("edge") == "bottom"]
     slots = {"usbc": 0.28, "batt": 0.78}
-    for c in sorted(edge, key=lambda i: slots.get(i.part, 0.5)):
+    side_slot = {"usbc": 0.55, "batt": 0.85}
+    for c in sorted(edge_parts, key=lambda i: slots.get(i.part, 0.5)):
+        where = job.connector_edges.get(c.part, "bottom")
         x0, y0, x1, y1 = cache[c.footprint]["courtyard"]
-        cx = W * slots.get(c.part, 0.5)
-        commit(c, cx - (x0 + x1) / 2, H - y1 - EDGE_INSET, 0, 0.3)
-        if c.courtyard(cache)[2] > W - EDGE_MARGIN or c.courtyard(cache)[0] < EDGE_MARGIN:
-            raise LayoutError(f"{c.ref} does not fit on the bottom edge of a {W:g} x {H:g} mm board; make the board wider")
+        if where == "bottom":
+            cx = W * slots.get(c.part, 0.5)
+            commit(c, cx - (x0 + x1) / 2, H - y1 - EDGE_INSET, 0, 0.3)
+            if c.courtyard(cache)[2] > W - margin or c.courtyard(cache)[0] < margin:
+                raise LayoutError(f"{c.ref} does not fit on the bottom edge of a {W:g} x {H:g} mm board; make the board wider")
+            continue
+        rot = 270 if where == "left" else 90  # rotates the opening (+y in the footprint) to point out of the board
+        c.rot = rot
+        r0 = c.courtyard(cache)  # at x = 0, y = 0
+        dx = EDGE_INSET - r0[0] if where == "left" else (W - EDGE_INSET) - r0[2]
+        want = H * side_slot.get(c.part, 0.7)
+        placed_ok = False
+        for k in range(0, int(H)):
+            for sign in (1, -1):
+                cy = want + sign * k
+                c.x, c.y = dx, cy - (r0[1] + r0[3]) / 2
+                rect = c.courtyard(cache, 0.3)
+                if rect[1] < margin or rect[3] > H - margin:
+                    continue
+                if any(_overlap(rect, r) for r in placed_rects):
+                    continue
+                commit(c, c.x, c.y, rot, 0.3)
+                placed_ok = True
+                break
+            if placed_ok:
+                break
+        if not placed_ok:
+            raise LayoutError(f"{c.ref} does not fit on the {where} edge of a {W:g} x {H:g} mm board; make the board taller")
     rest = [i for i in job.instances if not i.placed]
 
     def shared(inst: Inst) -> int:
         have = {r for n in job.nets.values() for r, _, _ in n if any(j.ref == r and j.placed for j in job.instances)}
-        return sum(1 for n, rows in job.nets.items() if _weight(n) and any(r == inst.ref for r, _, _ in rows) and any(r in have and r != inst.ref for r, _, _ in rows))
+        return sum(1 for n, rows in job.nets.items() if _weight(n, pw) and any(r == inst.ref for r, _, _ in rows) and any(r in have and r != inst.ref for r, _, _ in rows))
 
     def area(inst: Inst) -> float:
         x0, y0, x1, y1 = cache[inst.footprint]["courtyard"]
@@ -219,13 +265,13 @@ def place(job: Job) -> Job:
     while rest:
         rest.sort(key=lambda i: (-shared(i), -area(i), i.ref))
         inst = rest.pop(0)
-        clearance = 0.45 if area(inst) < 6 else 0.8  # room for escape routing and a via beside every pad
+        clearance = sty["clear_small"] if area(inst) < 6 else sty["clear_ic"]  # room for escape routing and a via beside every pad
         best: tuple[float, float, float, int] | None = None
         pads_of = {p["name"]: p for p in cache[inst.footprint]["pads"]}
         # search window: around the connected, already placed pads (or the whole board if there are none)
         pts = []
         for n, rows in job.nets.items():
-            if not _weight(n) or not any(r == inst.ref for r, _, _ in rows):
+            if not _weight(n, pw) or not any(r == inst.ref for r, _, _ in rows):
                 continue
             for r, pad, _ in rows:
                 o = job.inst(r)
@@ -243,7 +289,7 @@ def place(job: Job) -> Job:
                 for rot in (0, 90, 180, 270) if len(pads_of) <= 10 else (0, 90, 180, 270):
                     inst.x, inst.y, inst.rot = gx * step, gy * step, rot
                     rect = inst.courtyard(cache, clearance)
-                    if rect[0] < EDGE_MARGIN or rect[1] < EDGE_MARGIN or rect[2] > W - EDGE_MARGIN or rect[3] > H - EDGE_MARGIN:
+                    if rect[0] < margin or rect[1] < margin or rect[2] > W - margin or rect[3] > H - margin:
                         continue
                     if any(_overlap(rect, r) for r in placed_rects) or any(_overlap(rect, k) for k in job.keepouts):
                         continue
@@ -259,26 +305,41 @@ def place(job: Job) -> Job:
     return job
 
 
-def build_and_place(design: Design, library: dict[str, Part], *, width: float | None = None, height: float | None = None) -> Job:
-    """Place on the smallest board that fits (or the size given). Sizes are tried smallest area first."""
+def build_and_place(design: Design, library: dict[str, Part], *, width: float | None = None, height: float | None = None, style: str | None = None, constraints: Any = None) -> Job:
+    """Place on the smallest board that fits (or the size given, or the size asked for in `constraints`). Sizes are tried smallest area first.
+    `style` is one of STYLES; `constraints` is a constraints.Constraints (board size, connector edges) with its understood/ignored lists."""
+    st = style_of(style)
+    sty = STYLES[st]
+    if constraints is not None and constraints.width and constraints.height and width is None:
+        width, height = constraints.width, constraints.height
+
+    def make(w: float, h: float) -> Job:
+        job = build_job(design, library, width=w, height=h)
+        job.style = st
+        if constraints is not None:
+            job.connector_edges = dict(constraints.connector_edges)
+        job.notes.append(sty["note"])
+        job.request = {"style": st, "understood": list(constraints.understood) if constraints else [], "ignored": list(constraints.ignored) if constraints else []}
+        return job
+
     if width is not None and height is not None:
-        return place(build_job(design, library, width=width, height=height))
+        return place(make(width, height))
     cache = load_cache()
     probe = build_job(design, library, width=50.0, height=60.0)
     need = 0.0
     for i in probe.instances:
         x0, y0, x1, y1 = cache[i.footprint]["courtyard"]
         need += (x1 - x0 + 1.6) * (y1 - y0 + 1.6)
-    sizes = sorted(((w, h) for w in (40.0, 44.0, 48.0, 52.0, 56.0) for h in range(36, 80, 2)), key=lambda s: (s[0] * s[1], s[0]))
+    sizes = sorted(((w, h) for w in sty["widths"] for h in range(32, 80, 2)), key=lambda s: (s[0] * s[1], s[0]))
     last: LayoutError | None = None
     for w, h in sizes:
-        if w * h < need * 1.9:
+        if w * h < need * sty["area_factor"]:
             continue
         try:
-            return place(build_job(design, library, width=w, height=float(h)))
+            return place(make(w, float(h)))
         except LayoutError as e:
             last = e
-    raise LayoutError(f"no board size up to 56 x 78 mm fits this design ({last})")
+    raise LayoutError(f"no board size up to {max(sty['widths']):g} x 78 mm fits this design ({last})")
 
 
 def wirelength(job: Job) -> float:
@@ -292,6 +353,9 @@ def to_json(job: Job) -> dict[str, Any]:
         "height": job.height,
         "keepouts": job.keepouts,
         "notes": job.notes,
+        "style": job.style,
+        "stitch_pitch": STYLES[job.style]["stitch_pitch"],
+        "request": job.request,
         "instances": [{"ref": i.ref, "part": i.part, "footprint": i.footprint, "value": i.value, "x": round(i.x, 4), "y": round(i.y, 4), "rot": i.rot, "added_by_layout": i.added_by_layout} for i in job.instances],
         "nets": {n: [[r, p, lg] for r, p, lg in rows] for n, rows in job.nets.items()},
     }

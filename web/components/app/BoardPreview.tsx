@@ -10,7 +10,7 @@ import { DrcPanel, ManufacturePanel, useDrcText } from "./FabPanels";
 import { PartsPanel } from "./PartsPanel";
 import type { ProductFile } from "./files";
 import { boardLedger } from "@/lib/ledger";
-import type { Generation, LayoutState } from "./useBoardLayout";
+import type { Generation, LayoutOptions, LayoutState } from "./useBoardLayout";
 import { ApiErrorView } from "../domain/ApiErrorView";
 import { isDesignJson, type DesignJson } from "../domain/SchematicGraph";
 import { blockDiagram, BLOCK_H, BLOCK_VIEW, BLOCK_W } from "./blocks";
@@ -18,6 +18,7 @@ import { CheckCards } from "./CheckCards";
 import { boardChecks, type CheckCard } from "./verdict";
 import type { BoardBench } from "./useBoardBench";
 import { btnGhost, btnPrimary } from "./ui";
+import { MakeBoardCard, RequestNote } from "./MakeBoardCard";
 
 export function parseDesign(text: string): { design: (DesignJson & { mcu_ref?: string }) | null; error: string | null } {
   if (!text.trim()) return { design: null, error: null };
@@ -74,7 +75,7 @@ function BlockDiagram({ design, hot }: { design: DesignJson & { mcu_ref?: string
   );
 }
 
-type Layout = LayoutState & { design: Parameters<typeof markersFor>[0]; generation: Generation; generate: () => void; cancel: () => void };
+type Layout = LayoutState & { design: Parameters<typeof markersFor>[0]; generation: Generation; generate: (opts?: LayoutOptions) => void; cancel: () => void };
 
 type Stage = "design" | "parts" | "drc" | "manufacture";
 type View = "layout" | "studio" | "3d" | "schematic" | "blocks";
@@ -177,14 +178,7 @@ export function BoardPreview({ b, tab, onFix, layout, files, onAsk }: { b: Board
               <>
                 <p className="text-[13.5px] font-medium text-ink">No routed board for this design yet</p>
                 <p className="mt-1 text-[12.5px] leading-snug text-ink-2">The checks above ran on your netlist. You can also turn it into a real 2-layer board: placed, routed with copper tracks, checked by KiCad, with Gerbers to download. Free; takes one to two minutes.</p>
-                {layout.generation.status === "failed" && (
-                  <p className="mt-2 rounded-lg bg-amber-dim px-3 py-2 text-[12.5px] leading-snug text-ink" role="alert">
-                    {layout.generation.message}
-                  </p>
-                )}
-                <button type="button" onClick={layout.generate} className={`${btnPrimary} mt-2`} data-testid="make-board-go">
-                  {layout.generation.status === "failed" ? "Try again" : "Make a routed board"}
-                </button>
+                <MakeBoardCard onMake={layout.generate} label={layout.generation.status === "failed" ? "Try again" : "Make a routed board"} error={layout.generation.status === "failed" ? layout.generation.message : undefined} />
               </>
             )}
           </div>
@@ -204,6 +198,7 @@ export function BoardPreview({ b, tab, onFix, layout, files, onAsk }: { b: Board
             <p className="mt-2 text-[12.5px] leading-snug text-ink-2" data-testid="layout-status">
               {layout.summary.stats.fully_routed ? "Fully routed" : `${layout.summary.stats.unrouted_connections} connection(s) not routed`} · {layout.summary.stats.board_mm[0]} × {layout.summary.stats.board_mm[1]} mm, 2 layers · KiCad design-rule check: {layout.summary.drc.errors} errors, {layout.summary.drc.warnings} warnings (silkscreen).
             </p>
+            <RequestNote request={layout.summary.request} />
             {markers.length > 0 && (
               <ul className="mt-2 flex flex-col gap-1.5" aria-label="Findings on the board">
                 {markers.map((m, i) => (

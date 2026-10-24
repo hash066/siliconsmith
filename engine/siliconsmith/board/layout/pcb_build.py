@@ -333,7 +333,11 @@ def finish(in_pcb: str, ses: str, out_pcb: str) -> None:
                 b.Add(v)
                 n_vias += 1
     joined = split_t_junctions(b)
-    stitched = stitch(b, nets)
+    try:  # the style sets how dense the ground stitching is (job.json sits next to the board)
+        pitch = float(json.load(open("job.json", encoding="utf-8")).get("stitch_pitch", 4.0))
+    except (OSError, ValueError):
+        pitch = 4.0
+    stitched = stitch(b, nets, pitch)
     add_ground_pours(b, nets)
     pcbnew.ZONE_FILLER(b).Fill(b.Zones())
     pcbnew.SaveBoard(out_pcb, b)

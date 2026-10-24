@@ -110,13 +110,14 @@ def summary_for(design: Design, library: dict[str, Part], job: P.Job, rr: dict[s
         "drc": drc,
         "markers": markers_for(design, library, check),
         "notes": job.notes + [RULES_NOTE],
+        "request": job.request,
         "files": files,
         "tool_note": TOOL_NOTE,
         "generated_with": {"kicad": "7.0.11", "router": "Freerouting 1.9.0", "rules": RULES_NOTE.rstrip(".")},
     }
 
 
-def generate(design: Design, out_dir: str | Path, library: dict[str, Part] | None = None, *, width: float | None = None, height: float | None = None, check: dict[str, Any] | None = None, route_timeout: int = 240) -> LayoutResult:
+def generate(design: Design, out_dir: str | Path, library: dict[str, Part] | None = None, *, width: float | None = None, height: float | None = None, check: dict[str, Any] | None = None, route_timeout: int = 240, style: str | None = None, constraints: Any = None) -> LayoutResult:
     """Run the whole pipeline here. Raises ToolMissing if KiCad/Java/Freerouting are absent, P.LayoutError for a design it cannot place."""
     ok, why = available()
     if not ok:
@@ -128,7 +129,7 @@ def generate(design: Design, out_dir: str | Path, library: dict[str, Part] | Non
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.monotonic()
-    job = P.build_and_place(design, library, width=width, height=height)
+    job = P.build_and_place(design, library, width=width, height=height, style=style, constraints=constraints)
     (out / "job.json").write_text(json.dumps(P.to_json(job)), encoding="utf-8")
     t_place = round(time.monotonic() - t0, 1)
     rr = runner.run_pipeline(out, route_timeout=route_timeout)

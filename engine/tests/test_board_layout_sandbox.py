@@ -89,8 +89,10 @@ def client(generator, guard=None):
     return TestClient(app)
 
 
-def fake_generator(calls):
-    def gen(design, library, *, check=None, deadline=None, progress=None):
+def fake_generator(calls, seen=None):
+    seen = seen if seen is not None else []
+    def gen(design, library, *, check=None, deadline=None, progress=None, **kw):
+        seen.append(kw)
         calls.append(1)
         progress("Placing the parts")
         return {"summary": {"status": "ok"}, "board": {"width": 1}, "downloads": [], "seconds": 1.0}
@@ -146,3 +148,25 @@ def test_endpoint_limits_and_reports_a_failed_layout():
 def test_status_is_free_and_says_what_it_does():
     j = client(fake_generator([])).get("/api/board/layout/status").json()
     assert j["ok"] is True and "Sandbox" in j["scope"]
+
+
+def test_endpoint_takes_a_style_and_constraints_and_caches_them_separately():
+    calls: list[int] = []
+    seen: list[dict] = []
+    c = client(fake_generator(calls, seen))
+    body = {"design": DESIGN.model_dump()}
+    events(c.post("/api/board/layout", json=body))
+    events(c.post("/api/board/layout", json={**body, "style": "emi"}))
+    events(c.post("/api/board/layout", json={**body, "style": "emi", "constraints": "USB-C on the right edge"}))
+    assert len(calls) == 3  # three different requests, three boards
+    assert [k["style"] for k in seen] == ["default", "emi", "emi"]
+    assert seen[2]["constraints"].connector_edges == {"usbc": "right"}
+    assert events(c.post("/api/board/layout", json={**body, "style": "emi"}))[-1]["cached"] is True and len(calls) == 3
+
+
+def test_endpoint_rejects_a_bad_style_or_long_constraints():
+    c = client(fake_generator([]))
+    d = {"design": DESIGN.model_dump()}
+    assert c.post("/api/board/layout", json={**d, "style": "turbo"}).status_code == 422
+    assert c.post("/api/board/layout", json={**d, "constraints": "x" * 400}).status_code == 422
+    assert c.post("/api/board/layout", json={**d, "constraints": 5}).status_code == 422

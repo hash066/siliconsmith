@@ -79,6 +79,8 @@ export interface LayoutSummary {
   mcu_ref: string | null;
   mcu_padmap: Record<string, string[]>;
   status: string;
+  /** what was asked for when the board was made on request, and what the placer did or did not act on */
+  request?: { style: string; understood: string[]; ignored: string[] };
   stats: { parts: number; added_parts: number; nets: number; tracks: number; vias: number; board_mm: [number, number]; layers: number; unrouted_connections: number; fully_routed: boolean; seconds: number };
   drc: { errors: number; warnings: number; unconnected: number; error_types: Record<string, number>; warning_types: Record<string, number> };
   markers: Marker[];
