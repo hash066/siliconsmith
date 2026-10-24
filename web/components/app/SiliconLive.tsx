@@ -153,7 +153,7 @@ export function SiliconLivePreview({ live, tab, blocked, recordedHref }: { live:
       <p className="text-[11.5px] leading-snug text-ink-3">Cycle count measured on the simulated core. Clock speed was not measured, so this is not a wall-clock claim.</p>
       {views && <HardwareView views={views} />}
       {views && views.rows.length > 0 && <WaveView views={views} />}
-      {views && views.rows.length > 0 && prop && <TestPlan views={views} mnemonic={prop.mnemonic} />}
+      {views && views.rows.length > 0 && prop && <TestPlan views={views} mnemonic={prop.mnemonic} rtl={fileText((p) => /^rtl\/ss_insn_[a-z0-9_]+\.v$/.test(p))} vcd={fileText((p) => p === "views/waveform.vcd")} />}
       {original && patched && prop && <BeforeAfter before={original} after={patched} mnemonic={prop.mnemonic} />}
 
       {error && (

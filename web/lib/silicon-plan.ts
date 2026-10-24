@@ -3,6 +3,7 @@
 // views/instruction.json (made by Verilator in the Sandbox).
 import type { InstructionViews } from "./silicon-views";
 import { hex32, matches } from "./silicon-views";
+import { internalAt, parseVcd } from "./vcd";
 
 interface UsageLike {
   calls: number;
@@ -80,6 +81,16 @@ export interface Scenario {
   hardware: number;
   reference: number;
   passed: boolean;
+  /** signals inside the instruction at this operand pair, as hexadecimal, from the Verilator trace */
+  internal?: Record<string, string>;
+  /** an operand pair the visitor chose, run on request */
+  custom?: boolean;
+}
+
+/** A scenario for an operand pair the visitor chose: a row [rs1, rs2, hardware, reference] and its own trace (one time stamp per pair). */
+export function customScenario(n: number, row: number[], vcdText?: string): Scenario {
+  const v = parseVcd(vcdText);
+  return { id: `c${n}`, title: `Your pair ${n}`, description: "An operand pair you chose, simulated in Verilator in a Sandbox next to the plain C description.", rs1: row[0] >>> 0, rs2: row[1] >>> 0, hardware: row[2] >>> 0, reference: row[3] >>> 0, passed: matches(row), custom: true, internal: v ? internalAt(v, 0) : undefined };
 }
 
 /** What each of the fixed operand pairs is for (the pairs themselves come from the Sandbox worker, in this order). */
@@ -94,10 +105,11 @@ const PAIR_NOTES: Array<[string, string]> = [
   ["Mixed pattern", "Two arbitrary-looking words, to catch anything the structured pairs miss."],
 ];
 
-export function scenariosOf(v: InstructionViews): Scenario[] {
+export function scenariosOf(v: InstructionViews, vcdText?: string): Scenario[] {
+  const vcd = parseVcd(vcdText);
   return v.rows.map((r, i) => {
     const [title, description] = PAIR_NOTES[i] ?? [`Pair ${i + 1}`, "An operand pair from the test run."];
-    return { id: `s${i + 1}`, title, description, rs1: r[0] >>> 0, rs2: r[1] >>> 0, hardware: r[2] >>> 0, reference: r[3] >>> 0, passed: matches(r) };
+    return { id: `s${i + 1}`, title, description, rs1: r[0] >>> 0, rs2: r[1] >>> 0, hardware: r[2] >>> 0, reference: r[3] >>> 0, passed: matches(r), internal: vcd ? internalAt(vcd, i) : undefined };
   });
 }
 

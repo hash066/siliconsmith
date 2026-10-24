@@ -35,3 +35,28 @@ describe("Silicon studio panels", () => {
     expect(h).toContain("0000000a");
   });
 });
+
+describe("own operands and internal signals", () => {
+  const vcd = readFileSync(join(__dirname, "..", "..", "lib", "__fixtures__", "instruction-pairs.vcd"), "utf8");
+  const small = { ...views, name: "dot4_s8", cRef: "return rs1 + rs2;", rows: views.rows.slice(0, 3) };
+  const rtl = "module ss_insn_dot4_s8(input [31:0] rs1, input [31:0] rs2, output [31:0] rd);\nendmodule\n";
+
+  it("offers the operand form only when the source and C reference are known", () => {
+    expect(renderToStaticMarkup(<TestPlan views={small} mnemonic="dot4" />)).not.toContain("own-pair");
+    const h = renderToStaticMarkup(<TestPlan views={small} mnemonic="dot4" rtl={rtl} />);
+    expect(h).toContain('data-testid="own-pair"');
+    expect(h).toContain("Try your own operands");
+  });
+
+  it("does not offer it when the module does not match the instruction name", () => {
+    const h = renderToStaticMarkup(<TestPlan views={small} mnemonic="dot4" rtl={rtl.replace("dot4_s8", "other")} />);
+    expect(h).toContain("disabled");
+  });
+
+  it("shows signals from inside the instruction and a VCD download when a trace came with the run", () => {
+    const h = renderToStaticMarkup(<TestPlan views={small} mnemonic="dot4" rtl={rtl} vcd={vcd} />);
+    for (const n of ["p0", "p1", "inside"]) expect(h).toContain(n);
+    expect(h).toContain('data-testid="vcd-export"');
+    expect(renderToStaticMarkup(<TestPlan views={small} mnemonic="dot4" rtl={rtl} />)).not.toContain("vcd-export");
+  });
+});

@@ -2,6 +2,8 @@
 
     python3 /tmp/ss_live_worker.py spec <job.json>   # validate a golden spec: lint + agreement with the C reference
     python3 /tmp/ss_live_worker.py eval <job.json>   # the engine's worker, plus a `dt` (seconds) on every stage line
+    python3 /tmp/ss_live_worker.py viz <job.json>    # the views of a verified instruction, with a signal trace
+    python3 /tmp/ss_live_worker.py pairs <job.json>  # the instruction on operand pairs the visitor chose, with a signal trace
     python3 /tmp/ss_live_worker.py tools             # tool versions, printed once when the baseline is generated
 
 It speaks the same stdout protocol as siliconsmith.worker (SS_STAGE / SS_OUTCOME lines).
@@ -58,6 +60,7 @@ def cmd_eval(job_path):
 _VIZ_HARNESS = r"""
 #include "V{top}.h"
 #include "verilated.h"
+#include "verilated_vcd_c.h"
 #include <cstdint>
 #include <cstdio>
 static inline uint32_t ss_ref(uint32_t rs1, uint32_t rs2) {{
@@ -65,12 +68,20 @@ static inline uint32_t ss_ref(uint32_t rs1, uint32_t rs2) {{
 }}
 int main() {{
     VerilatedContext ctx;
+    ctx.traceEverOn(true);
     V{top}* u = new V{top}{{&ctx}};
+    VerilatedVcdC* tf = new VerilatedVcdC;
+    u->trace(tf, 99);
+    tf->open("wave.vcd");
     static const uint32_t v[][2] = {{ {pairs} }};
     for (unsigned i = 0; i < sizeof(v) / sizeof(v[0]); i++) {{
         u->rs1 = v[i][0]; u->rs2 = v[i][1]; u->eval();
+        tf->dump((uint64_t)i * 10);
         std::printf("SS_ROW %08x %08x %08x %08x\n", v[i][0], v[i][1], u->rd, ss_ref(v[i][0], v[i][1]));
     }}
+    tf->dump((uint64_t)(sizeof(v) / sizeof(v[0])) * 10);
+    tf->close();
+    delete tf;
     delete u;
     return 0;
 }}
@@ -84,6 +95,51 @@ _VIZ_PAIRS = [(0, 0), (1, 1), (0x01020304, 0x01010101), (0x7F7F7F7F, 0x7F7F7F7F)
 def _sh(cmd, cwd, timeout=300):
     r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
     return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+MAX_VCD = 400_000
+
+
+def _simulate(work, top, rtl, c_ref, pairs):
+    """Build the instruction with Verilator (tracing every signal) and run it on the operand pairs beside the C reference.
+    Returns (rows, vcd text); both are empty if the build failed."""
+    import re
+    import shutil
+
+    shutil.rmtree(work / "obj", ignore_errors=True)
+    (work / (top + ".v")).write_text(rtl, encoding="utf-8")
+    plist = ", ".join("{0x%08xu, 0x%08xu}" % (a & 0xFFFFFFFF, b & 0xFFFFFFFF) for a, b in pairs)
+    body = "\n".join("\t" + ln for ln in c_ref.strip().splitlines())
+    (work / "h.cpp").write_text(_VIZ_HARNESS.format(top=top, c_ref=body, pairs=plist), encoding="utf-8")
+    rc, _log = _sh(["verilator", "--cc", "--exe", "--build", "--trace", "-j", "0", "-O0", "-Wno-fatal", "-Wno-lint", "-Wno-style", "--top-module", top, "-Mdir", "obj", "-o", str(work / "viz"), top + ".v", "h.cpp"], work, 600)
+    rows, vcd = [], ""
+    if rc == 0:
+        (work / "wave.vcd").unlink(missing_ok=True)
+        rc, log = _sh([str(work / "viz")], work)
+        for ln in log.splitlines():
+            m = re.match(r"SS_ROW (\w+) (\w+) (\w+) (\w+)", ln)
+            if m:
+                rows.append([int(g, 16) for g in m.groups()])
+        if (work / "wave.vcd").exists():
+            vcd = (work / "wave.vcd").read_text(encoding="utf-8", errors="replace")[:MAX_VCD]
+    return rows, vcd
+
+
+def cmd_pairs(job_path):
+    """Run the instruction on operand pairs the visitor chose (at most 16), beside the C reference; the signal trace comes back too."""
+    import shutil
+
+    job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    top = "ss_insn_" + job["name"]
+    work = Path("/tmp/pairs")
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    rows, vcd = _simulate(work, top, job["rtl"], job["c_ref"], [tuple(p) for p in job["pairs"]])
+    if not rows:
+        sys.stdout.write("SS_PAIRS " + json.dumps({"ok": False, "message": "the instruction could not be simulated"}) + "\n")
+        return 0
+    sys.stdout.write("SS_PAIRS " + json.dumps({"ok": True, "rows": rows, "vcd": vcd}, separators=(",", ":")) + "\n")
+    return 0
 
 
 def cmd_viz(job_path):
@@ -127,18 +183,9 @@ def cmd_viz(job_path):
         m = re.search(r"length=(\d+)", (work / "ltp.txt").read_text(encoding="utf-8"))
         depth = int(m.group(1)) if m else None
     out["depth"] = depth
-    pairs = ", ".join("{0x%08xu, 0x%08xu}" % p for p in _VIZ_PAIRS)
-    c_ref = "\n".join("\t" + ln for ln in job["c_ref"].strip().splitlines())
-    (work / "h.cpp").write_text(_VIZ_HARNESS.format(top=top, c_ref=c_ref, pairs=pairs), encoding="utf-8")
-    rc, log = _sh(["verilator", "--cc", "--exe", "--build", "-j", "0", "-O2", "-Wno-fatal", "-Wno-lint", "-Wno-style", "--top-module", top, "-Mdir", "obj", "-o", str(work / "viz"), top + ".v", "h.cpp"], work, 600)
-    rows = []
-    if rc == 0:
-        rc, log = _sh([str(work / "viz")], work)
-        for ln in log.splitlines():
-            m = re.match(r"SS_ROW (\w+) (\w+) (\w+) (\w+)", ln)
-            if m:
-                rows.append([int(g, 16) for g in m.groups()])
-    out["rows"] = rows  # [rs1, rs2, rd from the hardware, rd from the C reference]
+    out["rows"], vcd = _simulate(work, top, job["rtl"], job["c_ref"], _VIZ_PAIRS)  # rows: [rs1, rs2, rd from the hardware, rd from the C reference]
+    out["vcd"] = vcd
+    out["c_ref"] = job["c_ref"]  # echoed so the page can ask for more operand pairs without a second copy of the source
     sys.stdout.write("SS_VIZ " + json.dumps(out, separators=(",", ":")) + "\n")
     return 0
 
@@ -164,6 +211,8 @@ if __name__ == "__main__":
         sys.exit(cmd_eval(sys.argv[2]))
     if len(sys.argv) == 3 and sys.argv[1] == "viz":
         sys.exit(cmd_viz(sys.argv[2]))
+    if len(sys.argv) == 3 and sys.argv[1] == "pairs":
+        sys.exit(cmd_pairs(sys.argv[2]))
     if len(sys.argv) == 2 and sys.argv[1] == "tools":
         sys.exit(cmd_tools())
     sys.exit(2)

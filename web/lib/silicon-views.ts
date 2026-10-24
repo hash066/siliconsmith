@@ -19,6 +19,8 @@ export interface InstructionViews {
   depth: number | null;
   /** [rs1, rs2, rd from the hardware, rd from the C reference] */
   rows: number[][];
+  /** the plain C reference body, kept so more operand pairs can be run later */
+  cRef?: string;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -43,6 +45,7 @@ export function parseViews(text: string | undefined): InstructionViews | null {
     gate_total: typeof j.gate_total === "number" ? j.gate_total : 0,
     depth: typeof j.depth === "number" ? j.depth : null,
     rows,
+    cRef: typeof j.c_ref === "string" ? j.c_ref : undefined,
   };
 }
 

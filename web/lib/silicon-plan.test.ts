@@ -46,3 +46,18 @@ describe("scenarios from the real run", () => {
     expect(planCsv([{ ...s[0], hardware: 1, passed: false }])).toContain("FAILED");
   });
 });
+
+describe("traces and your own pairs", () => {
+  it("attaches the signals inside the instruction to each scenario from the VCD, and builds one for a chosen pair", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { customScenario, scenariosOf } = await import("./silicon-plan");
+    const vcd = readFileSync(new URL("./__fixtures__/instruction-pairs.vcd", import.meta.url), "utf8");
+    const v = { name: "dot4_s8", ports: {}, cells: [], word_stat: "", gates: {}, gate_total: 0, depth: null, rows: [[1, 1, 1, 1], [16909060, 16843009, 7, 7]] };
+    const list = scenariosOf(v, vcd);
+    expect(list[1].internal?.s).toBe("00007");
+    expect(scenariosOf(v)[0].internal).toBeUndefined();
+    const c = customScenario(2, [5, 6, 11, 12], vcd);
+    expect(c).toMatchObject({ id: "c2", title: "Your pair 2", custom: true, passed: false, hardware: 11, reference: 12 });
+    expect(c.internal).toBeDefined();
+  });
+});

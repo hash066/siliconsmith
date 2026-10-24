@@ -244,6 +244,9 @@ class LiveSearch(Search):
             if viz is not None and deadline.remaining() >= 50:
                 data = viz(ins.name, ins.rtl, ins.c_ref)
                 if data:
+                    vcd = data.pop("vcd", "")
+                    if vcd:  # every signal of the instruction on the eight operand pairs, openable in GTKWave
+                        files["views/waveform.vcd"] = vcd
                     files["views/instruction.json"] = json.dumps(data, separators=(",", ":")) + "\n"
             report = render_report(self.wl, self.base, best, self.bus.events)
         else:

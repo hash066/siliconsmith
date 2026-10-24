@@ -82,6 +82,19 @@ class LiveBackend(ContreeBackend):
                     return None
         return None
 
+    def pairs(self, name: str, rtl: str, c_ref: str, pairs: list[list[int]]) -> dict:
+        """The instruction on operand pairs the visitor chose: {"rows": [[rs1, rs2, hardware, reference]...], "vcd": text}.
+        Raises SandboxCapReached or RuntimeError (with a message fit to show)."""
+        job = json.dumps({"name": name, "rtl": rtl, "c_ref": normalize_c_ref(c_ref), "pairs": pairs}).encode()
+        res = self._live_run(self.base_image, f"{SHELL} pairs /tmp/ss_pairs.json", {"/tmp/ss_pairs.json": job})
+        for line in (res.stdout or "").splitlines():
+            if line.startswith("SS_PAIRS "):
+                o = json.loads(line[len("SS_PAIRS "):])
+                if o.get("ok"):
+                    return {"rows": o["rows"], "vcd": o.get("vcd", "")}
+                raise RuntimeError(o.get("message", "the instruction could not be simulated"))
+        raise RuntimeError("the Sandbox run ended without a result")
+
     def evaluate(self, job: EvalJob, on_stage: StageCb, work: Path) -> EvalResult:
         t_op = self.bus.elapsed_ms() if self.bus else 0
         on_stage("lint", "running", "starting the Sandbox run", None)  # the worker's first rung

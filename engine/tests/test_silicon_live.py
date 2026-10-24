@@ -6,6 +6,7 @@ the HTTP face, the cached baselines, and that a prompt-injected note cannot reac
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import time
 import types
@@ -557,3 +558,137 @@ def test_live_backend_viz_parses_the_worker_line_and_swallows_failures():
 
     be._live_run = boom
     assert be.viz("x", "r", "c") is None
+
+
+# ------------------------------------------------------------------------------------------- operand pairs and the signal trace
+
+RTL = "module ss_insn_dot4_s8(input [31:0] rs1, input [31:0] rs2, output [31:0] rd);\nwire [31:0] s = rs1 + rs2;\nassign rd = s;\nendmodule\n"
+
+
+def pairs_body(**over):
+    return {"name": "dot4_s8", "rtl": RTL, "c_ref": "return rs1 + rs2;", "pairs": [[1, 2], [4294967295, 1]], **over}
+
+
+def pairs_client(runner=None, guard=None):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from siliconsmith.live.http import PairsGuard, make_router
+
+    app = FastAPI()
+    app.include_router(make_router(pairs_runner=runner or (lambda req: {"rows": [[a, b, (a + b) & 0xFFFFFFFF, (a + b) & 0xFFFFFFFF] for a, b in req["pairs"]], "vcd": "$enddefinitions $end"}),
+                                   pairs_guard=guard or PairsGuard()))
+    return TestClient(app)
+
+
+def test_pairs_endpoint_returns_rows_and_the_trace():
+    r = pairs_client().post("/api/silicon/pairs", json=pairs_body())
+    j = r.json()
+    assert r.status_code == 200 and j["ok"] and j["rows"][1] == [4294967295, 1, 0, 0] and "enddefinitions" in j["vcd"]
+    assert r.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("over,code", [
+    ({"name": "Bad Name"}, "bad_name"), ({"rtl": "module other(); endmodule"}, "bad_rtl"),
+    ({"rtl": RTL + '\ninitial $system("ls");'}, "bad_rtl"), ({"rtl": "`include \"/etc/passwd\"\n" + RTL}, "bad_rtl"),
+    ({"c_ref": ""}, "bad_c_ref"), ({"pairs": []}, "bad_pairs"), ({"pairs": [[1, 2]] * 17}, "bad_pairs"),
+    ({"pairs": [[1, -1]]}, "bad_pairs"), ({"pairs": [[1, 2 ** 32]]}, "bad_pairs"), ({"pairs": [[True, 1]]}, "bad_pairs"), ({"pairs": [[1]]}, "bad_pairs"),
+])
+def test_pairs_endpoint_rejects_bad_input_before_any_sandbox(over, code):
+    calls = []
+    r = pairs_client(runner=lambda req: calls.append(req) or {"rows": [], "vcd": ""}).post("/api/silicon/pairs", json=pairs_body(**over))
+    assert r.status_code == 422 and r.json()["error"]["code"] == code and calls == []
+
+
+def test_pairs_endpoint_limits_and_failures():
+    from siliconsmith.live.http import PairsGuard
+    from siliconsmith.live.limits import LiveError
+
+    c = pairs_client()
+    assert c.post("/api/silicon/pairs", content=b"not json").status_code == 400
+    assert c.post("/api/silicon/pairs", json={**pairs_body(), "extra": 1}).status_code == 422
+    assert c.post("/api/silicon/pairs", content=b"{" + b" " * 30000 + b"}").status_code == 413
+    g = PairsGuard()
+    g.max_active = 0
+    r = pairs_client(guard=g).post("/api/silicon/pairs", json=pairs_body())
+    assert r.status_code == 429 and r.headers["retry-after"]
+
+    def boom(req):
+        raise LiveError("simulation_failed", "the instruction could not be simulated", 422)
+
+    r = pairs_client(runner=boom).post("/api/silicon/pairs", json=pairs_body())
+    assert r.status_code == 422 and r.json()["error"]["code"] == "simulation_failed"
+    g2 = PairsGuard()
+    pairs_client(runner=boom, guard=g2).post("/api/silicon/pairs", json=pairs_body())
+    assert g2._active == 0  # the slot is given back even when the run fails
+
+
+def test_backend_pairs_reads_the_worker_line():
+    from siliconsmith.live.backend import LiveBackend
+
+    class Res:
+        stdout = "noise\nSS_PAIRS " + json.dumps({"ok": True, "rows": [[1, 2, 3, 3]], "vcd": "v"}) + "\n"
+
+    be = LiveBackend.__new__(LiveBackend)
+    be.base_image = "img"
+    be._live_run = lambda *a, **k: Res()
+    assert be.pairs("x", "rtl", "return rs1;", [[1, 2]]) == {"rows": [[1, 2, 3, 3]], "vcd": "v"}
+    Res.stdout = "SS_PAIRS " + json.dumps({"ok": False, "message": "no build"}) + "\n"
+    with pytest.raises(RuntimeError, match="no build"):
+        be.pairs("x", "rtl", "return rs1;", [[1, 2]])
+    Res.stdout = ""
+    with pytest.raises(RuntimeError, match="without a result"):
+        be.pairs("x", "rtl", "return rs1;", [[1, 2]])
+
+
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="needs Verilator")
+def test_worker_pairs_run_a_real_simulation_with_internal_signals(tmp_path, capsys):
+    from siliconsmith.live import sandbox_worker as W
+
+    rtl = "module ss_insn_t(input [31:0] rs1, input [31:0] rs2, output [31:0] rd);\nwire [31:0] total = rs1 + rs2;\nassign rd = total;\nendmodule\n"
+    job = tmp_path / "job.json"
+    job.write_text(json.dumps({"name": "t", "rtl": rtl, "c_ref": "return rs1 + rs2;", "pairs": [[1, 2], [4294967295, 1]]}))
+    assert W.cmd_pairs(str(job)) == 0
+    line = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("SS_PAIRS ")][0]
+    o = json.loads(line[len("SS_PAIRS "):])
+    assert o["ok"] and o["rows"] == [[1, 2, 3, 3], [4294967295, 1, 0, 0]]
+    assert " total " in o["vcd"] and "$enddefinitions" in o["vcd"]  # an internal wire is in the trace, not only the ports
+
+
+def test_the_default_pairs_runner_uses_a_bounded_backend_and_maps_failures(monkeypatch):
+    from siliconsmith.live import backend as B
+    from siliconsmith.live import http as H
+
+    seen = {}
+
+    class Fake:
+        def __init__(self, deadline):
+            seen["seconds"] = deadline.max_seconds
+
+        def pairs(self, name, rtl, c_ref, pairs):
+            if name == "capped":
+                raise B.SandboxCapReached("0 s left")
+            if name == "broken":
+                raise RuntimeError("no build")
+            if name == "denied":
+                raise PermissionError("secret-key-123")
+            return {"rows": [[1, 2, 3, 3]], "vcd": ""}
+
+    monkeypatch.setattr(B, "LiveBackend", Fake)
+    req = {"name": "x", "rtl": "r", "c_ref": "c", "pairs": [[1, 2]]}
+    assert H.run_pairs_in_sandbox(req)["rows"] == [[1, 2, 3, 3]] and seen["seconds"] == H.PAIRS_SECONDS
+    for name, code in (("capped", "no_time"), ("broken", "simulation_failed"), ("denied", "sandbox_failed")):
+        with pytest.raises(LiveError) as e:
+            H.run_pairs_in_sandbox({**req, "name": name})
+        assert e.value.code == code and "secret" not in e.value.message
+
+
+def test_the_signal_trace_ships_as_its_own_file_not_inside_the_views_json():
+    class TraceBackend(FakeBackend):
+        def viz(self, name, rtl, c_ref):
+            return {"name": name, "rows": [[1, 1, 1, 1]], "cells": [], "vcd": "$enddefinitions $end\n#0\n", "c_ref": "return rs1;"}
+
+    ev, *_ = run(backend=TraceBackend())
+    f = {x["name"]: x for x in ev[-1]["files"]}
+    assert f["views/waveform.vcd"]["content"].startswith("$enddefinitions")
+    views = json.loads(f["views/instruction.json"]["content"])
+    assert "vcd" not in views and views["c_ref"] == "return rs1;"
