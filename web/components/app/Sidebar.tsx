@@ -40,6 +40,13 @@ export function Sidebar({ projects, currentId, creating, onSelect, onNew, onRena
   useEffect(() => {
     if (focus) setOpen((o) => (o[focus] ? o : { ...o, [focus]: true }));
   }, [focus]);
+  // the first time the saved list arrives, every workbench that has projects opens
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || projects.length === 0) return;
+    seeded.current = true;
+    setOpen((o) => ({ matter: o.matter || projects.some((p) => p.wb === "matter"), silicon: o.silicon || projects.some((p) => p.wb === "silicon"), board: o.board || projects.some((p) => p.wb === "board") }));
+  }, [projects]);
   useEffect(() => {
     if (editing) edit.current?.select();
   }, [editing]);
