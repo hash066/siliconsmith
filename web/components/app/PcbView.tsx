@@ -130,6 +130,7 @@ export function PcbView({ geom, markers, focus, onFocusMarker }: PcbViewProps) {
         {(Object.keys(LAYER_LABEL) as LayerKey[]).map((k) => (
           <label key={k} className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12px] ${layers[k] ? "border-signal-line bg-raised text-ink" : "border-line text-ink-3"}`}>
             <input type="checkbox" className="sr-only" checked={layers[k]} onChange={() => setLayers((l) => ({ ...l, [k]: !l[k] }))} />
+            <span aria-hidden="true" className={`inline-block h-2 w-2 rounded-full ${layers[k] ? "bg-signal" : "border border-line-2"}`} />
             {LAYER_LABEL[k]}
           </label>
         ))}
@@ -184,7 +185,7 @@ export function PcbView({ geom, markers, focus, onFocusMarker }: PcbViewProps) {
         {/* bottom copper */}
         {layers.bottom && (
           <g opacity={layers.top ? 0.7 : 1}>
-            {layers.pour && geom.zones.filter((z) => z.layer === "B").map((z, i) => <path key={i} d={pathOf(z.outline) + z.holes.map(pathOf).join("")} fillRule="evenodd" fill={C.bottom} opacity={dimOthers ? 0.08 : 0.2} />)}
+            {layers.pour && geom.zones.filter((z) => z.layer === "B").map((z, i) => <path key={i} d={pathOf(z.outline) + z.holes.map(pathOf).join("")} fillRule="evenodd" fill={C.bottom} opacity={dimOthers ? 0.04 : 0.11} />)}
             {geom.tracks.filter((t) => t.layer === "B").map((t, i) => (
               <line key={i} x1={t.x0} y1={t.y0} x2={t.x1} y2={t.y1} stroke={C.bottom} strokeWidth={t.w} strokeLinecap="round" opacity={dimOthers && !hot(t.net) ? 0.25 : 1} onMouseEnter={() => setNet(t.net)} onMouseLeave={() => setNet(null)} />
             ))}
@@ -193,7 +194,7 @@ export function PcbView({ geom, markers, focus, onFocusMarker }: PcbViewProps) {
         {/* top copper */}
         {layers.top && (
           <g>
-            {layers.pour && geom.zones.filter((z) => z.layer === "F").map((z, i) => <path key={i} d={pathOf(z.outline) + z.holes.map(pathOf).join("")} fillRule="evenodd" fill={C.top} opacity={dimOthers ? 0.08 : 0.28} />)}
+            {layers.pour && geom.zones.filter((z) => z.layer === "F").map((z, i) => <path key={i} d={pathOf(z.outline) + z.holes.map(pathOf).join("")} fillRule="evenodd" fill={C.top} opacity={dimOthers ? 0.05 : 0.17} />)}
             {geom.tracks.filter((t) => t.layer === "F").map((t, i) => (
               <line key={i} x1={t.x0} y1={t.y0} x2={t.x1} y2={t.y1} stroke={C.top} strokeWidth={t.w} strokeLinecap="round" opacity={dimOthers && !hot(t.net) ? 0.25 : 1} onMouseEnter={() => setNet(t.net)} onMouseLeave={() => setNet(null)} />
             ))}
