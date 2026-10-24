@@ -118,15 +118,15 @@ export function MatterPreview({ b, tab }: { b: MatterBench; tab: "preview" | "pr
           <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-line bg-line text-[13px] [&>div]:bg-panel [&>div]:px-3 [&>div]:py-2.5">
             <div>
               <dt className="min-h-[2lh] text-[11.5px] text-ink-3">Hottest point</dt>
-              <dd className="num text-[20px] leading-tight text-ink">{f1(solved.peak)} °C</dd>
+              <dd className="num text-[20px] leading-tight text-ink @lg:truncate">{f1(solved.peak)} °C</dd>
             </div>
             <div>
               <dt className="min-h-[2lh] text-[11.5px] text-ink-3">Material used</dt>
-              <dd className="num text-[20px] leading-tight text-ink">{solved.fraction === null ? "n/a" : `${f1(solved.fraction * 100, 0)}%`}</dd>
+              <dd className="num text-[20px] leading-tight text-ink @lg:truncate">{solved.fraction === null ? "n/a" : `${f1(solved.fraction * 100, 0)}%`}</dd>
             </div>
             <div>
               <dt className="min-h-[2lh] text-[11.5px] text-ink-3">Plain fins, same material</dt>
-              <dd className="num text-[20px] leading-tight text-ink">{solved.equal.delta_k === null ? "n/a" : solved.equal.delta_k >= 0 ? `${f1(solved.equal.delta_k, 1)} K cooler` : `${f1(-solved.equal.delta_k, 1)} K hotter`}</dd>
+              <dd className="num text-[20px] leading-tight text-ink @lg:truncate">{solved.equal.delta_k === null ? "n/a" : solved.equal.delta_k >= 0 ? `${f1(solved.equal.delta_k, 1)} K cooler` : `${f1(-solved.equal.delta_k, 1)} K hotter`}</dd>
             </div>
           </dl>
         </>
