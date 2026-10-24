@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BRAND, WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import type { UiAction, UiActionResult } from "@/lib/agent-actions";
-import { fromSearch, toHref } from "@/lib/deeplink";
+import { fromSearch, toHref, type DeepLink } from "@/lib/deeplink";
+import type { AgentState } from "@/lib/agent";
+import { addProject, createProject, loadProjects, patchProject, removeProject, renameProject, sanitizeChat, saveProjects, type Project, type ProjectSnap } from "@/lib/projects";
 import type { AgentContext } from "../agent";
 import { ThemeToggle } from "../site/Brand";
 import { AdvancedDrawer, type HistoryItem } from "./Advanced";
@@ -17,6 +19,7 @@ import { FilesTab, PreviewPane, type PreviewTab } from "./PreviewPane";
 import { MatterPreview } from "./MatterPreview";
 import { SiliconLivePreview } from "./SiliconLive";
 import { StartScreen, type StartPick } from "./StartScreen";
+import type { Chip } from "./route";
 import { UI_ACTION_EVENT, type UiActionDetail } from "./ui-actions";
 import { useBoardBench } from "./useBoardBench";
 import { useCredits } from "./useCredits";
@@ -26,10 +29,12 @@ import { boardVerdict, matterVerdict, siliconVerdict, type CheckCard } from "./v
 import type { ProductFile } from "./files";
 import { bomCsv, kicadNetlist } from "./netlist";
 import { resolveWorkbench } from "./route";
-import { IconHelp } from "./ui";
+import { Sidebar } from "./Sidebar";
+import { IconHelp, IconPanel } from "./ui";
 
 const MODEL_KEY = "hw-app-model-v1";
 const DEFAULT_RECORDED = "r_w1_contree3";
+const SIDEBAR_KEY = "hw-sidebar-v1";
 
 function readStore(key: string): string | null {
   try {
@@ -54,23 +59,138 @@ const SUGGESTIONS: Record<WorkbenchId, string[]> = {
 
 /** `recorded` = ids of the real recorded runs installed here (the full search is only a link under Proof). */
 export function AppShell({ recorded }: { recorded: string[] }) {
-  const [epoch, setEpoch] = useState(0);
-  return (
-    <App
-      key={epoch}
-      recorded={recorded}
-      onRestart={() => {
-        // a deep link must not pull the visitor straight back in
-        window.history.replaceState(null, "", "/app");
-        setEpoch((e) => e + 1);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [creating, setCreating] = useState<WorkbenchId | "any" | null>("any");
+  const [initial, setInitial] = useState<StartPick | undefined>(undefined);
+  const [link, setLink] = useState<DeepLink | undefined>(undefined);
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const credits = useCredits();
+  const latestProjects = useRef(projects);
+  latestProjects.current = projects;
+
+  // Everything is read after mount (never during render), so the server and the first client render agree.
+  useEffect(() => {
+    const list = loadProjects();
+    setCollapsed(readStore(SIDEBAR_KEY) === "0");
+    const sl = fromSearch(new URLSearchParams(window.location.search));
+    if (sl) {
+      const wb = sl.wb;
+      const p = createProject(wb, `Shared ${WORKBENCHES[wb].name} link`);
+      setProjects(addProject(list, p));
+      setLink(sl);
+      setCurrentId(p.id);
+      setCreating(null);
+      window.history.replaceState(null, "", "/app");
+    } else {
+      setProjects(list);
+    }
+    setLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (loaded) saveProjects(projects);
+  }, [projects, loaded]);
+
+  const onPatch = useCallback((id: string, patch: Partial<Omit<Project, "id" | "createdAt">>) => {
+    setProjects((l) => {
+      const cur = l.find((p) => p.id === id);
+      if (!cur) return l;
+      // a change that leaves the saved value as it was must not reorder the list or bump its time
+      const same = Object.keys(patch).every((k) => JSON.stringify((patch as Record<string, unknown>)[k]) === JSON.stringify((cur as unknown as Record<string, unknown>)[k]));
+      return same ? l : patchProject(l, id, patch);
+    });
+  }, []);
+  const begin = (p: StartPick) => {
+    const { wb } = resolveWorkbench(p.text, p.chip);
+    const proj = createProject(wb, p.text);
+    setProjects((l) => addProject(l, proj));
+    setInitial(p);
+    setLink(undefined);
+    setCurrentId(proj.id);
+    setCreating(null);
+  };
+  const select = (id: string) => {
+    setInitial(undefined);
+    setLink(undefined);
+    setCurrentId(id);
+    setCreating(null);
+    setDrawer(false);
+  };
+  const newProject = (wb: WorkbenchId | "any") => {
+    setCurrentId(null);
+    setCreating(wb);
+    setDrawer(false);
+  };
+  const toggle = () => {
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      setCollapsed((c) => {
+        writeStore(SIDEBAR_KEY, c ? "1" : "0");
+        return !c;
+      });
+    } else setDrawer((d) => !d);
+  };
+  const leading = (
+    <button type="button" onClick={toggle} aria-label="Show or hide your projects" title="Projects" data-testid="sidebar-toggle" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-3 hover:bg-raised hover:text-ink">
+      <IconPanel size={18} />
+    </button>
+  );
+  const current = projects.find((p) => p.id === currentId) ?? null;
+  const sidebar = (close?: () => void) => (
+    <Sidebar
+      projects={projects}
+      currentId={currentId}
+      creating={creating === "any" ? null : creating}
+      onSelect={select}
+      onNew={(wb) => newProject(wb)}
+      onRename={(id, title) => setProjects((l) => renameProject(l, id, title))}
+      onDelete={(id) => {
+        setProjects((l) => removeProject(l, id));
+        if (id === currentId) newProject("any");
       }}
+      onClose={close}
     />
+  );
+  return (
+    <div className="flex h-dvh min-w-0 overflow-hidden bg-bg">
+      <aside className={`hidden w-[264px] shrink-0 border-r border-line ${collapsed ? "" : "lg:block"}`} aria-label="Sidebar">
+        {sidebar()}
+      </aside>
+      {drawer && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button type="button" aria-label="Close the projects list" onClick={() => setDrawer(false)} className="absolute inset-0 bg-black/55" />
+          <aside className="absolute inset-y-0 left-0 w-[min(300px,86vw)] border-r border-line shadow-[var(--hw-shadow)]">{sidebar(() => setDrawer(false))}</aside>
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        {current && !creating ? (
+          <Workspace key={current.id} recorded={recorded} project={current} onPatch={onPatch} initial={initial} link={link} leading={leading} onNew={(wb) => newProject(wb)} />
+        ) : (
+          <div className="h-dvh overflow-y-auto">
+            <StartScreen key={creating ?? "any"} credits={credits} onStart={begin} initialChip={creating && creating !== "any" ? (creating as Chip) : "auto"} leading={leading} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => void }) {
-  const [stage, setStage] = useState<"start" | "work">("start");
-  const [wb, setWb] = useState<WorkbenchId>("matter");
+interface WorkspaceProps {
+  recorded: string[];
+  project: Project;
+  /** Saves a change to this project (its workbench, chat or settings). */
+  onPatch: (id: string, patch: Partial<Omit<Project, "id" | "createdAt">>) => void;
+  /** The first prompt from the start screen, sent once when the project opens. */
+  initial?: StartPick;
+  /** A shared link this project was opened from. */
+  link?: DeepLink;
+  leading: ReactNode;
+  onNew: (wb: WorkbenchId) => void;
+}
+
+function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }: WorkspaceProps) {
+  const [wb, setWb] = useState<WorkbenchId>(project.wb);
   const [tab, setTab] = useState<PreviewTab>("preview");
   const [pane, setPane] = useState<"chat" | "preview">("chat");
   const [dirty, setDirty] = useState(false);
@@ -105,7 +225,6 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
   const openWork = useCallback((w: WorkbenchId, t: PreviewTab = "preview") => {
     setWb(w);
     setTab(t);
-    setStage("work");
   }, []);
   const touch = useCallback(() => {
     if (latest.current.pane !== "preview") setDirty(true);
@@ -187,67 +306,116 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
     [apply, log],
   );
 
-  // --- start screen and deep links
+  // --- opening the project: restore its saved settings, or start from the first prompt, or from a shared link
   const push = useCallback((text: string) => setPrompt((p) => ({ id: (p?.id ?? 0) + 1, text })), []);
-  const onStart = useCallback(
-    (p: StartPick) => {
-      const { wb: w } = resolveWorkbench(p.text, p.chip);
-      const L = latest.current;
-      if (p.example?.preset?.matter?.spreader) {
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    const L = latest.current;
+    const snap = project.snap;
+    if (initial) {
+      if (initial.example?.preset?.matter?.spreader) {
         L.autoDone.matter = true;
-        L.matter.setParams({ spreader: p.example.preset.matter.spreader });
+        L.matter.setParams({ spreader: initial.example.preset.matter.spreader });
         void L.matter.simulate().then((r) => log(`Matter simulate (example preset): ${r.summary}`, r.ok));
       }
-      openWork(w);
-      push(p.text);
-    },
-    [openWork, push, log],
-  );
-  const didLink = useRef(false);
-  useEffect(() => {
-    if (didLink.current) return;
-    didLink.current = true;
-    const link = fromSearch(new URLSearchParams(window.location.search));
-    if (!link) return;
-    void (async () => {
-      const L = latest.current;
-      if (link.wb === "board") {
-        if (link.template || link.autorun) L.autoDone.board = true;
-        openWork("board");
-        if (link.template) {
-          const r = await L.board.loadTemplate(link.template);
-          log(`Deep link · ${r.summary}`, r.ok);
-          if (r.ok && link.autorun) {
-            const c = await L.board.check();
-            log(`Board check: ${c.summary}`, c.ok);
+      push(initial.text);
+      return;
+    }
+    if (link) {
+      void (async () => {
+        if (link.wb === "board") {
+          if (link.template || link.autorun) L.autoDone.board = true;
+          if (link.template) {
+            const r = await L.board.loadTemplate(link.template);
+            log(`Deep link · ${r.summary}`, r.ok);
+            if (r.ok && link.autorun) {
+              const c = await L.board.check();
+              log(`Board check: ${c.summary}`, c.ok);
+            }
           }
-        }
-      } else if (link.wb === "matter") {
-        if (link.params || link.autorun) L.autoDone.matter = true;
-        openWork("matter");
-        if (link.params) {
-          const r = L.matter.setParams(link.params);
-          log(`Deep link · ${r.summary}`, r.ok);
-          if (r.ok && link.autorun) {
+        } else if (link.wb === "matter") {
+          if (link.params || link.autorun) L.autoDone.matter = true;
+          if (link.params) {
+            const r = L.matter.setParams(link.params);
+            log(`Deep link · ${r.summary}`, r.ok);
+            if (r.ok && link.autorun) {
+              const s = await L.matter.simulate();
+              log(`Matter simulate: ${s.summary}`, s.ok);
+            }
+          } else if (link.autorun) {
             const s = await L.matter.simulate();
             log(`Matter simulate: ${s.summary}`, s.ok);
           }
-        } else if (link.autorun) {
-          const s = await L.matter.simulate();
-          log(`Matter simulate: ${s.summary}`, s.ok);
+        } else {
+          openWork("silicon", link.run ? "proof" : "preview");
+          if (link.run && L.recorded.includes(link.run)) setRecordedRun(link.run);
         }
-      } else {
-        openWork("silicon", link.run ? "proof" : "preview");
-        if (link.run && L.recorded.includes(link.run)) setRecordedRun(link.run);
-      }
-    })();
-  }, [openWork, log]);
+      })();
+      return;
+    }
+    // a saved project: its settings are re-applied and the free solver or checker re-runs, so the preview is real, not a stored picture
+    if (project.wb === "matter" && snap.matter && (snap.matter.spreader || snap.matter.gen_params)) {
+      L.autoDone.matter = true;
+      L.matter.setParams(snap.matter as Parameters<typeof L.matter.setParams>[0]);
+      void L.matter.simulate().then((r) => log(`Matter simulate (restored project): ${r.summary}`, r.ok));
+    } else if (project.wb === "board" && snap.board) {
+      L.autoDone.board = true;
+      void (async () => {
+        if (snap.board?.templateId) {
+          const r = await L.board.loadTemplate(snap.board.templateId);
+          if (!r.ok) return log(`Restore · ${r.summary}`, false);
+        }
+        const parsed = snap.board?.designText ? parseDesign(snap.board.designText).design : null;
+        if (parsed) L.board.setDesign(parsed);
+        const c = await L.board.check();
+        log(`Board check (restored project): ${c.summary}`, c.ok);
+      })();
+    }
+  }, [project, initial, link, push, log, openWork]);
+
+  // --- keep the project saved: workbench, settings (only when they changed) and the chat (debounced, flushed on leaving)
+  useEffect(() => {
+    if (wb !== project.wb) onPatch(project.id, { wb });
+  }, [wb, project.wb, project.id, onPatch]);
+  const snapNow = useMemo<ProjectSnap>(
+    () => ({
+      ...(wb === "matter" ? { matter: { generator: matter.input.generator, gen_params: matter.input.gen_params, spreader: matter.input.spreader } } : {}),
+      ...(wb === "board" ? { board: { templateId: board.templateId, designText: board.designText } } : {}),
+    }),
+    [wb, matter.input, board.templateId, board.designText],
+  );
+  const lastSnap = useRef(JSON.stringify(project.snap));
+  useEffect(() => {
+    const s = JSON.stringify(snapNow);
+    if (s === "{}" || s === lastSnap.current) return;
+    if (wb === "board" && !board.result && !project.snap.board) return; // the default template is not the visitor's work yet
+    lastSnap.current = s;
+    onPatch(project.id, { snap: snapNow });
+  }, [snapNow, wb, board.result, project.snap.board, project.id, onPatch]);
+  const chatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatPending = useRef<AgentState | null>(null);
+  const flushChat = useCallback(() => {
+    if (chatTimer.current) clearTimeout(chatTimer.current);
+    chatTimer.current = null;
+    const s = chatPending.current;
+    chatPending.current = null;
+    if (s) onPatch(project.id, { chat: sanitizeChat(s) });
+  }, [onPatch, project.id]);
+  const onChat = useCallback(
+    (s: AgentState) => {
+      chatPending.current = s;
+      if (!chatTimer.current) chatTimer.current = setTimeout(flushChat, 700);
+    },
+    [flushChat],
+  );
+  useEffect(() => flushChat, [flushChat]);
 
   // --- first open of Matter or Board shows one real default result (free), unless the visitor already acted
   const bd = board.result?.check ?? null;
   const boardReady = board.designText.trim() !== "" && board.templateId !== null && board.busy === "idle" && !board.tplLoading && !board.result;
   useEffect(() => {
-    if (stage !== "work") return;
     const L = latest.current;
     if (wb === "matter" && !L.autoDone.matter) {
       L.autoDone.matter = true;
@@ -257,14 +425,14 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
       L.autoDone.board = true;
       void L.board.check().then((r) => log(`Board check (default template, run on first open): ${r.summary}`, r.ok));
     }
-  }, [stage, wb, boardReady, log]);
+  }, [wb, boardReady, log]);
 
   // --- coach marks: three, once, remembered; replay from the ? button
   useEffect(() => {
-    if (stage !== "work" || readStore(COACH_KEY) === "1") return;
+    if (readStore(COACH_KEY) === "1") return;
     const t = setTimeout(() => setCoach(true), 700);
     return () => clearTimeout(t);
-  }, [stage]);
+  }, []);
   const closeCoach = useCallback(() => {
     writeStore(COACH_KEY, "1");
     setCoach(false);
@@ -334,8 +502,6 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
   const lowCredits = credits.mode === "ready" && credits.remainingUsd !== null && credits.remainingUsd < 0.001;
   const blocked = lowCredits ? "Your demo credits are used up. Board checks and Matter simulations still work for free." : credits.poolExhausted ? "The shared demo pool is used up. Free checks still work." : null;
 
-  if (stage === "start") return <StartScreen credits={credits} onStart={onStart} />;
-
   const body =
     tab === "files" ? (
       <FilesTab files={files} empty={wb === "silicon" ? "Files appear when a live run finishes: the hardware (RTL), the C intrinsic, the patched kernel and the report." : wb === "board" ? "Files appear after the board has been checked: pin header, parts list, netlist and the design." : "Files appear after a simulation: the STL you can print and the settings."} />
@@ -350,6 +516,7 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
   return (
     <div className="hw-app flex h-dvh min-w-0 flex-col overflow-hidden" data-wb={wb} data-testid="workspace">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel px-3 sm:gap-3 sm:px-4">
+        {leading}
         <Link href="/" className="flex shrink-0 items-center gap-2 text-ink" aria-label={`${BRAND.name} home`}>
           <Mark />
           <span className="hw-display hidden text-[15px] sm:inline">{BRAND.name}</span>
@@ -371,22 +538,19 @@ function App({ recorded, onRestart }: { recorded: string[]; onRestart: () => voi
       </div>
       <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[minmax(340px,38%)_minmax(0,1fr)]">
         <section aria-label="Chat" data-coach="chat" className={`min-h-0 min-w-0 flex-col border-line bg-panel lg:flex lg:border-r ${pane === "chat" ? "flex" : "hidden"}`}>
-          <AgentSlot workbench={wb} context={agentContext} model={model} onModel={chooseModel} onAction={onAgentAction} prompt={prompt} suggestions={SUGGESTIONS[wb]} onBusyChange={setAgentBusy} />
+          <AgentSlot workbench={wb} context={agentContext} model={model} onModel={chooseModel} onAction={onAgentAction} prompt={prompt} suggestions={SUGGESTIONS[wb]} onBusyChange={setAgentBusy} initialState={project.chat} onStateChange={onChat} />
         </section>
         <div className={`min-h-0 min-w-0 lg:block ${pane === "preview" ? "block" : "hidden"}`} data-busy={agentBusy ? "1" : "0"}>
           <PreviewPane
             wb={wb}
-            onWorkbench={(w) => {
-              setWb(w);
-              setTab("preview");
-            }}
+            title={project.title}
             verdict={verdict}
             tab={tab}
             onTab={setTab}
             files={files}
             onShare={share}
             shareNote={shareNote}
-            onStartOver={onRestart}
+            onStartOver={() => onNew(wb)}
             onAdvanced={() => setAdvanced(true)}
           >
             {body}

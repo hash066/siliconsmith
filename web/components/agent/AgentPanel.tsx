@@ -435,6 +435,10 @@ export interface AgentPanelProps {
   suggestions?: string[];
   /** Called whenever a turn starts or ends, for a progress chip elsewhere in the app. */
   onBusyChange?: (busy: boolean) => void;
+  /** A saved conversation to start from (read once, on mount: remount the panel with a new key to switch conversations). */
+  initialState?: AgentState;
+  /** Called after every change to the conversation, so the app can save it. */
+  onStateChange?: (s: AgentState) => void;
   /** Absent on the start screen: the agent routes the goal itself. */
   workbench?: WorkbenchId;
   /** What the user sees right now. The agent can act on it (edit the current design, tune the current parameters). */
@@ -450,8 +454,18 @@ export interface AgentPanelProps {
 }
 
 /** The agent. Streaming chat, model selector, tool cards, actions in the app, confirmed loops and real per-message cost. */
-export function AgentPanel({ prompt, suggestions, onBusyChange, workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
-  const [state, setState] = useState<AgentState>(initialAgentState);
+export function AgentPanel({ prompt, suggestions, onBusyChange, initialState, onStateChange, workbench, context, model: modelProp, onModelChange, onAction, transport: transportProp, className = "" }: AgentPanelProps) {
+  const [state, setState] = useState<AgentState>(() => initialState ?? initialAgentState());
+  const changeRef = useRef(onStateChange);
+  changeRef.current = onStateChange;
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    changeRef.current?.(state);
+  }, [state]);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(transportProp ? true : null);
   const [ownModel, setOwnModel] = useState<ModelChoice>("auto");

@@ -148,3 +148,29 @@ export const IconArrowUp = ({ size = 18, className }: IconProps) => (
     <path d="M12 19V5M6 11l6-6 6 6" />
   </svg>
 );
+export const IconPlus = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+export const IconPanel = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <path d="M9.5 4.5v15" />
+  </svg>
+);
+export const IconTrash = ({ size = 14, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" />
+  </svg>
+);
+export const IconPencil = ({ size = 14, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5 19l1-4L16.5 4.5a1.8 1.8 0 012.5 2.5L8.5 17.5z" />
+  </svg>
+);
+export const IconPlug = ({ size = 16, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M9 3v5M15 3v5M6.5 8h11v3a5.5 5.5 0 01-11 0zM12 16.5V21" />
+  </svg>
+);

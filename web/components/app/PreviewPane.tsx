@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { WORKBENCHES, WORKBENCH_ORDER, type WorkbenchId } from "@/lib/brand";
+import { WORKBENCHES, type WorkbenchId } from "@/lib/brand";
 import { bytesOf, downloadFile, sizeLabel, type ProductFile } from "./files";
 import type { Verdict } from "./verdict";
 import { btnGhost, IconDownload, IconReset, IconShare, IconSliders, WB_ICON } from "./ui";
@@ -122,22 +122,22 @@ export function FilesTab({ files, empty }: { files: ProductFile[]; empty: string
 }
 
 /** Header (workbench, verdict, actions), the three tabs and the tab body. */
-export function PreviewPane({ wb, onWorkbench, verdict, tab, onTab, files, onShare, shareNote, onStartOver, onAdvanced, children }: { wb: WorkbenchId; onWorkbench: (w: WorkbenchId) => void; verdict: Verdict; tab: PreviewTab; onTab: (t: PreviewTab) => void; files: ProductFile[]; onShare: () => void; shareNote: string | null; onStartOver: () => void; onAdvanced: () => void; children: React.ReactNode }) {
+export function PreviewPane({ wb, title, verdict, tab, onTab, files, onShare, shareNote, onStartOver, onAdvanced, children }: { wb: WorkbenchId; title: string; verdict: Verdict; tab: PreviewTab; onTab: (t: PreviewTab) => void; files: ProductFile[]; onShare: () => void; shareNote: string | null; onStartOver: () => void; onAdvanced: () => void; children: React.ReactNode }) {
   return (
     <section aria-label="Preview" data-coach="preview" className="flex h-full min-h-0 min-w-0 flex-col bg-bg">
       <div className="flex shrink-0 flex-col gap-2.5 border-b border-line bg-panel px-3 pb-0 pt-3 sm:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div role="group" aria-label="Workbench" className="flex h-9 rounded-xl border border-line bg-bg p-0.5">
-            {WORKBENCH_ORDER.map((id) => {
-              const Icon = WB_ICON[id];
-              const on = wb === id;
-              return (
-                <button key={id} type="button" aria-pressed={on} onClick={() => onWorkbench(id)} data-testid={`wb-${id}`} className={`flex items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] transition-colors ${on ? "bg-raised text-ink" : "text-ink-3 hover:text-ink"}`}>
-                  <Icon size={15} />
-                  <span style={on ? { color: WORKBENCHES[id].accent } : undefined}>{WORKBENCHES[id].name}</span>
-                </button>
-              );
-            })}
+          <div className="flex min-w-0 items-center gap-2" data-testid="project-badge">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-bg" style={{ color: WORKBENCHES[wb].accent }} title={WORKBENCHES[wb].name}>
+              {(() => {
+                const Icon = WB_ICON[wb];
+                return <Icon size={17} />;
+              })()}
+            </span>
+            <div className="min-w-0 leading-tight">
+              <p className="hw-label !text-[10.5px]">{WORKBENCHES[wb].name} project</p>
+              <p className="max-w-[34vw] truncate text-[13.5px] text-ink sm:max-w-[28ch]" title={title}>{title}</p>
+            </div>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             <DownloadMenu files={files} />
@@ -149,7 +149,7 @@ export function PreviewPane({ wb, onWorkbench, verdict, tab, onTab, files, onSha
               <IconSliders />
               <span className="max-sm:sr-only">Advanced</span>
             </button>
-            <button type="button" onClick={onStartOver} className={`${btnGhost} !h-9 !px-2.5`} aria-label="Start over" title="Start over" data-testid="start-over">
+            <button type="button" onClick={onStartOver} className={`${btnGhost} !h-9 !px-2.5`} aria-label="New project" title="New project" data-testid="start-over">
               <IconReset />
             </button>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { BRAND, WORKBENCHES } from "@/lib/brand";
 import { ThemeToggle } from "../site/Brand";
 import type { CreditsView } from "./credits";
@@ -18,9 +18,9 @@ export interface StartPick {
 }
 
 /** Screen 1: one question, one box, three real examples. No sidebar, no tour over a dense UI. */
-export function StartScreen({ credits, onStart }: { credits: CreditsView; onStart: (p: StartPick) => void }) {
+export function StartScreen({ credits, onStart, initialChip = "auto", leading }: { credits: CreditsView; onStart: (p: StartPick) => void; initialChip?: Chip; leading?: ReactNode }) {
   const [text, setText] = useState("");
-  const [chip, setChip] = useState<Chip>("auto");
+  const [chip, setChip] = useState<Chip>(initialChip);
   const area = useRef<HTMLTextAreaElement>(null);
   const hint = text.trim() ? resolveWorkbench(text, chip) : null;
   const submit = () => {
@@ -30,6 +30,7 @@ export function StartScreen({ credits, onStart }: { credits: CreditsView; onStar
   return (
     <div className="hw-app hw-grid-bg flex min-h-dvh flex-col" data-wb={hint?.wb ?? "matter"} data-testid="start">
       <header className="flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6">
+        {leading}
         <Link href="/" className="flex items-center gap-2 text-ink" aria-label={`${BRAND.name} home`}>
           <Mark />
           <span className="hw-display text-[15px]">{BRAND.name}</span>
