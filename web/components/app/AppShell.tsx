@@ -552,7 +552,7 @@ function Workspace({ recorded, project, onPatch, initial, link, leading, onNew }
     ) : wb === "matter" ? (
       <MatterPreview b={matter} tab={tab} />
     ) : wb === "board" ? (
-      <BoardPreview b={board} tab={tab} onFix={fix} layout={boardLayout} />
+      <BoardPreview b={board} tab={tab} onFix={fix} layout={boardLayout} files={files} onAsk={push} />
     ) : (
       <SiliconLivePreview live={live} tab={tab} blocked={blocked} recordedHref={`/runs/${recordedRun}`} />
     );

@@ -249,6 +249,7 @@ def test_run_agent_reports_a_model_failure_honestly_with_cost_so_far():
 
 
 def test_run_agent_without_a_key_is_a_clean_503(monkeypatch):
+    import siliconsmith.config  # noqa: F401  (its first import loads .env.local: do that BEFORE removing the key)
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     r = serverless.run_agent()
     assert not r["ok"] and r["status"] == 503 and r["error"]["code"] == "model_unavailable"
@@ -370,6 +371,7 @@ def test_run_route_maps_agent_errors_to_status(monkeypatch):
     monkeypatch.setattr(serverless, "GLOBAL_RUN_LIMITER", RateLimiter(50, 3600, 5))
     s, _, b = call("POST", "/api/board/run", {"budget_usd": 9})
     assert s == 400 and b["error"]["code"] == "bad_budget"
+    import siliconsmith.config  # noqa: F401  (its first import loads .env.local: do that BEFORE removing the key)
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     s, _, b = call("POST", "/api/board/run", {})
     assert s == 503 and b["error"]["code"] == "model_unavailable"

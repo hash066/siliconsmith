@@ -108,3 +108,5 @@ Usage at this refresh: weekly 79% (resets Mon Oct 26 10:00 IST).
 ## 11. Reference study (Oct 24, late)
 
 The owner added competitor demos in refernce/ (git-ignored, 106 MB). They are analysed in docs/REFERENCE_PLAN.md with a 10-item additive replication plan and build order. Status: plan written and pushed; implementation starts with the 3D board view and Studio split. Rule: never remove existing features, add depth.
+
+Progress (reference plan items): DONE and deployed: 1 (3D board + Studio split), 2 (stage strip: Design / Parts and BOM / DRC / Manufacture), 3 (DRC panel with click-to-zoom), 4 (Manufacture panel, no invented prices), 5 (Parts library with search, categories, facts, datasheet links, BOM CSV). TODO in order: 6 Make-PCB style (Default/Smallest/Reduce EMI) and constraints text (engine placer options + UI card), 7 PCB status bar, 8 Silicon Agents panel, 9 scenario test plan with custom operand pairs, 10 VCD waveform viewer (worker --trace). Test scripts: E:/Winter/tools/pw/studio_check.mjs.

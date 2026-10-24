@@ -5,6 +5,10 @@ import { markersFor, type Marker } from "@/lib/layout";
 import { PcbView } from "./PcbView";
 import { SchematicView } from "./SchematicView";
 import { Ledger } from "./Ledger";
+import { Board3DView } from "./Board3DView";
+import { DrcPanel, ManufacturePanel, useDrcText } from "./FabPanels";
+import { PartsPanel } from "./PartsPanel";
+import type { ProductFile } from "./files";
 import { boardLedger } from "@/lib/ledger";
 import type { Generation, LayoutState } from "./useBoardLayout";
 import { ApiErrorView } from "../domain/ApiErrorView";
@@ -72,9 +76,18 @@ function BlockDiagram({ design, hot }: { design: DesignJson & { mcu_ref?: string
 
 type Layout = LayoutState & { design: Parameters<typeof markersFor>[0]; generation: Generation; generate: () => void; cancel: () => void };
 
-export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "preview" | "proof"; onFix: (c: CheckCard) => void; layout: Layout }) {
+type Stage = "design" | "parts" | "drc" | "manufacture";
+type View = "layout" | "studio" | "3d" | "schematic" | "blocks";
+
+export function BoardPreview({ b, tab, onFix, layout, files, onAsk }: { b: BoardBench; tab: "preview" | "proof"; onFix: (c: CheckCard) => void; layout: Layout; files: ProductFile[]; onAsk: (text: string) => void }) {
   const [focus, setFocus] = useState<Marker | null>(null);
-  const [view, setView] = useState<"layout" | "schematic" | "blocks" | null>(null);
+  const [view, setView] = useState<View | null>(null);
+  const [stage, setStage] = useState<Stage>("design");
+  const [focusAt, setFocusAt] = useState<{ x: number; y: number } | null>(null);
+  const drcHref = layout.status === "ready" && layout.dir && !layout.downloads ? `/boards/${layout.dir}/drc.txt` : null;
+  const drcB64 = layout.status === "ready" ? (layout.downloads?.find((d) => d.name === "drc.txt")?.base64 ?? null) : null;
+  const drcText = useDrcText(drcHref, drcB64);
+  const gerber = files.find((f) => f.name === "gerbers-and-drill.zip") ?? null;
   const check = b.result?.check ?? null;
   const cards = useMemo(() => (check ? boardChecks(check) : []), [check]);
   const parsed = useMemo(() => parseDesign(b.designText), [b.designText]);
@@ -86,7 +99,7 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
 
   const markers = useMemo(() => (layout.status === "ready" ? markersFor(layout.design, layout.summary, check) : []), [layout, check]);
   const showable = useMemo(() => new Set(markers.map((m) => m.rung)), [markers]);
-  const shown: "layout" | "schematic" | "blocks" = view ?? (layout.status === "ready" ? "layout" : layout.design ? "schematic" : "blocks");
+  const shown: View = view ?? (layout.status === "ready" ? "layout" : layout.design ? "schematic" : "blocks");
   const onShow = (c: CheckCard) => setFocus(markers.find((m) => m.rung === c.id && m.kind !== "wired") ?? markers.find((m) => m.rung === c.id) ?? null);
 
   if (b.failure && !check) return <div className="p-4"><ApiErrorView failure={b.failure} onRetry={() => void b.check()} /></div>;
@@ -122,7 +135,7 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
       </div>
     );
   }
-  return (
+  const designView = (
     <div className="flex min-w-0 flex-col gap-4 p-4" aria-live="polite">
       {stale}
       {b.failure && <ApiErrorView failure={b.failure} />}
@@ -133,6 +146,8 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
             {(
               [
                 ["layout", "Layout", layout.status === "ready"],
+                ["studio", "Studio", layout.status === "ready"],
+                ["3d", "3D", layout.status === "ready"],
                 ["schematic", "Schematic", !!layout.design],
                 ["blocks", "Blocks", !!parsed.design],
               ] as const
@@ -176,9 +191,16 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
         )}
         {shown === "schematic" && layout.design ? (
           <SchematicView design={layout.design as never} />
+        ) : shown === "3d" && layout.status === "ready" ? (
+          <Board3DView geom={layout.geom} />
+        ) : shown === "studio" && layout.status === "ready" ? (
+          <div className="grid min-w-0 gap-3 @2xl:grid-cols-2" data-testid="studio">
+            <PcbView geom={layout.geom} markers={markers} focus={focus} onFocusMarker={setFocus} focusAt={focusAt} />
+            <Board3DView geom={layout.geom} />
+          </div>
         ) : shown === "layout" && layout.status === "ready" ? (
           <>
-            <PcbView geom={layout.geom} markers={markers} focus={focus} onFocusMarker={setFocus} />
+            <PcbView geom={layout.geom} markers={markers} focus={focus} onFocusMarker={setFocus} focusAt={focusAt} />
             <p className="mt-2 text-[12.5px] leading-snug text-ink-2" data-testid="layout-status">
               {layout.summary.stats.fully_routed ? "Fully routed" : `${layout.summary.stats.unrouted_connections} connection(s) not routed`} · {layout.summary.stats.board_mm[0]} × {layout.summary.stats.board_mm[1]} mm, 2 layers · KiCad design-rule check: {layout.summary.drc.errors} errors, {layout.summary.drc.warnings} warnings (silkscreen).
             </p>
@@ -222,5 +244,59 @@ export function BoardPreview({ b, tab, onFix, layout }: { b: BoardBench; tab: "p
       </section>
       <CheckCards cards={cards} onFix={onFix} busy={b.busy !== "idle"} onShow={layout.status === "ready" ? onShow : undefined} showable={showable} />
     </div>
+  );
+  const ready = layout.status === "ready";
+  const dotOf = (s: Stage): string => {
+    if (s === "design") return check ? (check.passed ? "var(--hw-ok)" : "var(--hw-bad)") : "var(--ink-3)";
+    if (s === "parts") return layout.design ? "var(--hw-ok)" : "var(--ink-3)";
+    if (s === "drc") return ready ? (layout.summary.drc.errors === 0 ? "var(--hw-ok)" : "var(--hw-bad)") : "var(--ink-3)";
+    return ready && layout.summary.drc.errors === 0 && layout.summary.stats.fully_routed ? "var(--hw-ok)" : "var(--ink-3)";
+  };
+  const STAGES: Array<[Stage, string, string]> = [
+    ["design", "Design", check ? `${check.rungs.filter((r) => r.status === "pass").length}/${check.rungs.length} checks` : "not checked"],
+    ["parts", "Parts and BOM", layout.design ? `${layout.design.instances.length} parts` : "-"],
+    ["drc", "DRC", ready ? `${layout.summary.drc.errors} errors` : "needs a board"],
+    ["manufacture", "Manufacture", ready ? (layout.summary.stats.fully_routed ? "files ready" : "not routed") : "needs a board"],
+  ];
+  const strip = (
+    <div role="tablist" aria-label="Board stages" className="scroll-quiet flex gap-1 overflow-x-auto border-b border-line px-4 pt-3" data-testid="stage-strip">
+      {STAGES.map(([id, label, sub]) => (
+        <button key={id} type="button" role="tab" aria-selected={stage === id} onClick={() => setStage(id)} data-testid={`stage-${id}`} className={`flex shrink-0 flex-col rounded-t-lg border border-b-0 px-3 py-1.5 text-left ${stage === id ? "border-line bg-panel" : "border-transparent text-ink-3 hover:text-ink"}`}>
+          <span className="flex items-center gap-1.5 text-[12.5px] text-ink">
+            <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ background: dotOf(id) }} />
+            {label}
+          </span>
+          <span className="num text-[10.5px] text-ink-3">{sub}</span>
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <>
+      {strip}
+      {stage === "design" ? (
+        designView
+      ) : stage === "parts" ? (
+        <PartsPanel design={layout.design} onAsk={onAsk} />
+      ) : ready ? (
+        stage === "drc" ? (
+          <DrcPanel
+            summary={layout.summary}
+            reportText={drcText}
+            onShow={(x, y) => {
+              setFocusAt({ x, y });
+              setView("layout");
+              setStage("design");
+            }}
+          />
+        ) : (
+          <ManufacturePanel summary={layout.summary} gerber={gerber} />
+        )
+      ) : (
+        <div className="grid min-h-[200px] place-items-center p-6 text-center" role="status">
+          <p className="max-w-sm text-[13px] leading-snug text-ink-3">This needs a routed board. Open the Design stage and choose Make a routed board (built-in examples already have one).</p>
+        </div>
+      )}
+    </>
   );
 }

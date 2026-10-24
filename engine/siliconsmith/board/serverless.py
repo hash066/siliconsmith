@@ -328,6 +328,7 @@ def _parts_summary() -> list[dict[str, Any]]:
     for p in library().values():
         out.append({"id": p.id, "name": p.name, "kind": p.kind, "origin": p.origin, "package": p.package,
                     "description": p.description, "pin_table_checked": p.pin_table_provenance.citation_checked,
+                    "sources": sorted({u for u in [p.pin_table_provenance.url, *(f.provenance.url for f in p.facts)] if u}),
                     "pins": [{"name": x.name, "number": x.number, "direction": x.direction,
                               "capabilities": x.capabilities, "required": x.required} for x in p.pins],
                     "facts": [{"id": f"part:{p.id}.{f.key}", "text": f.text, "value": f.value, "unit": f.unit,

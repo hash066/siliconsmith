@@ -62,10 +62,12 @@ export interface PcbViewProps {
   /** A marker to zoom to (set when the visitor clicks a failing check or a marker). */
   focus?: Marker | null;
   onFocusMarker?: (m: Marker | null) => void;
+  /** A point on the board (mm) to zoom to, for example a design-rule finding. */
+  focusAt?: { x: number; y: number } | null;
 }
 
 /** The board as KiCad made it, drawn from its exported geometry: layers, ground pour, net highlight on hover, check markers on the pads. */
-export function PcbView({ geom, markers, focus, onFocusMarker }: PcbViewProps) {
+export function PcbView({ geom, markers, focus, onFocusMarker, focusAt }: PcbViewProps) {
   const b = useMemo(() => boundsOf(geom), [geom]);
   const pad = 2;
   const full = useMemo(() => ({ x: b.x0 - pad, y: b.y0 - pad, w: b.x1 - b.x0 + 2 * pad, h: b.y1 - b.y0 + 2 * pad }), [b]);
@@ -75,6 +77,13 @@ export function PcbView({ geom, markers, focus, onFocusMarker }: PcbViewProps) {
   const box = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   useEffect(() => setView(full), [full]);
+
+  useEffect(() => {
+    if (!focusAt) return;
+    const w = 12;
+    const h = w * (full.h / full.w);
+    setView({ x: focusAt.x - w / 2, y: focusAt.y - h / 2, w, h });
+  }, [focusAt, full]);
 
   // zoom to a marker's pad
   useEffect(() => {

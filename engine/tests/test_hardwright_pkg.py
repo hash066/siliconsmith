@@ -147,3 +147,9 @@ def test_mcp_stdio_loop_round_trips_and_survives_garbage():
     assert [r.get("id") for r in replies] == [1, None, 2]
     assert replies[1]["error"]["code"] == -32700
     assert len(replies[2]["result"]["tools"]) >= 5
+
+
+def test_parts_list_carries_the_datasheet_sources_recorded_in_the_library():
+    parts = {p["id"]: p for p in hw.board_parts()}
+    assert parts["esp32"]["sources"] and all(u.startswith("http") for u in parts["esp32"]["sources"])
+    assert "sources" in parts["res"] and isinstance(parts["res"]["sources"], list)
