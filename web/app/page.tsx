@@ -2,7 +2,7 @@ import "@/components/marketing/marketing.css";
 import { Bench } from "@/components/marketing/bench";
 import { Compare } from "@/components/marketing/Compare";
 import { Cta, Footer } from "@/components/marketing/CtaFooter";
-import { Demo } from "@/components/marketing/Demo";
+import { LearnArduino } from "@/components/marketing/LearnArduino";
 import { Features } from "@/components/marketing/Features";
 import { Hero } from "@/components/marketing/Hero";
 import { How } from "@/components/marketing/How";
@@ -44,7 +44,7 @@ export default function Landing() {
         />
         <Problem facts={f} />
         <Solution session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
-        <Demo sessions={f.recorded.agent} />
+        <LearnArduino />
         <Compare session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
         <RealStrip entryId={entry?.id ?? ""} />
         <Features facts={lite} />

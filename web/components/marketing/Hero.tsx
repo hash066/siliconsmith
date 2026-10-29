@@ -114,7 +114,7 @@ export function Hero({ rtlName, rtl, ladder, board, matter, stats }: HeroProps) 
                 Launch App <Icon name="arrow" size={16} />
               </Link>
               <a href="#demo" className="mk-btn">
-                <Icon name="play" size={14} /> Watch a recorded session
+                <Icon name="play" size={14} /> Try Learn Arduino
               </a>
             </div>
             <dl className="mk-stats mk-reveal" style={{ ["--d" as string]: "400ms" } as CSSProperties}>

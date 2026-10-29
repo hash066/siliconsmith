@@ -68,7 +68,7 @@ export function Footer() {
             <p style={{ marginTop: 16, maxWidth: "34ch", color: "var(--hw-ink-2)", fontSize: 14.5, lineHeight: 1.5 }}>{BRAND.sub}</p>
           </div>
           <Col title="Product" items={[["Launch App", "/app"], ["Workbenches", "#workbenches"], ["The Bench", "#bench"], ["How it works", "#how"]]} />
-          <Col title="Proof" items={[["Recorded sessions", "#demo"], ["Chatbot vs verified", "#proof"], ["Pipeline", "#pipeline"], ["Architecture", "#stack"]]} />
+          <Col title="Proof" items={[["Learn Arduino", "#demo"], ["Chatbot vs verified", "#proof"], ["Pipeline", "#pipeline"], ["Architecture", "#stack"]]} />
           <Col title="Project" items={[["Code", BRAND.repo], ["Example pull request", BRAND.prExample]]} />
         </div>
         <div className="mk-foot-base">
