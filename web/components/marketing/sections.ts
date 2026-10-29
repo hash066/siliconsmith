@@ -5,7 +5,7 @@ export const SECTIONS: { id: string; label: string; icon: IconName; color: strin
   { id: "top", label: "Start", icon: "zap", color: "var(--hw-ember)" },
   { id: "problem", label: "The problem", icon: "alert", color: "var(--hw-bad)" },
   { id: "workbenches", label: "The workstation", icon: "bulb", color: "var(--hw-warn)" },
-  { id: "demo", label: "Learn Arduino", icon: "chat", color: "var(--hw-steel)" },
+  { id: "demo", label: "See it in action", icon: "chat", color: "var(--hw-steel)" },
   { id: "proof", label: "See the difference", icon: "scale", color: "var(--hw-pcb)" },
   { id: "features", label: "Capabilities", icon: "grid", color: "var(--hw-steel)" },
   { id: "pipeline", label: "The pipeline", icon: "flow", color: "var(--hw-pcb)" },
