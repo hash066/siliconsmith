@@ -3,6 +3,7 @@ import { Bench } from "@/components/marketing/bench";
 import { Compare } from "@/components/marketing/Compare";
 import { Cta, Footer } from "@/components/marketing/CtaFooter";
 import { Demo } from "@/components/marketing/Demo";
+import { BoardExplorer } from "@/components/marketing/BoardExplorer";
 import { Features } from "@/components/marketing/Features";
 import { Hero } from "@/components/marketing/Hero";
 import { How } from "@/components/marketing/How";
@@ -44,6 +45,7 @@ export default function Landing() {
         />
         <Problem facts={f} />
         <Solution session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
+        <BoardExplorer />
         <Demo sessions={f.recorded.agent} />
         <Compare session={boardSession} chat={f.recorded.chat} fault={f.recorded.boardFault} />
         <RealStrip entryId={entry?.id ?? ""} />
