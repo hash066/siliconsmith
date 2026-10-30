@@ -4,24 +4,17 @@ From building SiliconSmith (Oct 20 to 30 2026): an agent that invents and proves
 with Nemotron 3 Ultra, Super and Nano called through Token Factory. Everything below is something we hit
 or measured; the numbers come from our own run logs (`web/public/replays/`).
 
-## Token Factory Sandboxes: the activation path was our biggest blocker
+## Token Factory Sandboxes: getting started (a miss on our side, and a small suggestion)
 
-* **What happened.** Our API key authenticated and `get_token_info()` (contree-sdk 0.3.6) worked, but every
-  permission it listed was `False`. Nothing in the SDK, the error text or the docs tells you that this means
-  "Sandboxes is not enabled for your project". We inferred it by elimination, and the route to fix it
-  (emailing contree@nebius.com with the project ID) is not something the SDK or error points to. We could not create or run an instance, so our Sandboxes backend is written and tested against the
-  protocol locally but has not run a search.
-* **Ask.** Say it in the error: if an operation is refused because the project is not enabled, return a message
-  that names the fix and the contact. A short "self-serve request access" button in the console would be better.
-  For a hackathon whose featured tool is Sandboxes, activation could be on by default for participants' projects.
-* **`get_token_info()` output.** It prints permissions and limits (50 concurrent instances, 3600 s per run, 12 GB per
-  layer) but not what each permission gates. A line per permission would help.
-* **Image workflow.** We expected to build from a Dockerfile with the `contree` CLI, but the `contree` CLI was not
-  installed alongside the SDK, and the alternative (build elsewhere, import from a registry) needs a registry and a local Docker
-  disk. A documented one-command "build this directory" path in the SDK would remove a day of setup.
-* **Design we liked.** Checkpoint images per operation map exactly onto a search tree: a child starts from its
-  parent's image and its result is the next checkpoint. That is why we chose Sandboxes for the architecture,
-  and it is a genuinely good fit for agents that search over states.
+* **What happened.** Our API key authenticated and `get_token_info()` (contree-sdk 0.3.6) worked, but every permission it listed was `False`. We read that as an
+  authentication problem and lost time before realising Sandboxes has to be enabled for the project (a request to contree@nebius.com with the project ID). That was our
+  oversight, not a platform fault; once enabled, everything below worked.
+* **Small suggestion.** `get_token_info()` prints permissions and limits (50 concurrent instances, 3600 s per run, 12 GB per layer) but not what each permission gates.
+  One line per permission, or a hint such as "Sandboxes: not enabled for this project", would save a new team the same detour.
+* **Image workflow.** We expected to build from a Dockerfile with the `contree` CLI, but the CLI was not installed alongside the SDK, and the alternative (build elsewhere,
+  import from a registry) needs a registry and a local Docker disk. A documented one-command "build this directory" path in the SDK would remove a day of setup.
+* **Design we liked.** Checkpoint images per operation map exactly onto a search tree: a child starts from its parent's image and its result is the next checkpoint.
+  That is why we chose Sandboxes for the architecture, and it is a genuinely good fit for agents that search over states.
 
 ### What we hit once Sandboxes was enabled (first real search: `r_w1_contree3`)
 
