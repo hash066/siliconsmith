@@ -113,8 +113,8 @@ export function Hero({ rtlName, rtl, ladder, board, matter, stats }: HeroProps) 
               <Link href="/app" className="mk-btn mk-btn-primary">
                 Launch App <Icon name="arrow" size={16} />
               </Link>
-              <a href="#demo" className="mk-btn">
-                <Icon name="play" size={14} /> Watch a recorded session
+              <a href="https://youtu.be/6LJNFYmQQWk" target="_blank" rel="noopener noreferrer" className="mk-btn">
+                <Icon name="play" size={14} /> Watch the recorded demo
               </a>
             </div>
             <dl className="mk-stats mk-reveal" style={{ ["--d" as string]: "400ms" } as CSSProperties}>

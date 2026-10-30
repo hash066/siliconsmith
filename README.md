@@ -1,15 +1,29 @@
+<div align="center">
+
 # Hardwright
 
 **Agents that design hardware, and prove it.**
+
+[![Hardwright demo: type a prompt, get a checked heat sink, a routed board and a proven CPU instruction](docs/assets/hardwright-demo.gif)](https://youtu.be/6LJNFYmQQWk)
+
+<sub>Click the animation to watch the full demo video on YouTube.</sub>
+
+[**Try it, no sign-up**](https://siliconsmith.vercel.app) · [**Watch the demo**](https://youtu.be/6LJNFYmQQWk) · [**Use it from your agent**](https://siliconsmith.vercel.app/connect) · [Feedback on Nebius](docs/feedback.md) · [Model comparison](docs/MODEL_COMPARISON.md)
+
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+![Nemotron](https://img.shields.io/badge/NVIDIA-Nemotron%203-76b900)
+![Nebius](https://img.shields.io/badge/Nebius-Token%20Factory%20%2B%20Sandboxes-3d63d9)
+![MCP](https://img.shields.io/badge/MCP-server-orange)
+![pip](https://img.shields.io/badge/pip-hardwright-informational)
+
+</div>
 
 Hardwright is a workstation for people who make hardware: describe a heat sink, a sensor board or a slow loop in plain words, and a
 Nemotron agent builds it. Every claim it makes has to pass a checker it cannot argue with, so you get a part, a board or an instruction
 you can open in a real tool, plus the evidence for it. It also ships as an **open-source Python package, command-line tool and MCP server**
 so any coding agent can use the same checkers.
 
-> Built for the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering).
-> **Try it, no sign-up: https://siliconsmith.vercel.app** · Apache-2.0
-> Use the checkers from your terminal or editor: https://siliconsmith.vercel.app/connect
+> Built for the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering) · Apache-2.0
 
 ```bash
 pip install "hardwright[matter] @ git+https://github.com/hash066/siliconsmith#subdirectory=engine"
@@ -35,6 +49,15 @@ and reports what it spent; **projects** (each workbench is a folder of projects 
 project as connected steps with their real status; a **Verified-by ledger** on every Proof tab; **one-click zip** of a project; and $0.50 of demo
 credit per visitor from a $25 pool.
 
+
+### See it
+
+| Matter | Board |
+|---|---|
+| ![Matter: a real thermal solver](docs/assets/matter.jpg) | ![Board: placed, routed and checked](docs/assets/board.jpg) |
+| **Board, catching a mistake** | **Silicon** |
+| ![The checker catches GPIO12 vs GPIO14](docs/assets/fault.jpg) | ![Silicon: a proven RISC-V instruction](docs/assets/silicon.jpg) |
+
 ## What is real
 
 Everything below ran for real and is reproducible; numbers are from the run logs and the test suites.
@@ -45,7 +68,7 @@ Everything below ran for real and is reproducible; numbers are from the run logs
   against KiCad's own symbol library. The checker is tested against a catalogue of 8 injected wiring faults.
 * **Silicon, live.** A real run on the public site: Nemotron Ultra proposes, Super implements, a Sandbox proves it. TinyMaix int8 dot product:
   **3.32× fewer cycles for +4.8% area** (another run 2.69×), about 2 minutes and $0.04 of model tokens; ChaCha20: 1.14×. The recorded 20-minute full searches
-  (with clock-speed estimates) reached **4.04× cycles / 3.76× wall-clock** on TinyMaix ([pull request](https://github.com/hash66/TinyMaix/pull/1)).
+  (with clock-speed estimates) reached **4.04× cycles / 3.76× wall-clock** on TinyMaix ([pull request](https://github.com/hash066/TinyMaix/pull/1)).
 * **Matter.** Gains over an equal-material plain-fin plate are small and we say so: +0.1 to +0.5 K in the recorded evaluations, and the app will show a loss
   ("1.3 K hotter than plain fins") rather than hide it.
 * **Tests.** Engine 640 passed (14 skipped), web 339 passed, axe accessibility 0 violations, layout shift 0.03, strict first-time-user pass in
@@ -78,14 +101,64 @@ Setup lines for Claude Code, Codex, Cursor, VS Code and Claude Desktop: `hardwri
 
 ## How it is built
 
+### The big picture
+
+```mermaid
+flowchart LR
+    you([You]) --> web["Next.js app<br/>Vercel"]
+    agentx([Claude Code · Cursor · Codex]) -- MCP --> pkg
+    term([Terminal]) -- CLI --> pkg
+    pkg["hardwright package<br/>offline CLI + MCP server"] --> chk
+    web -- "/api proxy" --> api["Python API host<br/>FastAPI on Vercel"]
+    api --> chk["Deterministic checkers<br/>board B1 to B5 · Matter solvers · evidence ids"]
+    web -- "chat agent" --> nem
+    api --> nem["Nemotron on Nebius Token Factory<br/>Ultra · Super · Nano · tool calling"]
+    api --> sbx
+    subgraph sbx ["Token Factory Sandboxes"]
+        base["siliconsmith-base<br/>Verilator · Yosys · RISC-V GCC"]
+        kicad["siliconsmith-kicad<br/>KiCad 7 · Java · Freerouting"]
+    end
+    classDef box fill:#101827,stroke:#3d63d9,color:#fff;
+    class web,api,chk,nem,pkg box;
 ```
-browser ──► Next.js app (Vercel)                         chat agent: Nemotron Ultra / Super / Nano (Token Factory, tool calling)
-              │  /api/board|matter|silicon/* (proxy)       actions: open workbench, set parameters, check, simulate, run live
-              ▼
-         Python API host (Vercel, FastAPI)  ──►  Token Factory Sandboxes
-           Board checker, Matter solver               siliconsmith-base   : Verilator, Yosys, RISC-V GCC  (Silicon proofs)
-           live Silicon pipeline                      siliconsmith-kicad  : KiCad 7, Java, Freerouting    (routed boards)
+
+### The evidence rule: a model can only claim what a checker returned
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as You
+    participant A as Nemotron agent
+    participant C as Checker (no model)
+    participant G as Post-check
+    U->>A: Is this board OK to send to fab?
+    A->>C: board_check(template)
+    C-->>A: pass / fail / unknown + evidence ids
+    A->>G: Draft answer with its claims
+    G-->>G: Every claim needs an evidence id. Invented commands or runs are flagged
+    G-->>U: Answer citing board:fault_gpio12_vs_gpio14#B4
+    Note over C,U: Only a pass counts as a claim. Unknown never does.
 ```
+
+### Silicon: from a prompt to a proven instruction
+
+```mermaid
+flowchart TD
+    p["Prompt: make this loop faster"] --> u["Nemotron Ultra<br/>proposes one custom RISC-V instruction"]
+    u --> s["Nemotron Super<br/>writes the Verilog, the C intrinsic, the rewritten kernel"]
+    s --> l1["Lint"]
+    subgraph box ["Token Factory Sandbox"]
+        l1 --> l2["One million test vectors"] --> l3["Formal proof (Yosys SAT) for every input"] --> l4["Whole-program output match"] --> l5["Cycles and area"]
+    end
+    l5 --> ok["Verified instruction:<br/>RTL, intrinsic, report, evidence ids"]
+    l1 -. fail .-> n["Nemotron Nano<br/>triages the log"]
+    l2 -. fail .-> n
+    l3 -. counterexample .-> n
+    l4 -. fail .-> n
+    n --> r["Super repairs"] --> l1
+```
+
+### Components
 
 * **Nemotron.** Ultra is the architect (proposals, diagnosis), Super the engineer (Verilog, C, repairs, the independent spec), Nano triages. Every call is logged
   with tokens and cost; a chat turn costs about $0.003 to $0.02, a live Silicon run $0.04 to $0.07.
@@ -94,6 +167,7 @@ browser ──► Next.js app (Vercel)                         chat agent: Nemot
 * **The evidence rule.** A claim in the UI carries an evidence id (`part:esp32.gpio12.strapping`, `board:fault_gpio12_vs_gpio14#B4`, `run:...`). The agent's
   answers are post-checked: an invented command or a claimed run that did not happen is flagged.
 * **Library.** `evidence/` holds three verified instructions that anyone can re-check with no model: `siliconsmith verify-entry dot4-tinymaix`.
+* **Model choice.** A small head-to-head against seven other models on the same endpoint is in [docs/MODEL_COMPARISON.md](docs/MODEL_COMPARISON.md), including where Nemotron is not the best.
 
 ## Run it locally
 
